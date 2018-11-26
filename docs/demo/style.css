@@ -1,0 +1,39 @@
+html {
+  height: 100%;
+}
+body {
+  background-color: #fff;
+  margin: 0;
+  overflow: hidden;
+  height:100%;
+  display: flex;
+  flex-flow: row nowrap;
+}
+#screen {
+  height:100%;
+  flex: 1 1 auto;
+}
+#editor {
+  height:100%;
+  width: 480px;
+  display: flex;
+  flex-flow: column nowrap;
+}
+#texteditor {
+  flex: 1 1 auto;
+}
+#controler {
+  position:absolute;
+  height: 50px;
+  bottom: 0px;
+}
+#message {
+  font: normal 12px Arial;
+  color: red;
+}
+button#runscript {
+  width: 180px;
+  height: 40px;
+  margin-left:50px;
+  border: solid 1px #ccc;
+}
