@@ -370,7 +370,7 @@ SolidML.BuildStatus = class {
     /** color for the object. get RGBA values by {@link ColorHSBA#getRGBA}
      *  @type {SolidML.ColorHSBA}
      */
-    this.color  = new SolidML.ColorHSBA(0,0,1,1);
+    this.color  = new SolidML.ColorHSBA(0,1,1,1);
     /** name of the object
      *  @type {string}
      */

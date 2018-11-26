@@ -57,7 +57,7 @@ new Ptolemy({
       bindKey: {win:"Ctrl-Enter", mac:"Command-Enter"},
       exec: build
     });
-    editor.setValue("@250\n@cp[red,yellow,green]\n{ry90x6}10{rx36}R\n#R{{x4rz-4ry6s0.99}R{s10#?}torus}\n#R@w4{{x4rz4ry6s0.99}R{s8,4,4}cylinder}");
+    editor.setValue("@250\n@cp[red,yellow,green]\n{ry90x6white}10{rx36}R\n#R{{x4rz-4ry6s0.99}R{s10#?}torus}\n#R@w4{{x4rz4ry6s0.99}R{s8,4,4}cylinder}");
     document.getElementById("runscript").addEventListener("click", build);
 
     gl.mainMaterial = new THREE.MeshStandardMaterial({vertexColors: THREE.VertexColors, metalness:0.1, roughness:0.9});
