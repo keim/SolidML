@@ -21,6 +21,7 @@ class SolidML {
   compile(script) {
     this._root = new SolidML.Rule(this, null, null, null);
     this._root._parse(script.replace(/\/\/.*?$|\/\*.*?\*\//gm, ''), 0);
+    this._randMTSeed = null;
     return this;
   }
   /** Build object, call recursive functions made by {@link SolidML#compile}.
@@ -40,7 +41,9 @@ class SolidML {
         return objects;
       };
     }
-    SolidML.randMT.instance(this.criteria["seed"]);
+    if (!this._randMTSeed)
+    	this._randMTSeed = this.criteria.seed || new Date().getTime();
+    SolidML.randMT.instance(this._randMTSeed);
     const status = this._root._build(new SolidML.BuildStatus(callback));
     return status.result;
   }
@@ -326,10 +329,14 @@ SolidML.ColorHSBA = class {
   }
   /** get color as {r,g,b} */
   getRGBA() {
-    if (this.cp) this._dice();
+    if (this.cp) 
+    	this._dice();
     const hp=(this.h-Math.floor(this.h/360)*360)/60, c=this.b*this.s, x=c*(1-Math.abs(hp%2-1)), m=this.b-c, a=this.a;
     return (hp<1) ? {r:c+m,g:x+m,b:m,a} : (hp<2) ? {r:x+m,g:c+m,b:m,a} :  (hp<3) ? {r:m,g:c+m,b:x+m,a} : 
            (hp<4) ? {r:m,g:x+m,b:c+m,a} : (hp<5) ? {r:x+m,g:m,b:c+m,a} : {r:c+m,g:m,b:x+m,a};
+  }
+  _incrementRandMT() {
+  	if (this.cp) this._dice();
   }
   _dice() {
     const rand = SolidML.randMT.instance();

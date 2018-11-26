@@ -22,23 +22,25 @@ new Ptolemy({
         gl.mainGeometry.computeBoundingSphere();
         const bbox = gl.mainGeometry.boundingBox,
               sphere = gl.mainGeometry.boundingSphere;
+        const floorHeight = bbox.min.z - 5;
 
         gl.setCameraDistance(sphere.radius*2, sphere.center, new THREE.Vector3(0,1,-1));
         gl.controls.target = sphere.center;
 
-        gl.light.shadow.camera.far = bbox.max.z-bbox.min.z+30;
-        gl.light.shadow.camera.bottom = bbox.min.y;
-        gl.light.shadow.camera.top = bbox.max.y;
-        gl.light.shadow.camera.left = bbox.min.x;
-        gl.light.shadow.camera.right = bbox.max.x;
-        gl.light.position.set(0, 0, bbox.max.z+10);
+        gl.light.shadow.camera.bottom = sphere.center.y - sphere.radius;
+        gl.light.shadow.camera.top    = sphere.center.y + sphere.radius;
+        gl.light.shadow.camera.left   = sphere.center.x - sphere.radius;
+        gl.light.shadow.camera.right  = sphere.center.x + sphere.radius;
+        gl.light.position.set(0, 0, sphere.center.z+sphere.radius + 1);
         gl.light.shadow.camera.updateProjectionMatrix();
 
         const floorColor = gl.solidML.criteria.background || gl.solidML.criteria.getValue("floor", "color");
         const skyColor   = gl.solidML.criteria.background || gl.solidML.criteria.getValue("sky", "color");
         gl.floorMaterial.color = new THREE.Color(floorColor);
         gl.floorLight.color = gl.floorMaterial.color;
-        gl.floor.position.z = bbox.min.z-5;
+        gl.floor.position.z = floorHeight;
+        gl.scene.fog.near = sphere.radius*20;
+        gl.scene.fog.far = sphere.radius*25;
         gl.scene.fog.color = new THREE.Color(skyColor);
         gl.renderer.setClearColor(gl.scene.fog.color);
       } catch(e){
@@ -62,7 +64,7 @@ new Ptolemy({
     gl.mainGeometry = null;
     gl.mainMesh = null;
     gl.floorMaterial = new THREE.MeshLambertMaterial({color:0x888888});
-    gl.floorGeometry = new THREE.PlaneBufferGeometry(10000,10000);
+    gl.floorGeometry = new THREE.PlaneBufferGeometry(50000,50000);
     gl.floorGeometry.attributes.position.dynamic = true;
     gl.floor = new THREE.Mesh(gl.floorGeometry, gl.floorMaterial);
     gl.floor.receiveShadow = true;

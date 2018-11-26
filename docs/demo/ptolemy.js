@@ -96,6 +96,8 @@ class Ptolemy {
     this.light.shadow.radius = 3;
     this.light.shadow.mapSize.width = 1024;
     this.light.shadow.mapSize.height = 1024;
+    this.light.shadow.camera.near = 0.01;
+    this.light.shadow.camera.far = 100000;
     this.light.position.set(0, 0, 250);
     this.floorLight = new THREE.DirectionalLight(0xffffff, 0.3);
     this.floorLight.position.set(0, 0, -1);

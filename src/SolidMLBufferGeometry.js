@@ -64,6 +64,7 @@ SolidML.BufferGeometry = class extends THREE.BufferGeometry {
     let indexCount=0, vertexCount=0;
     this.solidML.build(stat=>{
       const geom = this.geometryHash[stat.label];
+      stat.color._incrementRandMT();
       if (geom) {
         vertexCount += geom.attributes.position.count;
         indexCount += geom.index.array.length;
@@ -81,20 +82,20 @@ SolidML.BufferGeometry = class extends THREE.BufferGeometry {
   update() {
     let indexCount=0, vertexCount=0, indexOffset=0;
     this.solidML.build(stat=>{
-      const temp = this.geometryHash[stat.label],
+      const geom = this.geometryHash[stat.label],
             col  = stat.color.getRGBA(), 
             rgba = [col.r, col.g, col.b, col.a];
-      if (temp) {
-        const vcount = temp.attributes.position.count,
-              icount = temp.index.array.length;
+      if (geom) {
+        const vcount = geom.attributes.position.count,
+              icount = geom.index.array.length;
         stat.matrix._applyToTypedArray(this.attributes.position.array, vertexCount,
-                                       temp.attributes.position.array, vcount, 3);
+                                       geom.attributes.position.array, vcount, 3);
         stat.matrix._applyToTypedArray(this.attributes.normal.array, vertexCount,
-                                       temp.attributes.normal.array, vcount, 3);
+                                       geom.attributes.normal.array, vcount, 3);
         for (let i=0; i<vcount; i++, vertexCount++) 
           this.attributes.color.array.set(rgba, vertexCount * 4);
         for (let i=0; i<icount; i++, indexCount++) 
-          this.index.array[indexCount] = temp.index.array[i] + indexOffset;
+          this.index.array[indexCount] = geom.index.array[i] + indexOffset;
         indexOffset += vcount;
       }
     });
