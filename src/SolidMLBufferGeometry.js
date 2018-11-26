@@ -15,23 +15,25 @@ SolidML.BufferGeometry = class extends THREE.BufferGeometry {
       geom.setIndex(new THREE.BufferAttribute(indices, 1));
       return geom;
     };
+    const rotz = new THREE.Matrix4().makeRotationZ(-Math.PI/2),
+          roty = new THREE.Matrix4().makeRotationY(Math.PI/2);
     /** hash map of original geometries and keys in script.
      *  @type {Object.<BufferGeometry>}
      */
     this.geometryHash = Object.assign({
       "box": new THREE.BoxBufferGeometry(1,1,1),
-      "grid": new THREE.BoxBufferGeometry(1,1,1),
-      "sphere": new THREE.SphereBufferGeometry(1,8,6),
-      "line": new THREE.BoxBufferGeometry(1,0.02,0.02),
-      "point": new THREE.SphereBufferGeometry(0.02,4,4),
-      "cylinder": new THREE.CylinderBufferGeometry(1,1,1,8),
-      "disc": new THREE.CylinderBufferGeometry(1,1,0.2,8),
-      "corn": new THREE.ConeBufferGeometry(1,1,8),
-      "torus": new THREE.TorusBufferGeometry(1,0.2,6,8),
-      "tetra": indexing(new THREE.TetrahedronBufferGeometry(1)),
-      "octa": indexing(new THREE.OctahedronBufferGeometry(1)),
-      "dodeca": indexing(new THREE.DodecahedronBufferGeometry(1)),
-      "icosa": indexing(new THREE.IcosahedronBufferGeometry(1)),
+      "sphere": new THREE.SphereBufferGeometry(0.5,8,6),
+      "cylinder": new THREE.CylinderBufferGeometry(0.5,0.5,1,8).applyMatrix(rotz),
+      "disc": new THREE.CylinderBufferGeometry(0.5,0.5,0.1,8).applyMatrix(rotz),
+      "corn": new THREE.ConeBufferGeometry(0.5,1,8).applyMatrix(rotz),
+      "torus": new THREE.TorusBufferGeometry(0.5,0.1,6,8).applyMatrix(roty),
+      "tetra": indexing(new THREE.TetrahedronBufferGeometry(0.5)),
+      "octa": indexing(new THREE.OctahedronBufferGeometry(0.5)),
+      "dodeca": indexing(new THREE.DodecahedronBufferGeometry(0.5)),
+      "icosa": indexing(new THREE.IcosahedronBufferGeometry(0.5)),
+      "grid": null,
+      "line": null,
+      "point": null,
       "triangle": null,
       "tube": null,
       "mesh": null
@@ -43,10 +45,10 @@ SolidML.BufferGeometry = class extends THREE.BufferGeometry {
     this.build(eisenScript, criteria);
   }
   /** construct object by script. new {@link BufferGeometry.solidML} is created inside.
-   *  @param {string} [eisenScript] script to construct object. 
+   *  @param {string} eisenScript script to construct object. 
    *  @param {object} [criteria] default criteria of this structure, specified by "set *" commands in script.
    */
-  build(eisenScript=null, criteria=null) {
+  build(eisenScript, criteria=null) {
     this.solidML = new SolidML(eisenScript, criteria);
     // some additional criteria
     const crit = this.solidML.criteria;
@@ -82,18 +84,17 @@ SolidML.BufferGeometry = class extends THREE.BufferGeometry {
       const temp = this.geometryHash[stat.label],
             col  = stat.color.getRGBA(), 
             rgba = [col.r, col.g, col.b, col.a];
-
       if (temp) {
-        const geom  = temp.clone(),
-              vcount = temp.attributes.position.count,
+        const vcount = temp.attributes.position.count,
               icount = temp.index.array.length;
-        geom.applyMatrix(new THREE.Matrix4().copy(stat.matrix));
-        this.attributes.position.array.set(geom.attributes.position.array, vertexCount * 3);
-        this.attributes.normal.array.set(geom.attributes.normal.array, vertexCount * 3);
+        stat.matrix._applyToTypedArray(this.attributes.position.array, vertexCount,
+                                       temp.attributes.position.array, vcount, 3);
+        stat.matrix._applyToTypedArray(this.attributes.normal.array, vertexCount,
+                                       temp.attributes.normal.array, vcount, 3);
         for (let i=0; i<vcount; i++, vertexCount++) 
           this.attributes.color.array.set(rgba, vertexCount * 4);
         for (let i=0; i<icount; i++, indexCount++) 
-          this.index.array[indexCount] = geom.index.array[i] + indexOffset;
+          this.index.array[indexCount] = temp.index.array[i] + indexOffset;
         indexOffset += vcount;
       }
     });

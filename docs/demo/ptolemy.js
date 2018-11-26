@@ -39,8 +39,13 @@ class Ptolemy {
     }
   }
 
-  get cameraDistance() {
-    return this.renderer.getSize().height * 0.5 / Math.tan(this.camera.fov * 0.008726646259971648);
+  setCameraDistance(verticalSize, targetPosition, cameraDirection) {
+    const dist = (verticalSize || this.renderer.getSize().height) * 0.5 / Math.tan(this.camera.fov * 0.008726646259971648);
+    const target = targetPosition || this.screenCenter;
+    this.camera.lookAt(target);
+    this.camera.position.copy(target);
+    if (cameraDirection) cameraDirection.normalize();
+    this.camera.position.addScaledVector(cameraDirection || new THREE.Vector3(0,0,-1), -dist);
   } 
 
   /** screen size */
@@ -81,7 +86,7 @@ class Ptolemy {
     this.renderer.gammaOutput = true;
     this.renderer.physicallyCorrectLights = true;
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.shadowMap.type = THREE.PCFShadowMap;
 
     this.sky = new THREE.Mesh(new THREE.BoxBufferGeometry(1,1,1));
 
@@ -95,8 +100,7 @@ class Ptolemy {
     this.floorLight = new THREE.DirectionalLight(0xffffff, 0.3);
     this.floorLight.position.set(0, 0, -1);
 
-    this.camera.position.set(0, 0, this.cameraDistance);
-    this.camera.lookAt(this.screenCenter);
+    this.setCameraDistance();
 
     this.scene.add(this.ambient);
     this.scene.add(this.light);

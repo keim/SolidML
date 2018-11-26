@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Class: SolidML</title>
+    <title>Class: Criteria</title>
     
     
     <script src="scripts/prettify/prettify.js"></script>
@@ -321,7 +321,7 @@
     </ul>
 </div>
     <div class="main">
-        <h1 class="page-title" data-filename="SolidML.html">Class: SolidML</h1>
+        <h1 class="page-title" data-filename="SolidML.Criteria.html">Class: Criteria</h1>
         
 
 
@@ -330,8 +330,12 @@
     
 <header>
     <h2>
-    SolidML
+        <span class="ancestors"><a href="SolidML.html">SolidML</a>.</span>
+    
+    Criteria
     </h2>
+    
+        <div class="class-description">Represents a criteria of the structure, specified by "set *" commands in script.</div>
     
 </header>  
 
@@ -343,14 +347,14 @@
         
 <dt>
     <div class="nameContainer">
-        <h4 class="name" id="SolidML">
+        <h4 class="name" id="Criteria">
             
-            new SolidML<span class="signature">(<span class="optional">script</span>, <span class="optional">criteria</span>)</span>
+            new SolidML.Criteria<span class="signature">()</span>
         </h4>
     
         
         <div class="tag-source">
-            <a href="global.html#SolidML.js">SolidML.js</a>, <a href="global.html#SolidML.js#line10">line 10</a>
+            <a href="global.html#SolidML.js">SolidML.js</a>, <a href="global.html#SolidML.js#line56">line 56</a>
         </div>
         
     </div>
@@ -361,7 +365,7 @@
     
     
     <div class="description">
-        Basically one instance for one script.
+        SolidML.Criteria is created in the constructor of <a href="SolidML.html">SolidML</a>.
     </div>
     
 
@@ -369,88 +373,6 @@
     
     
     
-    
-        
-
-<table class="params">
-    <thead>
-	<tr>
-		
-		<th>Name</th>
-		
-		
-		<th>Type</th>
-		
-		
-		
-		<th class="last">Description</th>
-	</tr>
-	</thead>
-	
-	<tbody>
-	
-	
-        <tr>
-            
-                <td class="name"><code>script</code></td>
-            
-            
-            <td class="type">
-            
-                
-<span class="param-type">string</span>
-
-
-            
-            </td>
-            
-            
-            
-            <td class="description last">
-                
-                    
-                        <span class="optional">optional</span>
-                    
-                    
-                        
-                    
-                
-                SolidML script to compile, calls <a href="SolidML.html#compile">SolidML#compile</a> inside.</td>
-        </tr>
-	
-	
-	
-        <tr>
-            
-                <td class="name"><code>criteria</code></td>
-            
-            
-            <td class="type">
-            
-                
-<span class="param-type">object</span>
-
-
-            
-            </td>
-            
-            
-            
-            <td class="description last">
-                
-                    
-                        <span class="optional">optional</span>
-                    
-                    
-                        
-                    
-                
-                default criteria of this structure, specified by "set *" commands in script.</td>
-        </tr>
-	
-	
-	</tbody>
-</table>
     
     
     
@@ -501,31 +423,6 @@
     
     
     
-    
-        <h3 class="subsection-title">Classes</h3>
-        
-        <dl>
-            <dt><a href="SolidML.BufferGeometry.html">BufferGeometry</a></dt>
-            <dd></dd>
-        
-            <dt><a href="SolidML.BuildStatus.html">BuildStatus</a></dt>
-            <dd></dd>
-        
-            <dt><a href="SolidML.ColorHSBA.html">ColorHSBA</a></dt>
-            <dd></dd>
-        
-            <dt><a href="SolidML.Criteria.html">Criteria</a></dt>
-            <dd></dd>
-        
-            <dt><a href="SolidML.Matrix4.html">Matrix4</a></dt>
-            <dd></dd>
-        
-            <dt><a href="SolidML.randMT.html">randMT</a></dt>
-            <dd></dd>
-        
-            <dt><a href="SolidML.Rule.html">Rule</a></dt>
-            <dd></dd>
-        </dl>
     
     
     
@@ -537,7 +434,7 @@
             
 <dt>
     <div class="nameContainer">
-        <h4 class="name" id=".ColorTable"><span class="type-signature static">static</span>SolidML.ColorTable<span class="type-signature type object">Object</span> </h4>
+        <h4 class="name" id="background">background<span class="type-signature type string">string</span> </h4>
     </div>
     
     
@@ -545,7 +442,7 @@
 <dd>
     
     <div class="description">
-        svg name table for colors. SolidML.ColorTable["name"] returns hex string of the color.
+        background color in #HEX type string. default is null
     </div>
     
     
@@ -582,7 +479,7 @@
             
 <dt>
     <div class="nameContainer">
-        <h4 class="name" id="criteria">criteria<span class="type-signature type solidml.criteria"><a href="SolidML.Criteria.html">SolidML.Criteria</a></span> </h4>
+        <h4 class="name" id="colorpool">colorpool<span class="type-signature type string">string</span> </h4>
     </div>
     
     
@@ -590,7 +487,232 @@
 <dd>
     
     <div class="description">
-        criteria of this structure, specified by "set *" commands in script
+        colorpool referd from "color rondom" command.  default is "randomrgb"
+    </div>
+    
+    
+    
+<dl class="details">
+    
+        
+    
+    
+    
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+</dl>
+
+    
+    
+</dd>
+
+        
+            
+<dt>
+    <div class="nameContainer">
+        <h4 class="name" id="maxdepth">maxdepth<span class="type-signature type int">int</span> </h4>
+    </div>
+    
+    
+</dt>
+<dd>
+    
+    <div class="description">
+        maximum depth to terminate recursive rule calls. default is 10000
+    </div>
+    
+    
+    
+<dl class="details">
+    
+        
+    
+    
+    
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+</dl>
+
+    
+    
+</dd>
+
+        
+            
+<dt>
+    <div class="nameContainer">
+        <h4 class="name" id="maxobjects">maxobjects<span class="type-signature type int">int</span> </h4>
+    </div>
+    
+    
+</dt>
+<dd>
+    
+    <div class="description">
+        maximum object count to terminate constuction. default is 100000
+    </div>
+    
+    
+    
+<dl class="details">
+    
+        
+    
+    
+    
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+</dl>
+
+    
+    
+</dd>
+
+        
+            
+<dt>
+    <div class="nameContainer">
+        <h4 class="name" id="maxsize">maxsize<span class="type-signature type number">number</span> </h4>
+    </div>
+    
+    
+</dt>
+<dd>
+    
+    <div class="description">
+        maximun size to create object, check [the 3dim-determinant of matrix] > [maxsize] ^ 3. default is 10000
+    </div>
+    
+    
+    
+<dl class="details">
+    
+        
+    
+    
+    
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+</dl>
+
+    
+    
+</dd>
+
+        
+            
+<dt>
+    <div class="nameContainer">
+        <h4 class="name" id="minsize">minsize<span class="type-signature type number">number</span> </h4>
+    </div>
+    
+    
+</dt>
+<dd>
+    
+    <div class="description">
+        minimun size to create object, check [the 3dim-determinant of matrix] < [minsize] ^ 3. default is 0
+    </div>
+    
+    
+    
+<dl class="details">
+    
+        
+    
+    
+    
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+</dl>
+
+    
+    
+</dd>
+
+        
+            
+<dt>
+    <div class="nameContainer">
+        <h4 class="name" id="seed">seed<span class="type-signature type int">int</span> </h4>
+    </div>
+    
+    
+</dt>
+<dd>
+    
+    <div class="description">
+        seed number for Mersenne Twister random number generator. detfault is null
     </div>
     
     
@@ -633,14 +755,14 @@
             
 <dt>
     <div class="nameContainer">
-        <h4 class="name" id="build">
+        <h4 class="name" id="getValue">
             
-            build<span class="signature">(<span class="optional">callback</span>)</span><span class="glyphicon glyphicon-circle-arrow-right"></span><span class="type-signature returnType">{any}</span>
+            getValue<span class="signature">(key, type)</span><span class="glyphicon glyphicon-circle-arrow-right"></span><span class="type-signature returnType">{any}</span>
         </h4>
     
         
         <div class="tag-source">
-            <a href="global.html#SolidML.js">SolidML.js</a>, <a href="global.html#SolidML.js#line30">line 30</a>
+            <a href="global.html#SolidML.js">SolidML.js</a>, <a href="global.html#SolidML.js#line123">line 123</a>
         </div>
         
     </div>
@@ -651,7 +773,7 @@
     
     
     <div class="description">
-        Build object, call recursive functions made by <a href="SolidML.html#compile">SolidML#compile</a>.
+        get criterla by key
     </div>
     
 
@@ -682,159 +804,7 @@
 	
         <tr>
             
-                <td class="name"><code>callback</code></td>
-            
-            
-            <td class="type">
-            
-                
-<span class="param-type"><a href="SolidML.html#~buildCallback">SolidML~buildCallback</a></span>
-
-
-            
-            </td>
-            
-            
-            
-            <td class="description last">
-                
-                    
-                        <span class="optional">optional</span>
-                    
-                    
-                        
-                    
-                
-                function called back when new object has created.</td>
-        </tr>
-	
-	
-	</tbody>
-</table>
-    
-    
-    
-<dl class="details">
-    
-        
-    
-    
-    
-
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-</dl>
-
-    
-    
-
-    
-
-    
-    
-    
-    
-    
-    <h5>Returns:</h5>
-    
-
-
-<table class="params">
-    <thead>
-    <tr>
-        
-        <th>Type</th>
-        <th class="last">Description</th>
-    </tr>
-    </thead>
-    <tbody>
-    
-        <tr>
-            
-            <td class="type">
-            
-                        any
-                        
-                    
-            </td>
-            <td class="description last">returned value of callback. when callback is undefined, returns the array of {matrix:Matrix4, color:ColorRGB, label:String, param:String} for each objects.</td>
-        </tr>
-    
-    </tbody>
-</table>
-
-    
-    
-    
-</dd>
-
-        
-            
-<dt>
-    <div class="nameContainer">
-        <h4 class="name" id="compile">
-            
-            compile<span class="signature">(script)</span><span class="glyphicon glyphicon-circle-arrow-right"></span><span class="type-signature returnType">{<a href="SolidML.html">SolidML</a>}</span>
-        </h4>
-    
-        
-        <div class="tag-source">
-            <a href="global.html#SolidML.js">SolidML.js</a>, <a href="global.html#SolidML.js#line21">line 21</a>
-        </div>
-        
-    </div>
-
-    
-</dt>
-<dd>
-    
-    
-    <div class="description">
-        Parse script, make a structure of recursive calls inside
-    </div>
-    
-
-    
-    
-    
-    
-    
-        
-
-<table class="params">
-    <thead>
-	<tr>
-		
-		<th>Name</th>
-		
-		
-		<th>Type</th>
-		
-		
-		
-		<th class="last">Description</th>
-	</tr>
-	</thead>
-	
-	<tbody>
-	
-	
-        <tr>
-            
-                <td class="name"><code>script</code></td>
+                <td class="name"><code>key</code></td>
             
             
             <td class="type">
@@ -850,148 +820,20 @@
             
             <td class="description last">
                 
-                SolidML script to compile</td>
+                criteria name</td>
         </tr>
 	
-	
-	</tbody>
-</table>
-    
-    
-    
-<dl class="details">
-    
-        
-    
-    
-    
-
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-</dl>
-
-    
-    
-
-    
-
-    
-    
-    
-    
-    
-    <h5>Returns:</h5>
-    
-
-
-<table class="params">
-    <thead>
-    <tr>
-        
-        <th>Type</th>
-        <th class="last">Description</th>
-    </tr>
-    </thead>
-    <tbody>
-    
-        <tr>
-            
-            <td class="type">
-            
-                        <a href="SolidML.html">SolidML</a>
-                        
-                    
-            </td>
-            <td class="description last">this instance</td>
-        </tr>
-    
-    </tbody>
-</table>
-
-    
-    
-    
-</dd>
-
-        </dl>
-    
-    
-    
-        <h3 class="subsection-title">Type Definitions</h3>
-        
-        <dl>
-                
-<dt>
-    <div class="nameContainer">
-        <h4 class="name" id="~buildCallback">
-            
-            buildCallback<span class="signature">(status)</span><span class="glyphicon glyphicon-circle-arrow-right"></span><span class="type-signature returnType">{any}</span>
-        </h4>
-    
-        
-        <div class="tag-source">
-            <a href="global.html#SolidML.js">SolidML.js</a>, <a href="global.html#SolidML.js#line48">line 48</a>
-        </div>
-        
-    </div>
-
-    
-</dt>
-<dd>
-    
-    
-    <div class="description">
-        callback function passed to <a href="SolidML.html#build">SolidML#build</a>
-    </div>
-    
-
-    
-    
-    
-    
-    
-        
-
-<table class="params">
-    <thead>
-	<tr>
-		
-		<th>Name</th>
-		
-		
-		<th>Type</th>
-		
-		
-		
-		<th class="last">Description</th>
-	</tr>
-	</thead>
-	
-	<tbody>
 	
 	
         <tr>
             
-                <td class="name"><code>status</code></td>
+                <td class="name"><code>type</code></td>
             
             
             <td class="type">
             
                 
-<span class="param-type"><a href="SolidML.BuildStatus.html">SolidML.BuildStatus</a></span>
+<span class="param-type">string</span>
 
 
             
@@ -1001,7 +843,7 @@
             
             <td class="description last">
                 
-                the status while building structure</td>
+                criteria value type number, int, color, array or string can be specifiyed</td>
         </tr>
 	
 	
@@ -1066,7 +908,7 @@
                         
                     
             </td>
-            <td class="description last">the return value can be refered by BuildStatus.result, or <a href="SolidML.html#build">SolidML#build</a>.</td>
+            <td class="description last">value for specified criteria</td>
         </tr>
     
     </tbody>
@@ -1077,7 +919,9 @@
     
 </dd>
 
-            </dl>
+        </dl>
+    
+    
     
     
     

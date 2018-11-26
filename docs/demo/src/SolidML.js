@@ -1,40 +1,31 @@
-/** Simple Structure Synth (Eisen script) parser 
+/** 
+ *  Construct fractal-like 3D models by cryptic script based on [Structure Synth](http://structuresynth.sourceforge.net/)'s Eisen Script.
  *  @file all in one file 
  */
 class SolidML {
   /** Basically one instance for one script. 
-   *  @param {string} [eisenScript] Eisen Script to compile, calls {@link SolidML#compile} inside.
+   *  @param {string} [script] SolidML script to compile, calls {@link SolidML#compile} inside.
    *  @param {object} [criteria] default criteria of this structure, specified by "set *" commands in script.
    */
-  constructor(eisenScript, criteria) {
+  constructor(script, criteria) {
     /** criteria of this structure, specified by "set *" commands in script
-     *  @type {object}
+     *  @type {SolidML.Criteria}
      */
-    this.criteria = Object.assign({
-      maxdepth : 10000,
-      maxobjects : 100000,
-      minsize : 0,
-      maxsize : 100000,
-      seed: null,
-      background: "#000000",
-      floor:"#000000",
-      sky:"#000000",
-      colorpool: "randomrgb"
-    }, criteria);
-    if (eisenScript) this.compile(eisenScript);
+    this.criteria = new SolidML.Criteria(criteria);
+    if (script) this.compile(script);
   }
-  /** Parse Eisen Script, make a structure of recursive calls inside
-   *  @param  {string} eisenScript script to compile
+  /** Parse script, make a structure of recursive calls inside
+   *  @param  {string} script SolidML script to compile
    *  @return {SolidML} this instance
    */
-  compile(eisenScript) {
+  compile(script) {
     this._root = new SolidML.Rule(this, null, null, null);
-    this._root._parse(eisenScript.replace(/\/\/.*?$|\/\*.*?\*\//gm, ''), 0);
+    this._root._parse(script.replace(/\/\/.*?$|\/\*.*?\*\//gm, ''), 0);
     return this;
   }
   /** Build object, call recursive functions made by {@link SolidML#compile}.
    *  @param {SolidML~buildCallback} [callback] function called back when new object has created.
-   *  @return {any} returned value of callback. when callback is undefined, returns the array of {matrix:Matrix4, color:Color, label:String, param:String}for each objects.
+   *  @return {any} returned value of callback. when callback is undefined, returns the array of {matrix:Matrix4, color:ColorRGB, label:String, param:String} for each objects.
    */
   build(callback) {
     if (!this._root)
@@ -57,10 +48,114 @@ class SolidML {
 /** callback function passed to {@link SolidML#build}
  *  @callback SolidML~buildCallback
  *  @param {SolidML.BuildStatus} status the status while building structure
- *  @return {any} thr return value can be refered by {@link SolidML.BuildStatus.result}, or {@link SolidML#build}.
+ *  @return {any} the return value can be refered by {@link BuildStatus.result}, or {@link SolidML#build}.
  */
-/** represents 4dim-matrix compatible with THREE.Matrix4. */
+/**
+ * Represents a criteria of the structure, specified by "set *" commands in script.
+ */
+SolidML.Criteria = class {
+  /** SolidML.Criteria is created in the constructor of {@link SolidML}.  */
+  constructor(hash) {
+    /** maximum depth to terminate recursive rule calls. default is 10000 
+     *  @type {int}
+     */
+    this.maxdepth = 10000;
+    /** maximum object count to terminate constuction. default is 100000
+     *  @type {int}
+     */
+    this.maxobjects = 100000;
+    /** minimun size to create object, check [the 3dim-determinant of matrix] < [minsize] ^ 3. default is 0
+     *  @type {number}
+     */
+    this.minsize = 0;
+    /** maximun size to create object, check [the 3dim-determinant of matrix] > [maxsize] ^ 3. default is 10000
+     *  @type {number}
+     */
+    this.maxsize = 10000;
+    /** seed number for Mersenne Twister random number generator. detfault is null
+     *  @type {int}
+     */
+    this.seed =  null;
+    /** background color in #HEX type string. default is null
+     *  @type {string}
+     */
+    this.background = null;
+    /** colorpool referd from "color rondom" command.  default is "randomrgb"
+     *  @type {string}
+     */
+    this.colorpool =  "randomrgb";
+    Object.assign(this, hash);
+  }
+  _set(key, value) {
+    const schemeMap = {":g":"grayscale",":h":"randomhue",":rgb":"randomrgb"};
+    switch(key) {
+      case "maxdepth": case "":
+        this.maxdepth = this._getNumber(value, this.maxdepth);
+        break;
+      case "maxobjects": case "mo":
+        this.maxobjects = this._getNumber(value, this.maxobjects);
+        break;
+      case "minsize": case "min":
+        this.minsize = this._getNumber(value, this.minsize);
+        break;
+      case "maxsize": case "max":
+        this.maxsize = this._getNumber(value, this.maxsize);
+        break;
+      case "seed": case "s":
+        this.seed = this._getNumber(value, null);
+        break;
+      case "background": case "bg":
+        this.background = this._getColor(value);
+        break;
+      case "colorpool": case "cp":
+        this.colorpool = schemeMap[value] || value;
+        break;
+      default:
+        this[key] = value;
+        break;
+    }
+  }
+  /** get criterla by key
+   *  @param {string} key criteria name 
+   *  @param {string} type criteria value type number, int, color, array or string can be specifiyed
+   *  @return {any} value for specified criteria
+   */
+  getValue(key, type) {
+    if (key in this) {
+      switch(type) {
+        case "number":
+          return this._getNumber(this[key], 0);
+        case "int":
+          return (this._getNumber(this[key], 0)>>0);
+        case "color":
+          return this._getColor(this[key], "#000");
+        case "array":
+          return this._getArray(this[key]);
+        default:
+          return this[key] || "";
+      }
+    }
+    return null;
+  }
+  _getNumber(value, numFailure) {
+    const n = Number(value);
+    return isNaN(n) ? numFailure : n;
+  }
+  _getColor(value, strFailure) {
+    if (value in SolidML.ColorTable) return SolidML.ColorTable[value];
+    if (/^#[0-9a-fA-F]+$/.test(value)) return value;
+    const n = Number(value);
+    if (isNaN(n)) return strFailure;
+    const f = (Math.min(Math.max(n*2.56, 0), 255)).toString(16);
+    return "#" + f + f + f;
+  }
+  _getArray(value) {
+    return value.replace(/\[|\]/g, "").split(",");
+  }
+}
+/** Represents 4dim-matrix inside, compatible for THREE.Matrix4.copy() method. */
 SolidML.Matrix4 = class {
+  /** SolidML.Matrix4 passed by collback function of {@link SolidML#build}. you can convert for three.js by THREE.Matrix4.copy(SolidML.Matrix4). */
   constructor() { this.elements = new Float32Array([1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]); }
   fromArray(a) { this.elements.set(a); return this; }
   identity() { return this.fromArray([1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]);}
@@ -73,6 +168,7 @@ SolidML.Matrix4 = class {
   makeRotationZ(theta) { const c=Math.cos(theta), s=Math.sin(theta); return this.fromArray([c,-s,0,0, s,c,0,0, 0,0,1,0, 0,0,0,1]); }
   multiply(m) { return this.multiplyMatrices(this, m); }
   premultiply(m) { return this.multiplyMatrices(m, this); }
+  /** @return {number} 3dim-determinant calclate for size checking. */
   det3() {
     const te = this.elements;
     return Math.abs(te[0]*te[5]*te[10] - te[0]* te[6]*te[9] - te[1]*te[4]*te[10] + te[1]* te[6]*te[8] + te[2]*te[4]* te[9] - te[2]*te[5]*te[8]);
@@ -105,15 +201,83 @@ SolidML.Matrix4 = class {
     this.elements[15] = a41 * b14 + a42 * b24 + a43 * b34 + a44 * b44;
     return this;
   }
+  _applyToTypedArray(dst, dstIndex, src, srcLength, itemSize) {
+    const te = this.elements;
+    for (let i=0,j=dstIndex; i<srcLength; i++, j++) {
+      const x = src[i*itemSize], y = src[i*itemSize+1], z = src[i*itemSize+2];
+      const dx = te[0] * x + te[4] * y + te[8]  * z + te[12];
+      const dy = te[1] * x + te[5] * y + te[9]  * z + te[13];
+      const dz = te[2] * x + te[6] * y + te[10] * z + te[14];
+      const iw = 1/(te[3] * x + te[7] * y + te[11] * z + te[15]);
+      dst[j*itemSize]   = dx * iw;
+      dst[j*itemSize+1] = dy * iw;
+      dst[j*itemSize+2] = dz * iw;
+    }
+  }
 }
-/** represents color by (hue, saturation, brightness, alpha) */
+/** Keep color infomations as (hue, saturation, brightness, alpha) */
 SolidML.ColorHSBA = class {
-  constructor() { this.h=0; this.s=0; this.b=0; this.a=0; this.cp=null; }
-  set(h,s,b,a) { this.h=h; this.s=s; this.b=b; this.a=a; return this; }
-  copy(c) { this.h=c.h; this.s=c.s; this.b=c.b; this.a=c.a; this.cp=c.cp; return this; }
+  /** 
+   * @param {number} [h] hue in degree (0-360)
+   * @param {number} [s] satulation between 0 and 1
+   * @param {number} [b] brightness between 0 and 1
+   * @param {number} [a] alpha between 0 and 1
+   */
+  constructor(h=0,s=0,b=0,a=0) { 
+    /** hue in degree (0-360)
+     *  @type {number}
+     */
+    this.h = h || 0; 
+    /** satulation between 0 and 1
+     *  @type {number}
+     */
+    this.s = s || 0; 
+    /** brightness between 0 and 1
+     *  @type {number}
+     */
+    this.b = b || 0; 
+    /** alpha between 0 and 1
+     *  @type {number}
+     */
+    this.a = a || 0; 
+    /** colorpool scheme for random generation, null for constant value
+     *  @type {number}
+     */
+    this.cp = null; 
+  }
+  /** set */
+  set(h,s,b,a) {
+    this.h = h;
+    this.s = s;
+    this.b = b;
+    this.a = a;
+    this.cp = null;
+    return this;
+  }
+  /** copy from */
+  copy(c) {
+    this.h = c.h;
+    this.s = c.s;
+    this.b = c.b;
+    this.a = c.a;
+    this.cp = c.cp;
+    if (this.cp) this._dice();
+    return this;
+  }
+  /** create clone */
   clone(c) { return new SolidML.ColorHSBA().copy(this); }
-  multiply(c) { this.h += c.h; this.s *= c.s; this.b *= c.b; this.a *= c.a; return this; }
+  /** change color by anther SolidML.ColorHSBA */
+  multiply(c) { 
+    this.cp = null;
+    this.h += c.h;
+    this.s *= c.s;
+    this.b *= c.b;
+    this.a *= c.a;
+    return this;
+  }
+  /** blend color by SolidML.ColorHSBA and ratio */
   blend(dst, ratio) {
+    this.cp = null; 
   	if (this.s > 0) {
 	    let hdif = (dst.s == 0) ? 0 : dst.h - this.h;
 	    hdif += (hdif<-180) ? 360 : ((hdif>180) ? -360 : 0);
@@ -124,6 +288,7 @@ SolidML.ColorHSBA = class {
     this.b += (dst.b-this.b)*ratio.b*dst.a;
     return this;
   }
+  /** set color by {r,g,b} */
   setRGB(col) {
     const min = (col.g<=col.r)?((col.b<=col.g)?col.b:col.g):((col.b<=col.r)?col.b:col.r),
           max = (col.g>=col.r)?((col.b>=col.g)?col.b:col.g):((col.b>=col.r)?col.b:col.r);
@@ -140,22 +305,31 @@ SolidML.ColorHSBA = class {
     }
     return this;
   }
-  setHex(hex) {
-    const dig6 = (hex.length > 6), 
-          m = hex.match(dig6 ? /#(..)(..)(..)/:/#(.)(.)(.)/) || ["#fff"], 
+  /** set color by "#HEX" string */
+  setHex(hexString) {
+    const dig6 = (hexString.length > 6), 
+          m = hexString.match(dig6 ? /#(..)(..)(..)/ : /#(.)(.)(.)/) || ["#fff"], 
           scale = dig6 ? 255 : 15;
     this.setRGB({r:parseInt(m[1],16)/scale, g:parseInt(m[2],16)/scale, b:parseInt(m[3],16)/scale});
     return this;
   }
+  /** set as random color generator */
+  setRandom(scheme) {
+    let match;
+    if (match = /^\[(.*?)\]$/.exec(scheme))
+      this.cp = match[1].split(/\s*,\s*/);
+    else if (match = /^list:(.*)$/.exec(scheme))
+      this.cp = match[1].split(/\s*,\s*/);
+    else 
+      this.cp = scheme;
+    return this;
+  }
+  /** get color as {r,g,b} */
   getRGBA() {
     if (this.cp) this._dice();
     const hp=(this.h-Math.floor(this.h/360)*360)/60, c=this.b*this.s, x=c*(1-Math.abs(hp%2-1)), m=this.b-c, a=this.a;
     return (hp<1) ? {r:c+m,g:x+m,b:m,a} : (hp<2) ? {r:x+m,g:c+m,b:m,a} :  (hp<3) ? {r:m,g:c+m,b:x+m,a} : 
            (hp<4) ? {r:m,g:x+m,b:c+m,a} : (hp<5) ? {r:x+m,g:m,b:c+m,a} : {r:c+m,g:m,b:x+m,a};
-  }
-  setRandom(scheme) {
-    this.cp = (/^list:/.test(scheme)) ? scheme.replace(/^list:/, "").split(/,/) : scheme;
-    return this;
   }
   _dice() {
     const rand = SolidML.randMT.instance();
@@ -178,36 +352,36 @@ SolidML.ColorHSBA = class {
     }
   }
 }
-/** [SHOULD NOT CREATE new instance] represents various status while building structure, passed by the callback of {@link SolidML#build} */
+/** Represents various status while building structure, passed by the callback of {@link SolidML#build} */
 SolidML.BuildStatus = class {
   /** [SHOULD NOT CREATE new instance] SolidML.BuildStatus instance is created by {@link SolidML}  */
   constructor(funcNewObject) {
-    /** matrix to transform the object 
-     * @type {SolidML.Matrix4}
+    /** matrix to transform the object. convert for three.js by pass this to THREE.Matrix4.copy()
+     *  @type {SolidML.Matrix4}
      */
     this.matrix = new SolidML.Matrix4();
-    /** color for the object 
-     * @type {SolidML.ColorHSBA}
+    /** color for the object. get RGBA values by {@link ColorHSBA#getRGBA}
+     *  @type {SolidML.ColorHSBA}
      */
-    this.color  = new SolidML.ColorHSBA().set(0,0,1,1);
+    this.color  = new SolidML.ColorHSBA(0,0,1,1);
     /** name of the object
-     * @type {string}
+     *  @type {string}
      */
     this.label = null;
     /** parameters of the object written as "[...]"
-     * @type {string}
+     *  @type {string}
      */
     this.param = null;
     /** current object count
-     * @type {int}
+     *  @type {int}
      */
     this.objectCount = 0;
     /** current rule
-     * @type {SolidML.Rule}
+     *  @type {SolidML.Rule}
      */
     this.rule = null;
     /** return value of previous callback
-     * @type {object}
+     *  @type {object}
      */
     this.result = null;
     // private
@@ -229,16 +403,16 @@ SolidML.BuildStatus = class {
   _pushRule(rule) {
     this._stacRule.push(this.rule);
     this.rule = rule;
-    if (!(rule.ruleName in this._ruleDepth))
-      this._ruleDepth[rule.ruleName] = 0;
-    let imin = this.rule.minsize(),
-        imax = this.rule.maxsize();
+    if (!(rule.name in this._ruleDepth))
+      this._ruleDepth[rule.name] = 0;
+    let imin = this.rule.minsize,
+        imax = this.rule.maxsize;
     this._rule_min3 = imin*imin*imin;
     this._rule_max3 = imax*imax*imax;
-    return (++this._ruleDepth[rule.ruleName] <= rule.maxdepth);
+    return (++this._ruleDepth[rule.name] <= rule.maxdepth);
   }
   _popRule() {
-    this._ruleDepth[this.rule.ruleName]--;
+    this._ruleDepth[this.rule.name]--;
     this.rule = this._stacRule.pop();
   }
   _newObject(label, param) {
@@ -251,41 +425,67 @@ SolidML.BuildStatus = class {
     return true;
   }
 }
-/** [SHOULD NOT CREATE new instance] SolidML.Rule represents rules in Eisen Script.  */
+/** Represents rules in Eisen Script.  */
 SolidML.Rule = class {
-  /** [SHOULD NOT CREATE new instance] SolidML.Rule is create by {@link SolidML}
-   * @param {rootInstance} SolidML instance 
-   * @param {SolidML.Rule} parentRule parent rule, refers SolidML._root ussually
-   * @param {string} ruleName rule name to search by parentRule.find() method
-   * @param {string} option option string includes "weight" and "maxdepth"
-   */
-  constructor(rootInstance, parentRule, ruleName, option) {
-    this.rootInstance = rootInstance;
+  /** [SHOULD NOT CREATE new instance] SolidML.Rule is create by {@link SolidML} */
+  constructor(rootInstance, parentRule, name, option) {
+    /** name of this rule. "$root" is set for top most rule 
+     *  @type {string}
+     */
+    this.name = name || "$root";
+    /** weight value of the rule set by weight option in Eisen Script. default is 1
+     *  @type {number}
+     */
+    this.weight = 1;
+    /** maxdepth value of the rule set by maxdepth option in Eisen Script. default is same as the {@link Criteria.maxdepth}
+     *  @type {number}
+     */
+    this.maxdepth = rootInstance.criteria.maxdepth;
+    /** termination rule name set by ">" option in Eisen Script. default is null
+     *  @type {string}
+     */
+    this.maxdepthLabel = null;
+    /** parent rule. null for top most rule
+     *  @type {SolidML.Rule}
+     */
     this.parent = parentRule;
-    this.ruleName = ruleName || "$root";
+    // private
+    this._minsize = null;
+    this._maxsize = null;
+    this._colorpool = null;
+    this.rootInstance = rootInstance;
     this.childRules = {};
     this.sequence = new SolidML.Reference(null, null);
-    this.weight = 1;
-    this.maxdepth = this.rootInstance.criteria["maxdepth"];
-    this.maxdepthLabel = null;
-    this.colorpool = (parentRule) ? parentRule.colorpool : this.rootInstance.criteria["colorpool"];
     if (option) this._parseRuleOption(option);
   }
+  /** @return Returns true when there are no operation inside */
   isEmpty() {
     return (!this.sequence.next);
   }
-  minsize() {
-    return this.rootInstance.criteria["minsize"];
-  }
-  maxsize() {
-    return this.rootInstance.criteria["maxsize"];
-  }
-  /** search rule by name
-   *  @param {string} ruleName name to search. search child rules first, then search ancestor rules.
+  /** minimum size for this rule. 
+   *  @type {number}
    */
-  find(ruleName) {
-    if (ruleName in this.childRules) {
-      const list = this.childRules[ruleName],
+  get minsize() {
+    return this._minsize || (this.parent) ? this.parent.minsize : this.rootInstance.criteria.minsize;
+  }
+  /** maximum size for this rule. 
+   *  @type {number}
+   */
+  get maxsize() {
+    return this._maxsize || (this.parent) ? this.parent.maxsize : this.rootInstance.criteria.maxsize;
+  }
+  /** colorpool scheme string for this rule. 
+   *  @type {string}
+   */
+  get colorpool() {
+    return this._colorpool || (this.parent) ? this.parent.colorpool : this.rootInstance.criteria.colorpool;
+  }
+  /** search rules by label
+   *  @param {string} label label to search. search child rules first, then search ancestor rules.
+   */
+  find(label) {
+    if (label in this.childRules) {
+      const list = this.childRules[label],
             total = list.reduce((acm, rule)=>acm+rule.weight, 0),
             randnum = SolidML.randMT.instance().next() * total;
       for (let i=0, acm=0; i<list.length; i++) {
@@ -294,14 +494,14 @@ SolidML.Rule = class {
       }
       return list[list.length-1];
     }
-    return this.parent && this.parent.find(ruleName);
+    return this.parent && this.parent.find(label);
   }
-  _parse(eisenScript, lastIndex) {
+  _parse(script, lastIndex) {
     let m;
     const rex = SolidML.regExp();
     rex.lastIndex = lastIndex;
     this._tail = this.sequence;
-    while (m = rex.exec(eisenScript)) {
+    while (m = rex.exec(script)) {
       if (!this._parseSetting(m,rex)) 
         if (!this._parseMatrix(m,rex)) 
           if (!this._parseReference(m,rex))
@@ -326,14 +526,14 @@ SolidML.Rule = class {
       if (rule) 
         rule._build(stat);
       else 
-        throw Error("label [" + this.maxdepthLabel + "] not found in rule " + this.ruleName);
+        throw Error("label [" + this.maxdepthLabel + "] not found in rule " + this.name);
     }
     stat._popRule();
     return stat;
   }
   _parseRuleOption(option) {
     let m;
-    const rex = new RegExp("([a-z@]+)\\s*(\\d*\\.?\\d+)|>\\s*" + SolidML.ruleNameRexString, "gm");
+    const rex = new RegExp("([a-z@]+)\\s*(\\d*\\.?\\d+)|>\\s*" + SolidML.nameRexString, "gm");
     while (m = rex.exec(option)) {
       switch(m[1]) {
         case "weight": case "w": case "@w":
@@ -351,43 +551,7 @@ SolidML.Rule = class {
   _parseSetting(m,rx) {
     if (!m[SolidML.REX_SETTING])
       return false;
-    switch(m[SolidML.REX_SETTING_CMD]) {
-      case "maxdepth": case "":
-        this.rootInstance.criteria["maxdepth"] = Number(m[SolidML.REX_SETTING_ARG]);
-        break;
-      case "maxobjects": case "mo":
-        this.rootInstance.criteria["maxobjects"] = Number(m[SolidML.REX_SETTING_ARG]);
-        break;
-      case "minsize": case "min":
-        this.rootInstance.criteria["minsize"] = Number(m[SolidML.REX_SETTING_ARG]);
-        break;
-      case "maxsize": case "max":
-        this.rootInstance.criteria["maxsize"] = Number(m[SolidML.REX_SETTING_ARG]);
-        break;
-      case "seed": case "s":
-        this.rootInstance.criteria["seed"] = Number(m[SolidML.REX_SETTING_ARG]) || m[SolidML.REX_SETTING_STRING];
-        break;
-      case "background": case "bg":
-        this.rootInstance.criteria["background"] = m[SolidML.REX_SETTING_COLOR] || SolidML.ColorTable[m[SolidML.REX_SETTING_STRING]] || "#000";
-        this.rootInstance.criteria["sky"] = this.rootInstance.criteria["background"];
-        this.rootInstance.criteria["floor"] = this.rootInstance.criteria["background"];
-        break;
-      case "floor": case "f":
-        this.rootInstance.criteria["floor"] = m[SolidML.REX_SETTING_COLOR] || SolidML.ColorTable[m[SolidML.REX_SETTING_STRING]] || "#000";
-        break;
-      case "sky":
-        this.rootInstance.criteria["sky"] = m[SolidML.REX_SETTING_COLOR] || SolidML.ColorTable[m[SolidML.REX_SETTING_STRING]] || "#000";
-        break;
-      case "material": case "mat":
-        this.rootInstance.criteria["material"] = m[SolidML.REX_SETTING_PARAM];
-        break;
-      case "colorpool": case "cp":
-        this.colorpool = m[SolidML.REX_SETTING_STRING];
-        break;
-      default:
-        this.rootInstance.criteria[m[SolidML.REX_SETTING_CMD]] = m[SolidML.REX_SETTING_PARAM];
-        break;
-    }
+    this.rootInstance.criteria._set(m[SolidML.REX_SETTING_CMD], m[SolidML.REX_SETTING_PARAM]);
     return true;
   }
   _parseMatrix(m,rx) {
@@ -412,8 +576,8 @@ SolidML.Rule = class {
     const label  = m[SolidML.REX_RULEDEF_LABEL],
           option = m[SolidML.REX_RULEDEF_OPTION],
           rule = new SolidML.Rule(this.rootInstance, this, label, option);
-    if (!(rule.ruleName in this.childRules)) this.childRules[rule.ruleName] = [];
-    this.childRules[rule.ruleName].push(rule);
+    if (!(rule.name in this.childRules)) this.childRules[rule.name] = [];
+    this.childRules[rule.name].push(rule);
     rx.lastIndex = rule._parse(m.input, rx.lastIndex);
     return true;
   }
@@ -423,6 +587,7 @@ SolidML.Rule = class {
     return true;
   }
 }
+// private 
 SolidML.Reference = class {
   constructor(prev, label, param) {
     if (prev) prev.next = this;
@@ -433,15 +598,16 @@ SolidML.Reference = class {
   _build(stat) {
     const rule = stat.rule.find(this.label);
     if (rule) {
-      if (++stat._ruleDepth[rule.parent.ruleName] <= rule.parent.maxdepth) 
+      if (++stat._ruleDepth[rule.parent.name] <= rule.parent.maxdepth) 
         rule._build(stat);
-      stat._ruleDepth[rule.parent.ruleName]--;
+      stat._ruleDepth[rule.parent.name]--;
     } else 
       if (!stat._newObject(this.label, this.param)) 
         return null;
     return this.next;
   }
 }
+// private 
 SolidML.Operator = class {
   constructor(rule, prev, repeat, opeString) {
     this.parentRule = rule;
@@ -449,8 +615,8 @@ SolidML.Operator = class {
     this.matrix = new SolidML.Matrix4();
     this.color = null;
     this.dcolor = null;
-    this.blend = new SolidML.ColorHSBA().set(0,1,1,0);
-    this.ratio = new SolidML.ColorHSBA().set(0,0,0,0);
+    this.blend = new SolidML.ColorHSBA(0,1,1,0);
+    this.ratio = new SolidML.ColorHSBA(0,0,0,0);
     prev.next = this;
     this.next = null;
     this._parse(opeString);
@@ -475,7 +641,7 @@ SolidML.Operator = class {
   _parse(opeString) {
     let m;
     const mat = new SolidML.Matrix4();
-    const rex = /([a-z]+)|([\-\d.]+)|(#[\da-fA-F]{3,6})|(\*)/gm;
+    const rex = /([a-z]+|#\?)|([\-\d.]+)|(#[0-9a-fA-F]+)|(\*)/gm;
     const getNumber = (failThrough=false)=>{
       const li = rex.lastIndex, m = rex.exec(opeString);
       if (m && m[2]) return Number(m[2]);
@@ -497,11 +663,14 @@ SolidML.Operator = class {
       return null;
     };
     while (m = rex.exec(opeString)) {
-      if (m[1] in SolidML.ColorTable) 
+      // direct color name
+      if (m[1] in SolidML.ColorTable)
         this.color = new SolidML.ColorHSBA().setHex(SolidML.ColorTable[m[1]]);
+      // direct color hex
       else if (m[3])
         this.color = new SolidML.ColorHSBA().setHex(m[3]);
-      else if (m[4]) {
+      // blending by "*" command
+      else if (m[4]) { 
         const nextColor = getColor(true);
         if (nextColor) {
           this.blend.setHex(nextColor);
@@ -532,19 +701,19 @@ SolidML.Operator = class {
       } else {
         switch(m[1]) {
           case "hue":case "h":
-            if (!this.dcolor) this.dcolor = new SolidML.ColorHSBA().set(0,1,1,1);
+            if (!this.dcolor) this.dcolor = new SolidML.ColorHSBA(0,1,1,1);
             this.dcolor.h = getNumber();
             break;
           case "sat":
-            if (!this.dcolor) this.dcolor = new SolidML.ColorHSBA().set(0,1,1,1);
+            if (!this.dcolor) this.dcolor = new SolidML.ColorHSBA(0,1,1,1);
             this.dcolor.s = getNumber();
             break;
           case "brightness": case "b":
-            if (!this.dcolor) this.dcolor = new SolidML.ColorHSBA().set(0,1,1,1);
+            if (!this.dcolor) this.dcolor = new SolidML.ColorHSBA(0,1,1,1);
             this.dcolor.b = getNumber();
             break;
           case "alpha": case "a":
-            if (!this.dcolor) this.dcolor = new SolidML.ColorHSBA().set(0,1,1,1);
+            if (!this.dcolor) this.dcolor = new SolidML.ColorHSBA(0,1,1,1);
             this.dcolor.a = getNumber();
             break;
           case "blend":
@@ -563,7 +732,7 @@ SolidML.Operator = class {
                 throw Error("cannot parse : " + m[0]);
             }
             break;
-          case "random":
+          case "random": case "#?":
             this.color = new SolidML.ColorHSBA().setRandom(this.parentRule.colorpool);
             break;
           case "x":
@@ -603,12 +772,20 @@ SolidML.Operator = class {
     }
   }
 }
-
+/** Mersenne Twister random number generator */
 SolidML.randMT = class {
+  /** 
+   * use SolidML.randMT.instance() instead
+   * @param {number} [seed] seed for random numbers list
+   */
   constructor(seed) {
     this._mt = new Uint32Array(624);
     this.seed = (seed===null) ? new Date().getTime() : seed;
   }
+  /** 
+   * get singleton instance
+   * @param {number} [seed=null] seed for random number table, null to use Date.getTime() inside.
+   */
   static instance(seed=null) {
     if (!SolidML.randMT._instance) 
       SolidML.randMT._instance = new SolidML.randMT(seed);
@@ -616,6 +793,9 @@ SolidML.randMT = class {
       SolidML.randMT._instance.seed = seed;
     return SolidML.randMT._instance;
   }
+  /** seed for random number table 
+   *  @type {number} 
+   */
   get seed() {
     return this._seed;
   }
@@ -650,36 +830,33 @@ SolidML.randMT = class {
     v ^= v >>> 18;
     return v >>> 0;
   }
+  /** @return {Number} Returns random number and increment pointer for random number table */
   next() {
     return ((this._nextInt() >>> 5) * 0x4000000 + (this._nextInt() >>> 6)) / 0x20000000000000; 
   }
 }
-SolidML.setRexString = "(set|@)\\s*([a-z]*)\\s*((-?\\d*\\.?\\d+)|(#[a-fA-F0-9]+)|([a-z:,]+)|(\\[.+?\\]))";
-SolidML.ruleNameRexString = "([a-zA-Z_][a-zA-Z0-9_]*)";
-SolidML.ruleDefineRexString = "(rule|#)\\s*" + SolidML.ruleNameRexString + "(.*?){";
+SolidML.setRexString = "(set|@)\\s*([a-z]*)\\s*([a-z:,]+|[\\-\\d.]+|#[0-9a-fA-F]+|\\[.+?\\])";
+SolidML.nameRexString = "([a-zA-Z_][a-zA-Z0-9_]*)";
+SolidML.ruleDefineRexString = "(rule|#)\\s*" + SolidML.nameRexString + "(.*?){";
 SolidML.matRexString = "(((\\d+)[\\s*]*)?\\{(.+?)\\})";
 SolidML.referenceParamRexString = "(\\[(.+?)\\])?";
 SolidML.regExp = ()=>{
   const ruleRegExp = SolidML.ruleDefineRexString + "(\\s*" + SolidML.ruleWeightRexString + "|\\s*" + SolidML.ruleMaxDepthRexString +")*\\s*{";
-  const str = [SolidML.setRexString, SolidML.ruleDefineRexString, SolidML.matRexString, SolidML.ruleNameRexString+SolidML.referenceParamRexString, "(})"].join("|");
+  const str = [SolidML.setRexString, SolidML.ruleDefineRexString, SolidML.matRexString, SolidML.nameRexString+SolidML.referenceParamRexString, "(})"].join("|");
   return new RegExp(str, "gm");
 };
 SolidML.REX_SETTING = 1;
 SolidML.REX_SETTING_CMD = 2;
 SolidML.REX_SETTING_PARAM = 3;
-SolidML.REX_SETTING_ARG = 4;
-SolidML.REX_SETTING_COLOR = 5;
-SolidML.REX_SETTING_STRING = 6;
-SolidML.REX_SETTING_ARRAY = 7;
-SolidML.REX_RULEDEF = 8;
-SolidML.REX_RULEDEF_LABEL = 9;
-SolidML.REX_RULEDEF_OPTION = 10;
-SolidML.REX_MATRIX = 11;
-SolidML.REX_MATRIX_REPEAT = 13;
-SolidML.REX_MATRIX_OPERATOR = 14;
-SolidML.REX_REFERENCE = 15;
-SolidML.REX_REFERENCE_PARAM = 17;
-SolidML.REX_RULE_END = 18;
+SolidML.REX_RULEDEF = 4;
+SolidML.REX_RULEDEF_LABEL = 5;
+SolidML.REX_RULEDEF_OPTION = 6;
+SolidML.REX_MATRIX = 7;
+SolidML.REX_MATRIX_REPEAT = 9;
+SolidML.REX_MATRIX_OPERATOR = 10;
+SolidML.REX_REFERENCE = 11;
+SolidML.REX_REFERENCE_PARAM = 13;
+SolidML.REX_RULE_END = 14;
 /**
  * svg name table for colors. SolidML.ColorTable["name"] returns hex string of the color.
  * @type {Object}

@@ -4,24 +4,27 @@ new Ptolemy({
     const editor = ace.edit("texteditor");
     const build = ()=>{
       try{
-        gl.mainGeometry = new SolidML.BufferGeometry(editor.getValue(), null, {floor:0x888888, sky:0x667799});
+        gl.mainGeometry = new SolidML.BufferGeometry(editor.getValue(), null, {floor:"#888", sky:"#679", mat:"10,90"});
         gl.solidML = gl.mainGeometry.solidML;
 
         message("vertex:"+gl.mainGeometry.attributes.position.count+"/face:"+gl.mainGeometry.index.count/3);
 
         if (gl.mainMesh) gl.scene.remove(gl.mainMesh);
-        if (gl.solidML.criteria.material) {
-          const mat = gl.solidML.criteria.material.replace(/\[|\]/g, "").split(",").map(c=>Number(c));
-          gl.mainMaterial.metalness = mat[0];
-          if (mat.length > 1) gl.mainMaterial.roughness = mat[1];
-        }
+        const mat = gl.solidML.criteria.getValue("mat", "array");
+        if (mat.length > 0) gl.mainMaterial.metalness = parseFloat(mat[0]) / 100;
+        if (mat.length > 1) gl.mainMaterial.roughness = parseFloat(mat[1]) / 100;
         gl.mainMesh = new THREE.Mesh(gl.mainGeometry, gl.mainMaterial);
         gl.mainMesh.castShadow = true;
         gl.mainMesh.receiveShadow = true;
         gl.scene.add(gl.mainMesh);
 
         gl.mainGeometry.computeBoundingBox();
-        const bbox = gl.mainGeometry.boundingBox;
+        gl.mainGeometry.computeBoundingSphere();
+        const bbox = gl.mainGeometry.boundingBox,
+              sphere = gl.mainGeometry.boundingSphere;
+
+        gl.setCameraDistance(sphere.radius*2, sphere.center, new THREE.Vector3(0,1,-1));
+        gl.controls.target = sphere.center;
 
         gl.light.shadow.camera.far = bbox.max.z-bbox.min.z+30;
         gl.light.shadow.camera.bottom = bbox.min.y;
@@ -31,14 +34,13 @@ new Ptolemy({
         gl.light.position.set(0, 0, bbox.max.z+10);
         gl.light.shadow.camera.updateProjectionMatrix();
 
-        gl.floorMaterial.color = new THREE.Color(gl.solidML.criteria.floor);
+        const floorColor = gl.solidML.criteria.background || gl.solidML.criteria.getValue("floor", "color");
+        const skyColor   = gl.solidML.criteria.background || gl.solidML.criteria.getValue("sky", "color");
+        gl.floorMaterial.color = new THREE.Color(floorColor);
         gl.floorLight.color = gl.floorMaterial.color;
         gl.floor.position.z = bbox.min.z-5;
-
-        gl.scene.fog.color = new THREE.Color(gl.solidML.criteria.sky);
+        gl.scene.fog.color = new THREE.Color(skyColor);
         gl.renderer.setClearColor(gl.scene.fog.color);
-
-        gl.controls.target = gl.mainGeometry.boundingBox.getCenter(new THREE.Vector3());
       } catch(e){
         message(e.message);
         console.error(e);
@@ -53,7 +55,7 @@ new Ptolemy({
       bindKey: {win:"Ctrl-Enter", mac:"Command-Enter"},
       exec: build
     });
-    editor.setValue("@400{ry90x6}10{rx36}R\n#R{{x3rz-4ry6s0.99}R{s2,4,4rz90}cylinder}\n#R{{x3rz4ry6s0.99}R{s2,4,4rz90}cylinder}");
+    editor.setValue("@250\n@cp[red,yellow,green]\n{ry90x6}10{rx36}R\n#R{{x4rz-4ry6s0.99}R{s10#?}torus}\n#R@w4{{x4rz4ry6s0.99}R{s8,4,4}cylinder}");
     document.getElementById("runscript").addEventListener("click", build);
 
     gl.mainMaterial = new THREE.MeshStandardMaterial({vertexColors: THREE.VertexColors, metalness:0.1, roughness:0.9});
