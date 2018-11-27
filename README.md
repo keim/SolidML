@@ -25,8 +25,9 @@ Eisen Script: http://structuresynth.sourceforge.net/reference.php
 - "36 * {" => "36{"
 - space between number and command can be omitted
 ## Additional concept
-- box, shpere, cylinder, disc, torus, corn, tetra, octa, dodeca, icosa are available for shapes key
-- mesh, triangle, grid, line, point are not implented
+- box, shpere, cylinder, disc, torus, corn, tetra, octa, dodeca, icosa are available as the built-in rules
+- mesh, triangle, grid, line, point are not implemented
+- "set colorpool image:" is not implemented
 - blending only one member sat, bri or hue by "*s#f00,0.1"
 - ... and so on
 ## API Reference

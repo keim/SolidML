@@ -1,12 +1,17 @@
-/** THREE.BufferGeometry constructed by {@link SolidML}
+/**
+ * @file Extention for three.js. SolidMLBUfferGeometry.js depends on three.js and SolidML.js. Import after these dependent files.
+ */
+/**
+ *  TRHEE.BufferGeometry constructed by {@link SolidML}. SolidMLBUfferGeometry.js depends on three.js and SolidML.js. Import after these dependent files.
+ *  @extends {TRHEE.BufferGeometry}
  */
 SolidML.BufferGeometry = class extends THREE.BufferGeometry {
-  /** construct THREE.BufferGeometry by {@link SolidML}
-   *  @param {string} [eisenScript] script to construct object. call {@link BufferGeometry#build} inside.
+  /** THREE.BufferGeometry constructed by {@link SolidML} script.
+   *  @param {string} [script] script to construct object. call {@link SolidML.BufferGeometry#build} inside.
    *  @param {Object.<BufferGeometry>} [geometryHash] hash map of original geometries and keys in script.
    *  @param {object} [criteria] default criteria of this structure, specified by "set *" commands in script.
    */
-  constructor(eisenScript=null, geometryHash=null, criteria=null) {
+  constructor(script=null, geometryHash=null, criteria=null) {
     super();
     const indexing = geom=>{
       const indices = new Uint16Array(geom.attributes.position.count);
@@ -26,7 +31,7 @@ SolidML.BufferGeometry = class extends THREE.BufferGeometry {
       "cylinder": new THREE.CylinderBufferGeometry(0.5,0.5,1,8).applyMatrix(rotz),
       "disc": new THREE.CylinderBufferGeometry(0.5,0.5,0.1,8).applyMatrix(rotz),
       "corn": new THREE.ConeBufferGeometry(0.5,1,8).applyMatrix(rotz),
-      "torus": new THREE.TorusBufferGeometry(0.5,0.1,6,8).applyMatrix(roty),
+      "torus": new THREE.TorusBufferGeometry(0.5,0.1,4,8).applyMatrix(roty),
       "tetra": indexing(new THREE.TetrahedronBufferGeometry(0.5)),
       "octa": indexing(new THREE.OctahedronBufferGeometry(0.5)),
       "dodeca": indexing(new THREE.DodecahedronBufferGeometry(0.5)),
@@ -42,14 +47,14 @@ SolidML.BufferGeometry = class extends THREE.BufferGeometry {
      *  @type {SolidML}
      */
     this.solidML = null;
-    this.build(eisenScript, criteria);
+    this.build(script, criteria);
   }
   /** construct object by script. new {@link BufferGeometry.solidML} is created inside.
-   *  @param {string} eisenScript script to construct object. 
+   *  @param {string} script script to construct object. 
    *  @param {object} [criteria] default criteria of this structure, specified by "set *" commands in script.
    */
-  build(eisenScript, criteria=null) {
-    this.solidML = new SolidML(eisenScript, criteria);
+  build(script, criteria=null) {
+    this.solidML = new SolidML(script, criteria);
     // some additional criteria
     const crit = this.solidML.criteria;
     if (crit["linewidth"] || crit["lw"]) {
@@ -80,23 +85,22 @@ SolidML.BufferGeometry = class extends THREE.BufferGeometry {
     this.addAttribute('color', new THREE.BufferAttribute(this._colors, 4));
   }
   update() {
-    let indexCount=0, vertexCount=0, indexOffset=0;
+    let indexCount=0, vertexCount=0;
     this.solidML.build(stat=>{
-      const geom = this.geometryHash[stat.label],
-            col  = stat.color.getRGBA(), 
-            rgba = [col.r, col.g, col.b, col.a];
+      const geom = this.geometryHash[stat.label];
       if (geom) {
         const vcount = geom.attributes.position.count,
               icount = geom.index.array.length;
-        stat.matrix._applyToTypedArray(this.attributes.position.array, vertexCount,
-                                       geom.attributes.position.array, vcount, 3);
-        stat.matrix._applyToTypedArray(this.attributes.normal.array, vertexCount,
-                                       geom.attributes.normal.array, vcount, 3);
-        for (let i=0; i<vcount; i++, vertexCount++) 
-          this.attributes.color.array.set(rgba, vertexCount * 4);
+        stat.matrix._applyToArray_then_copyToArray(
+          this.attributes.position.array, vertexCount,
+          geom.attributes.position.array, vcount, 3);
+        stat.matrix._applyToArray_then_copyToArray(
+          this.attributes.normal.array, vertexCount,
+          geom.attributes.normal.array, vcount, 3);
+        stat.color._fillArray(this.attributes.color.array, vertexCount, vcount);
         for (let i=0; i<icount; i++, indexCount++) 
-          this.index.array[indexCount] = geom.index.array[i] + indexOffset;
-        indexOffset += vcount;
+          this.index.array[indexCount] = geom.index.array[i] + vertexCount;
+        vertexCount += vcount;
       }
     });
     this.computeVertexNormals();

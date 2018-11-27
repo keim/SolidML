@@ -45,6 +45,8 @@
             
                 <li data-name="SolidML.ColorTable"><a href="SolidML.html#.ColorTable">ColorTable</a></li>
             
+                <li data-name="SolidML.VERSION"><a href="SolidML.html#.VERSION">VERSION</a></li>
+            
                 <li data-name="SolidML#criteria"><a href="SolidML.html#criteria">criteria</a></li>
             
             </ul>
@@ -177,6 +179,29 @@
                 <li data-name="SolidML.ColorHSBA#setRandom"><a href="SolidML.ColorHSBA.html#setRandom">setRandom</a></li>
             
                 <li data-name="SolidML.ColorHSBA#setRGB"><a href="SolidML.ColorHSBA.html#setRGB">setRGB</a></li>
+            
+            </ul>
+            <ul class="events itemMembers">
+            
+            </ul>
+        </li>
+    
+        <li class="item" data-name="SolidML.ColorPool">
+            <span class="title">
+                <a href="SolidML.ColorPool.html">SolidML.ColorPool</a>
+                
+            </span>
+            <ul class="members itemMembers">
+            
+            </ul>
+            <ul class="typedefs itemMembers">
+            
+            </ul>
+            <ul class="methods itemMembers">
+            
+            <span class="subtitle">Methods</span>
+            
+                <li data-name="SolidML.ColorPool#getRGBA"><a href="SolidML.ColorPool.html#getRGBA">getRGBA</a></li>
             
             </ul>
             <ul class="events itemMembers">
@@ -333,6 +358,9 @@
     SolidML
     </h2>
     
+        <div class="class-description">Construct fractal-like 3D models by cryptic script based on <a target="_blank" href="http://structuresynth.sourceforge.net/">Structure Synth</a>'s' Eisen Script.
+SolidML.js does not depend on any other libraries. If you want to import model into three.js, see <a href="SolidML.BufferGeometry.html">SolidML.BufferGeometry</a>.</div>
+    
 </header>  
 
 <article>
@@ -350,7 +378,7 @@
     
         
         <div class="tag-source">
-            <a href="global.html#SolidML.js">SolidML.js</a>, <a href="global.html#SolidML.js#line10">line 10</a>
+            <a href="global.html#SolidML.js">SolidML.js</a>, <a href="global.html#SolidML.js#line8">line 8</a>
         </div>
         
     </div>
@@ -514,6 +542,9 @@
             <dt><a href="SolidML.ColorHSBA.html">ColorHSBA</a></dt>
             <dd></dd>
         
+            <dt><a href="SolidML.ColorPool.html">ColorPool</a></dt>
+            <dd></dd>
+        
             <dt><a href="SolidML.Criteria.html">Criteria</a></dt>
             <dd></dd>
         
@@ -546,6 +577,51 @@
     
     <div class="description">
         svg name table for colors. SolidML.ColorTable["name"] returns hex string of the color.
+    </div>
+    
+    
+    
+<dl class="details">
+    
+        
+    
+    
+    
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+</dl>
+
+    
+    
+</dd>
+
+        
+            
+<dt>
+    <div class="nameContainer">
+        <h4 class="name" id=".VERSION"><span class="type-signature static">static</span>SolidML.VERSION<span class="type-signature type string">String</span> </h4>
+    </div>
+    
+    
+</dt>
+<dd>
+    
+    <div class="description">
+        current version number
     </div>
     
     
@@ -640,7 +716,7 @@
     
         
         <div class="tag-source">
-            <a href="global.html#SolidML.js">SolidML.js</a>, <a href="global.html#SolidML.js#line30">line 30</a>
+            <a href="global.html#SolidML.js">SolidML.js</a>, <a href="global.html#SolidML.js#line35">line 35</a>
         </div>
         
     </div>
@@ -651,7 +727,7 @@
     
     
     <div class="description">
-        Build object, call recursive functions made by <a href="SolidML.html#compile">SolidML#compile</a>.
+        Build object structure. This function has to be called after calling {@linke SolidML#compile}.
     </div>
     
 
@@ -787,12 +863,12 @@
     <div class="nameContainer">
         <h4 class="name" id="compile">
             
-            compile<span class="signature">(script)</span><span class="glyphicon glyphicon-circle-arrow-right"></span><span class="type-signature returnType">{<a href="SolidML.html">SolidML</a>}</span>
+            compile<span class="signature">(script, <span class="optional">seed</span>)</span><span class="glyphicon glyphicon-circle-arrow-right"></span><span class="type-signature returnType">{<a href="SolidML.html">SolidML</a>}</span>
         </h4>
     
         
         <div class="tag-source">
-            <a href="global.html#SolidML.js">SolidML.js</a>, <a href="global.html#SolidML.js#line21">line 21</a>
+            <a href="global.html#SolidML.js">SolidML.js</a>, <a href="global.html#SolidML.js#line25">line 25</a>
         </div>
         
     </div>
@@ -803,7 +879,7 @@
     
     
     <div class="description">
-        Parse script, make a structure of recursive calls inside
+        Parse script, make a structure of recursive calls inside.
     </div>
     
 
@@ -823,6 +899,8 @@
 		
 		<th>Type</th>
 		
+		
+		<th>Default</th>
 		
 		
 		<th class="last">Description</th>
@@ -847,10 +925,55 @@
             </td>
             
             
+                <td class="default">
+                
+                </td>
+            
             
             <td class="description last">
                 
+                    
+                    
+                        
+                    
+                
                 SolidML script to compile</td>
+        </tr>
+	
+	
+	
+        <tr>
+            
+                <td class="name"><code>seed</code></td>
+            
+            
+            <td class="type">
+            
+                
+<span class="param-type">int</span>
+
+
+            
+            </td>
+            
+            
+                <td class="default">
+                
+                    null
+                
+                </td>
+            
+            
+            <td class="description last">
+                
+                    
+                        <span class="optional">optional</span>
+                    
+                    
+                        
+                    
+                
+                seed number for MT-random number calculations, pass null to set by time. this value is overwritten by "set seed" command in the script.</td>
         </tr>
 	
 	
@@ -943,7 +1066,7 @@
     
         
         <div class="tag-source">
-            <a href="global.html#SolidML.js">SolidML.js</a>, <a href="global.html#SolidML.js#line48">line 48</a>
+            <a href="global.html#SolidML.js">SolidML.js</a>, <a href="global.html#SolidML.js#line53">line 53</a>
         </div>
         
     </div>
@@ -1092,7 +1215,7 @@
         
 
         <footer>
-            Documentation generated by <a target="_blank" href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a> on Mon Nov 26 2018 20:36:14 GMT+0900 (東京 (標準時))
+            Documentation generated by <a target="_blank" href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a> on Tue Nov 27 2018 19:00:01 GMT+0900 (東京 (標準時))
         </footer>
     </div>
 </div>
