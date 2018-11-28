@@ -40,7 +40,6 @@ SolidML.BufferGeometry = class extends THREE.BufferGeometry {
       "grid": null,
       "line": null,
       "point": null,
-      "triangle": null,
       "tube": null,
       "mesh": null
     }, geometryHash);
@@ -49,22 +48,7 @@ SolidML.BufferGeometry = class extends THREE.BufferGeometry {
      * @type {object.<Function>}
      */
     this.geometryCreators = {
-      "box": null,
-      "sphere": (param, option)=>new THREE.SphereBufferGeometry(0.5,Number(option[0])||8,Number(option[1])||6),
-      "cylinder": (param, option)=>new THREE.CylinderBufferGeometry(0.5,0.5,1,8).applyMatrix(rotz),
-      "disc": (param, option)=>new THREE.CylinderBufferGeometry(0.5,0.5,0.1,8).applyMatrix(rotz),
-      "corn": (param, option)=>new THREE.ConeBufferGeometry(0.5,1,8).applyMatrix(rotz),
-      "torus": (param, option)=>new THREE.TorusBufferGeometry(0.5,0.1,4,8).applyMatrix(roty),
-      "tetra": (param, option)=>indexing(new THREE.TetrahedronBufferGeometry(0.5)),
-      "octa": (param, option)=>indexing(new THREE.OctahedronBufferGeometry(0.5)),
-      "dodeca": (param, option)=>indexing(new THREE.DodecahedronBufferGeometry(0.5)),
-      "icosa": (param, option)=>indexing(new THREE.IcosahedronBufferGeometry(0.5)),
-      "grid": null,
-      "line": null,
-      "point": null,
-      "triangle": null,
-      "tube": null,
-      "mesh": null
+      "triangle": this._triangle,
     };
     /** {@link SolidML} instance to construct object.
      *  @type {SolidML}
@@ -72,16 +56,26 @@ SolidML.BufferGeometry = class extends THREE.BufferGeometry {
     this.solidML = null;
     this.build(script, criteria);
   }
-  /** construct object by script. new {@link BufferGeometry.solidML} is created inside.
+  /** construct object by script. execute {@link SolidML.BufferGeometry#compile}=>{@link SolidML.BufferGeometry#estimateBufferCount}=>{@link SolidML.BufferGeometry#allocVertexBuffer}=>{@link SolidML.BufferGeometry#update} inside
    *  @param {string} script script to construct object. 
    *  @param {object} [criteria] default criteria of this structure, specified by "set *" commands in script.
    *  @param {boolean} [isDynamic] set THREE.BufferAttribute.dynamic
    *  @return {SolidML.BufferGeometry} this instance
    */
   build(script, criteria=null, isDynamic=false) {
-    this.solidML = new SolidML(script, criteria);
-    this.allocVertexBuffer(isDynamic);
+    this.compile(script, criteria);
+    const r = this.estimateBufferCount();
+    this.allocVertexBuffer(r.indexCount, r.vertexCount, isDynamic);
     this.update();
+    return this;
+  }
+  /** Parse script, make a structure of recursive calls inside.
+   *  @param {string} script script to construct object. 
+   *  @param {object} [criteria] default criteria of this structure, specified by "set *" commands in script.
+   *  @return {SolidML.BufferGeometry} this instance
+   */
+  compile(script, criteria=null) {
+    this.solidML = new SolidML(script, criteria);
     return this;
   }
   /** estimate index and vertex buffer count. 
@@ -100,23 +94,25 @@ SolidML.BufferGeometry = class extends THREE.BufferGeometry {
     return ret;
   }
   /** allocate vertex buffer with some margins.
+   *  @param {int} indexCount index buffer size
+   *  @param {int} vertexCount vertex buffer size
    *  @param {boolean} [isDynamic] set THREE.BufferAttribute.dynamic
-   *  @param {indexMargin} [margin] for index buffer
-   *  @param {vertexMargin} [margin] for vertex buffer
+   *  @return {SolidML.BufferGeometry} this instance
    */
-  allocVertexBuffer(isDynamic=false, indexMargin=0, vertexMargin=0) {
-    const bufCount = this.estimateBufferCount();
-    bufCount.indexCount += indexMargin;
-    bufCount.vertexCount += vertexMargin;
-    this._indices = new Uint32Array(bufCount.indexCount);
-    this._positions = new Float32Array(bufCount.vertexCount * 3);
-    this._normals = new Float32Array(bufCount.vertexCount * 3);
-    this._colors = new Float32Array(bufCount.vertexCount * 4);
+  allocVertexBuffer(indexCount, vertexCount, isDynamic=true) {
+    this._indices = new Uint32Array(indexCount);
+    this._positions = new Float32Array(vertexCount * 3);
+    this._normals = new Float32Array(vertexCount * 3);
+    this._colors = new Float32Array(vertexCount * 4);
     this.setIndex(new THREE.BufferAttribute(this._indices, 1).setDynamic(isDynamic));
     this.addAttribute('position', new THREE.BufferAttribute(this._positions, 3).setDynamic(isDynamic));
     this.addAttribute('normal', new THREE.BufferAttribute(this._normals, 3).setDynamic(isDynamic));
     this.addAttribute('color', new THREE.BufferAttribute(this._colors, 4).setDynamic(isDynamic));
+    return this;
   }
+  /** update vertex buffer and send data to gpu.
+   *  @return {SolidML.BufferGeometry} this instance
+   */
   update() {
     let indexCount=0, vertexCount=0;
     this.solidML.build(stat=>{
@@ -137,12 +133,13 @@ SolidML.BufferGeometry = class extends THREE.BufferGeometry {
       }
     });
     this.computeVertexNormals();
+    return this;
   }
   _getReferedGeom(stat) {
     return ((stat.param || stat.option) && stat.label in this.geometryCreators) ? 
            this.geometryCreators[stat.label](stat.param, stat.option) : this.geometryHash[stat.label];
   }
-  _triangle(param) {
+  _triangle(param, option) {
     const p = param.split(/,\s/).map(n=>Number(n));
     p.length = 9;
     const nml = new THREE.Vector3().set(p[3]-p[0], p[4]-p[1], p[5]-p[2]);
