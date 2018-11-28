@@ -49,6 +49,10 @@
             
                 <li data-name="SolidML#criteria"><a href="SolidML.html#criteria">criteria</a></li>
             
+                <li data-name="SolidML#randMT"><a href="SolidML.html#randMT">randMT</a></li>
+            
+                <li data-name="SolidML#variables"><a href="SolidML.html#variables">variables</a></li>
+            
             </ul>
             <ul class="typedefs itemMembers">
             
@@ -80,6 +84,8 @@
             
             <span class="subtitle">Members</span>
             
+                <li data-name="SolidML.BufferGeometry#geometryCreators"><a href="SolidML.BufferGeometry.html#geometryCreators">geometryCreators</a></li>
+            
                 <li data-name="SolidML.BufferGeometry#geometryHash"><a href="SolidML.BufferGeometry.html#geometryHash">geometryHash</a></li>
             
                 <li data-name="SolidML.BufferGeometry#solidML"><a href="SolidML.BufferGeometry.html#solidML">solidML</a></li>
@@ -92,7 +98,11 @@
             
             <span class="subtitle">Methods</span>
             
+                <li data-name="SolidML.BufferGeometry#allocVertexBuffer"><a href="SolidML.BufferGeometry.html#allocVertexBuffer">allocVertexBuffer</a></li>
+            
                 <li data-name="SolidML.BufferGeometry#build"><a href="SolidML.BufferGeometry.html#build">build</a></li>
+            
+                <li data-name="SolidML.BufferGeometry#estimateBufferCount"><a href="SolidML.BufferGeometry.html#estimateBufferCount">estimateBufferCount</a></li>
             
             </ul>
             <ul class="events itemMembers">
@@ -116,6 +126,8 @@
                 <li data-name="SolidML.BuildStatus#matrix"><a href="SolidML.BuildStatus.html#matrix">matrix</a></li>
             
                 <li data-name="SolidML.BuildStatus#objectCount"><a href="SolidML.BuildStatus.html#objectCount">objectCount</a></li>
+            
+                <li data-name="SolidML.BuildStatus#option"><a href="SolidML.BuildStatus.html#option">option</a></li>
             
                 <li data-name="SolidML.BuildStatus#param"><a href="SolidML.BuildStatus.html#param">param</a></li>
             
@@ -174,9 +186,9 @@
             
                 <li data-name="SolidML.ColorHSBA#set"><a href="SolidML.ColorHSBA.html#set">set</a></li>
             
-                <li data-name="SolidML.ColorHSBA#setHex"><a href="SolidML.ColorHSBA.html#setHex">setHex</a></li>
+                <li data-name="SolidML.ColorHSBA#setColorPool"><a href="SolidML.ColorHSBA.html#setColorPool">setColorPool</a></li>
             
-                <li data-name="SolidML.ColorHSBA#setRandom"><a href="SolidML.ColorHSBA.html#setRandom">setRandom</a></li>
+                <li data-name="SolidML.ColorHSBA#setHex"><a href="SolidML.ColorHSBA.html#setHex">setHex</a></li>
             
                 <li data-name="SolidML.ColorHSBA#setRGB"><a href="SolidML.ColorHSBA.html#setRGB">setRGB</a></li>
             
@@ -192,6 +204,10 @@
                 
             </span>
             <ul class="members itemMembers">
+            
+            <span class="subtitle">Members</span>
+            
+                <li data-name="SolidML.ColorPool#scheme"><a href="SolidML.ColorPool.html#scheme">scheme</a></li>
             
             </ul>
             <ul class="typedefs itemMembers">
@@ -290,8 +306,6 @@
             
             <span class="subtitle">Methods</span>
             
-                <li data-name="SolidML.randMT.instance"><a href="SolidML.randMT.html#.instance">instance</a></li>
-            
                 <li data-name="SolidML.randMT#next"><a href="SolidML.randMT.html#next">next</a></li>
             
             </ul>
@@ -309,7 +323,7 @@
             
             <span class="subtitle">Members</span>
             
-                <li data-name="SolidML.Rule#colorpool"><a href="SolidML.Rule.html#colorpool">colorpool</a></li>
+                <li data-name="SolidML.Rule#colorpoolInstance"><a href="SolidML.Rule.html#colorpoolInstance">colorpoolInstance</a></li>
             
                 <li data-name="SolidML.Rule#maxdepth"><a href="SolidML.Rule.html#maxdepth">maxdepth</a></li>
             
@@ -379,7 +393,7 @@
     
         
         <div class="tag-source">
-            <a href="global.html#SolidML.js">SolidML.js</a>, <a href="global.html#SolidML.js#line362">line 362</a>
+            <a href="global.html#SolidML.js">SolidML.js</a>, <a href="global.html#SolidML.js#line413">line 413</a>
         </div>
         
     </div>
@@ -639,6 +653,51 @@
             
 <dt>
     <div class="nameContainer">
+        <h4 class="name" id="option">option<span class="type-signature type array.<string>">Array.&lt;string></span> </h4>
+    </div>
+    
+    
+</dt>
+<dd>
+    
+    <div class="description">
+        Array of options of the object written as "name:option1:option2..."
+    </div>
+    
+    
+    
+<dl class="details">
+    
+        
+    
+    
+    
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+</dl>
+
+    
+    
+</dd>
+
+        
+            
+<dt>
+    <div class="nameContainer">
         <h4 class="name" id="param">param<span class="type-signature type string">string</span> </h4>
     </div>
     
@@ -789,7 +848,7 @@
         
 
         <footer>
-            Documentation generated by <a target="_blank" href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a> on Tue Nov 27 2018 19:00:01 GMT+0900 (東京 (標準時))
+            Documentation generated by <a target="_blank" href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a> on Wed Nov 28 2018 18:47:15 GMT+0900 (東京 (標準時))
         </footer>
     </div>
 </div>

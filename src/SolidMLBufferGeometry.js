@@ -22,7 +22,8 @@ SolidML.BufferGeometry = class extends THREE.BufferGeometry {
     };
     const rotz = new THREE.Matrix4().makeRotationZ(-Math.PI/2),
           roty = new THREE.Matrix4().makeRotationY(Math.PI/2);
-    /** hash map of original geometries and keys in script.
+    /** 
+     * hash map of original geometries and keys in script.
      *  @type {Object.<BufferGeometry>}
      */
     this.geometryHash = Object.assign({
@@ -43,6 +44,28 @@ SolidML.BufferGeometry = class extends THREE.BufferGeometry {
       "tube": null,
       "mesh": null
     }, geometryHash);
+    /** 
+     * hash map of functions return the geometry gemerated by parameter (written as "label[param]") and option (written as "label:option") 
+     * @type {object.<Function>}
+     */
+    this.geometryCreators = {
+      "box": null,
+      "sphere": (param, option)=>new THREE.SphereBufferGeometry(0.5,Number(option[0])||8,Number(option[1])||6),
+      "cylinder": (param, option)=>new THREE.CylinderBufferGeometry(0.5,0.5,1,8).applyMatrix(rotz),
+      "disc": (param, option)=>new THREE.CylinderBufferGeometry(0.5,0.5,0.1,8).applyMatrix(rotz),
+      "corn": (param, option)=>new THREE.ConeBufferGeometry(0.5,1,8).applyMatrix(rotz),
+      "torus": (param, option)=>new THREE.TorusBufferGeometry(0.5,0.1,4,8).applyMatrix(roty),
+      "tetra": (param, option)=>indexing(new THREE.TetrahedronBufferGeometry(0.5)),
+      "octa": (param, option)=>indexing(new THREE.OctahedronBufferGeometry(0.5)),
+      "dodeca": (param, option)=>indexing(new THREE.DodecahedronBufferGeometry(0.5)),
+      "icosa": (param, option)=>indexing(new THREE.IcosahedronBufferGeometry(0.5)),
+      "grid": null,
+      "line": null,
+      "point": null,
+      "triangle": null,
+      "tube": null,
+      "mesh": null
+    };
     /** {@link SolidML} instance to construct object.
      *  @type {SolidML}
      */
@@ -52,51 +75,61 @@ SolidML.BufferGeometry = class extends THREE.BufferGeometry {
   /** construct object by script. new {@link BufferGeometry.solidML} is created inside.
    *  @param {string} script script to construct object. 
    *  @param {object} [criteria] default criteria of this structure, specified by "set *" commands in script.
+   *  @param {boolean} [isDynamic] set THREE.BufferAttribute.dynamic
+   *  @return {SolidML.BufferGeometry} this instance
    */
-  build(script, criteria=null) {
+  build(script, criteria=null, isDynamic=false) {
     this.solidML = new SolidML(script, criteria);
-    // some additional criteria
-    const crit = this.solidML.criteria;
-    if (crit["linewidth"] || crit["lw"]) {
-      const w = Number(crit["linewidth"] || crit["lw"]) || 0.02;
-      this.geometryHash.line = new THREE.BoxBufferGeometry(1,w,w);
-      this.geometryHash.point = new THREE.SphereBufferGeometry(w,4,4);
-    }
-    this._allocVertexBuffer();
+    this.allocVertexBuffer(isDynamic);
     this.update();
+    return this;
   }
-  _allocVertexBuffer() {
-    let indexCount=0, vertexCount=0;
+  /** estimate index and vertex buffer count. 
+   *  @return {object} object contains {indexCount, vertexCount}
+   */
+  estimateBufferCount() {
+    const ret = {indexCount:0, vertexCount:0};
     this.solidML.build(stat=>{
-      const geom = this.geometryHash[stat.label];
-      stat.color._incrementRandMT();
+      const geom = this._getReferedGeom(stat);
       if (geom) {
-        vertexCount += geom.attributes.position.count;
-        indexCount += geom.index.array.length;
+        stat.color._incrementRandMT();
+        ret.indexCount += geom.index.array.length;
+        ret.vertexCount += geom.attributes.position.count;
       }
     });
-    this._indices = new Uint32Array(indexCount);
-    this._positions = new Float32Array(vertexCount * 3);
-    this._normals = new Float32Array(vertexCount * 3);
-    this._colors = new Float32Array(vertexCount * 4);
-    this.setIndex(new THREE.BufferAttribute(this._indices, 1));
-    this.addAttribute('position', new THREE.BufferAttribute(this._positions, 3));
-    this.addAttribute('normal', new THREE.BufferAttribute(this._normals, 3));
-    this.addAttribute('color', new THREE.BufferAttribute(this._colors, 4));
+    return ret;
+  }
+  /** allocate vertex buffer with some margins.
+   *  @param {boolean} [isDynamic] set THREE.BufferAttribute.dynamic
+   *  @param {indexMargin} [margin] for index buffer
+   *  @param {vertexMargin} [margin] for vertex buffer
+   */
+  allocVertexBuffer(isDynamic=false, indexMargin=0, vertexMargin=0) {
+    const bufCount = this.estimateBufferCount();
+    bufCount.indexCount += indexMargin;
+    bufCount.vertexCount += vertexMargin;
+    this._indices = new Uint32Array(bufCount.indexCount);
+    this._positions = new Float32Array(bufCount.vertexCount * 3);
+    this._normals = new Float32Array(bufCount.vertexCount * 3);
+    this._colors = new Float32Array(bufCount.vertexCount * 4);
+    this.setIndex(new THREE.BufferAttribute(this._indices, 1).setDynamic(isDynamic));
+    this.addAttribute('position', new THREE.BufferAttribute(this._positions, 3).setDynamic(isDynamic));
+    this.addAttribute('normal', new THREE.BufferAttribute(this._normals, 3).setDynamic(isDynamic));
+    this.addAttribute('color', new THREE.BufferAttribute(this._colors, 4).setDynamic(isDynamic));
   }
   update() {
     let indexCount=0, vertexCount=0;
     this.solidML.build(stat=>{
-      const geom = this.geometryHash[stat.label];
+      const geom = this._getReferedGeom(stat);
       if (geom) {
         const vcount = geom.attributes.position.count,
               icount = geom.index.array.length;
-        stat.matrix._applyToArray_then_copyToArray(
-          this.attributes.position.array, vertexCount,
-          geom.attributes.position.array, vcount, 3);
-        stat.matrix._applyToArray_then_copyToArray(
-          this.attributes.normal.array, vertexCount,
-          geom.attributes.normal.array, vcount, 3);
+        stat.matrix._applyToSrc_copyToDst(
+          geom.attributes.position.array, vcount, 
+          this.attributes.position.array, vertexCount, 3);
+        stat.matrix._applyToSrc_copyToDst(
+          geom.attributes.normal.array, vcount,
+          this.attributes.normal.array, vertexCount, 3);
         stat.color._fillArray(this.attributes.color.array, vertexCount, vcount);
         for (let i=0; i<icount; i++, indexCount++) 
           this.index.array[indexCount] = geom.index.array[i] + vertexCount;
@@ -104,6 +137,10 @@ SolidML.BufferGeometry = class extends THREE.BufferGeometry {
       }
     });
     this.computeVertexNormals();
+  }
+  _getReferedGeom(stat) {
+    return ((stat.param || stat.option) && stat.label in this.geometryCreators) ? 
+           this.geometryCreators[stat.label](stat.param, stat.option) : this.geometryHash[stat.label];
   }
   _triangle(param) {
     const p = param.split(/,\s/).map(n=>Number(n));
