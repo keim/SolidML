@@ -43,7 +43,7 @@ SolidML.BufferGeometry = class extends THREE.BufferGeometry {
     this._indexIndex = 0;
     if (script) this.build(script, criteria);
   }
-  /** construct object by script. execute {@link SolidML.BufferGeometry#compile}=>{@link SolidML.BufferGeometry#estimateBufferCount}=>{@link SolidML.BufferGeometry#allocVertexBuffer}=>{@link SolidML.BufferGeometry#update} inside
+  /** construct object by script. execute {@link SolidML.BufferGeometry#compile}=>{@link SolidML.BufferGeometry#estimateBufferCount}=>{@link SolidML.BufferGeometry#allocBuffers}=>{@link SolidML.BufferGeometry#update} inside
    *  @param {string} script script to construct object. 
    *  @param {object} [criteria] default criteria of this structure, specified by "set *" commands in script.
    *  @param {boolean} [isDynamic] set THREE.BufferAttribute.dynamic
@@ -78,6 +78,7 @@ SolidML.BufferGeometry = class extends THREE.BufferGeometry {
     this.solidML.build(stat=>{
       const geomComposed = this.geometryCreator.compose(stat);
       if (geomComposed) {
+        /**/
         stat.color._incrementRandMT();
         this.indexCount += geomComposed.index.array.length;
         this.vertexCount += geomComposed.attributes.position.count;
@@ -91,6 +92,14 @@ SolidML.BufferGeometry = class extends THREE.BufferGeometry {
         this.objectCount++;
       }
     });
+    const geomCreated = this.geometryCreator.finalize();
+    if (geomCreated) {
+      /**/
+      stat.color._incrementRandMT();
+      this.indexCount += geomCreated.index.array.length;
+      this.vertexCount += geomCreated.attributes.position.count;
+      this.objectCount++;
+    }
     return this;
   }
   /** allocate index buffer and vertex buffer
@@ -123,6 +132,7 @@ SolidML.BufferGeometry = class extends THREE.BufferGeometry {
       this._copyGeometory(stat, this.geometryCreator.compose(stat), false);
       this._copyGeometory(stat, this.geometryCreator.create(stat), true);
     });
+    this._copyGeometory(null, this.geometryCreator.finalize(), false);
     return this;
   }
   _copyGeometory(stat, geom, applyMatrix) {
@@ -136,11 +146,12 @@ SolidML.BufferGeometry = class extends THREE.BufferGeometry {
       stat.matrix._applyToSrc_copyToDst(
         geom.attributes.normal.array, vcount,
         this.attributes.normal.array, this._vertexIndex, 3);
+      stat.color._fillArray(this.attributes.color.array, this._vertexIndex, vcount);
     } else {
       this.attributes.position.array.set(geom.attributes.position.array, this._vertexIndex*3);
       this.attributes.normal  .array.set(geom.attributes.normal  .array, this._vertexIndex*3);
+      this.attributes.color   .array.set(geom.attributes.color   .array, this._vertexIndex*4);
     }
-    stat.color._fillArray(this.attributes.color.array, this._vertexIndex, vcount);
     for (let i=0; i<icount; i++, this._indexIndex++) 
       this.index.array[this._indexIndex] = geom.index.array[i] + this._vertexIndex;
     this._vertexIndex += vcount;
@@ -196,11 +207,20 @@ SolidML.GeometryCreator = class {
       "mesh": this._meshComposer.bind(this),
       "tube": this._tubeComposer.bind(this)
     };
+    // tempolaly area
+    this._qrt = new THREE.Quaternion();
+    this._dir = new THREE.Vector3();
+    this._v0 = new THREE.Vector3();
+    this._vx = new THREE.Vector3();
+    this._vy = new THREE.Vector3();
+    this._vz = new THREE.Vector3();
   }
   setup() {
     this._previousLabel = null;
-    this._previousInfo = null;
-    this._vertexStac = [];
+    this._previousMatrix = null;
+    this._crossSection = null;
+    this._vertexStac = null;
+    this._colorStac = null;
   }
   create(stat) {
     return (stat.label in this._creatorFunctions && (!(stat.label in this._geometryHash) || stat.param || stat.option)) ?
@@ -214,22 +234,22 @@ SolidML.GeometryCreator = class {
     return (stat.label in this._composerFunctions) ? this._composerFunctions[stat.label](stat, false) : null;
   }
   finalize() {
-    if (this._previousInfo && (this._previousLabel in this._composerFunctions)) 
+    if (this._previousMatrix && (this._previousLabel in this._composerFunctions)) 
       return this._composerFunctions[this._previousLabel](null, true);
     return null;
   }
   _sphereCreator(stat) {
-    let segment = Number(stat.option[0])>>0;
+    let segment = Number(stat.option)>>0;
     if (!segment || segment<3) segment = 8;
     return this._cache.sphere[segment] || (this._cache.sphere[segment] = new THREE.SphereBufferGeometry(0.5, segment, segment));
   }
   _cylinderCreator(stat) {
-    let segment = Number(stat.option[0])>>0;
+    let segment = Number(stat.option)>>0;
     if (!segment || segment<3) segment = 8;
     return this._cache.cylinder[segment] || (this._cache.cylinder[segment] = new THREE.CylinderBufferGeometry(0.5, 0.5, 1, segment).applyMatrix(this.rotz));
   }
   _coneCreator(stat) {
-    let segment = Number(stat.option[0])>>0;
+    let segment = Number(stat.option)>>0;
     if (!segment || segment<3) segment = 8;
     return this._cache.cone[segment] || (this._cache.cone[segment] = new THREE.ConeBufferGeometry(0.5, 1, segment).applyMatrix(this.rotz));
   }
@@ -262,58 +282,84 @@ SolidML.GeometryCreator = class {
     return geom;
   }
   _meshComposer(stat, composeAll) {
-    if (composeAll && this._previousInfo) {
-      // calculate last vertices
-      const pv0 = this._previousInfo.v0,
-            pvy = this._previousInfo.vy.applyQuaternion(this._previousInfo.qrt),
-            pvz = this._previousInfo.vz.applyQuaternion(this._previousInfo.qrt);
-      this._vertexStac.push(pvy.clone().add(pv0), pvz.clone().add(pv0), pvy.negate().add(pv0), pvz.negate().add(pv0));
-      this._previousInfo = null;
-      // create face
-      const vmax = this._vertexStac.length;
-      const fmax = vmax - 4;
-      const indexBuffer = new Uint16Array(fmax*6);
-      const face = (iface, ivertex, ioff)=>{
-        const ioff2 = (ioff + 1) & 3;
-        indexBuffer[iface*6]   = ivertex+ioff;
-        indexBuffer[iface*6+1] = ivertex+ioff2;
-        indexBuffer[iface*6+2] = ivertex+ioff2+4;
-        indexBuffer[iface*6+3] = ivertex+ioff;
-        indexBuffer[iface*6+4] = ivertex+ioff2+4;
-        indexBuffer[iface*6+5] = ivertex+ioff+4;
-      };
-      for (let i=0; i<fmax; i+=4) {
-        face(i, i, 0);
-        face(i+1, i+vmax, 1);
-        face(i+2, i, 2);
-        face(i+3, i+vmax, 3);
-      }
-      this._vertexStac = this._vertexStac.concat(this._vertexStac);
-      // create geometory
-      const geom = new THREE.BufferGeometry();
-      geom.setIndex(new THREE.BufferAttribute(indexBuffer, 1));
-      geom.addAttribute('position', new THREE.BufferAttribute(new Float32Array(this._vertexStac.length*3), 3).copyVector3sArray(this._vertexStac));
-      geom.addAttribute('normal',   new THREE.BufferAttribute(new Float32Array(this._vertexStac.length*3), 3));
-      geom.computeVertexNormals();
-      return geom;
-    }
+    if (composeAll && this._previousMatrix)
+      return this._meshComposerFinalize();
+    if (!stat)
+      return null;
     // calculate vertices
-    const me  = stat.matrix.elements,
-          v0 = new THREE.Vector3(me[12]/me[15], me[13]/me[15], me[14]/me[15]),
-          vx = new THREE.Vector3(me[0], me[1], me[2]),
-          vy = new THREE.Vector3(me[4]*0.707, me[5]*0.707, me[6]*0.707),
-          vz = new THREE.Vector3(me[8]*0.707, me[9]*0.707, me[10]*0.707),
-          qrt = new THREE.Quaternion();
-    if (this._previousInfo) {
-      const pv0 = this._previousInfo.v0,
-            dir = new THREE.Vector3().subVectors(v0, pv0).normalize();
-      qrt.setFromUnitVectors(this._previousInfo.vx.normalize(), dir);
-      const pvy = this._previousInfo.vy.applyQuaternion(qrt),
-            pvz = this._previousInfo.vz.applyQuaternion(qrt);
-      this._vertexStac.push(pvy.clone().add(pv0), pvz.clone().add(pv0), pvy.negate().add(pv0), pvz.negate().add(pv0));
+    if (this._previousMatrix) {
+      const me = stat.matrix.elements, pme = this._previousMatrix.elements;
+      this._v0.set(pme[12]/pme[15], pme[13]/pme[15], pme[14]/pme[15]);
+      this._dir.set(me[12]/me[15], me[13]/me[15], me[14]/me[15]).sub(this._v0).normalize();
+      this._qrt.setFromUnitVectors(this._vx.set(pme[0], pme[1], pme[2]).normalize(), this._dir);
+      this._vy.set(pme[4], pme[5], pme[6]).applyQuaternion(this._qrt);
+      this._vz.set(pme[8], pme[9], pme[10]).applyQuaternion(this._qrt);
+      for (let i=0; i<this._crossSection.length; i++) {
+        const v2 = this._crossSection[i];
+        this._vertexStac.push(this._vy.clone().multiplyScalar(v2.x).addScaledVector(this._vz, v2.y).add(this._v0));
+      }
+    } else {
+      const segment = Number(stat.option) || 4;
+      this._crossSection = [];
+      for (let i=0; i<segment; i++) {
+        const rad = (i+0.5)/segment * Math.PI * 2;
+        this._crossSection.push(new THREE.Vector2(Math.cos(rad)*0.707, Math.sin(rad)*0.707));
+      }
+      this._previousMatrix = new SolidML.Matrix4();
+      this._vertexStac = [];
+      this._colorStac = [];
     }
-    this._previousInfo = {v0, vx, vy, vz, qrt};
+    this._previousMatrix.copy(stat.matrix);
+    this._colorStac.push(stat.color.getRGBA());
     return null;
+  }
+  _meshComposerFinalize() {
+    let i,j;
+    // calculate last vertices
+    const pme = this._previousMatrix.elements;
+    this._v0.set(pme[12]/pme[15], pme[13]/pme[15], pme[14]/pme[15]);
+    this._vy.set(pme[4], pme[5], pme[6]).applyQuaternion(this._qrt);
+    this._vz.set(pme[8], pme[9], pme[10]).applyQuaternion(this._qrt);
+    for (let i=0; i<this._crossSection.length; i++) {
+      const v2 = this._crossSection[i];
+      this._vertexStac.push(this._vy.clone().multiplyScalar(v2.x).addScaledVector(this._vz, v2.y).add(this._v0));
+    }
+    this._previousMatrix = null;
+    // create face
+    const seg = this._crossSection.length;
+    const vmax = this._vertexStac.length;
+    const fmax = vmax - seg;
+    const indexBuffer = new Uint16Array(fmax * 6);
+    const face = (iface, ivertex, ioff)=>{
+      const ioff2 = (ioff + 1) % seg;
+      indexBuffer[iface * 6]     = ivertex + ioff;
+      indexBuffer[iface * 6 + 1] = ivertex + ioff2;
+      indexBuffer[iface * 6 + 2] = ivertex + ioff2 + seg;
+      indexBuffer[iface * 6 + 3] = ivertex + ioff;
+      indexBuffer[iface * 6 + 4] = ivertex + ioff2 + seg;
+      indexBuffer[iface * 6 + 5] = ivertex + ioff + seg;
+    };
+    for (i=0; i<fmax; i+=seg)
+      for (j=0; j<seg; j++)
+        face(i+j, i+(j&1)*vmax, j);
+    this._vertexStac = this._vertexStac.concat(this._vertexStac);
+    const colorBuffer = new Float32Array(vmax * 4 *2);
+    for (i=0; i<this._colorStac.length; i++) 
+      for (j=0; j<seg; j++) {
+        let col = this._colorStac[i];
+        colorBuffer[(i*seg+j+vmax)*4]   = colorBuffer[(i*seg+j)*4] = col.r;
+        colorBuffer[(i*seg+j+vmax)*4+1] = colorBuffer[(i*seg+j)*4+1] = col.g;
+        colorBuffer[(i*seg+j+vmax)*4+2] = colorBuffer[(i*seg+j)*4+2] = col.b;
+        colorBuffer[(i*seg+j+vmax)*4+3] = colorBuffer[(i*seg+j)*4+3] = col.a;
+      }
+    // create geometory
+    const geom = new THREE.BufferGeometry();
+    geom.setIndex(new THREE.BufferAttribute(indexBuffer, 1));
+    geom.addAttribute('position', new THREE.BufferAttribute(new Float32Array(this._vertexStac.length*3), 3).copyVector3sArray(this._vertexStac));
+    geom.addAttribute('normal',   new THREE.BufferAttribute(new Float32Array(this._vertexStac.length*3), 3));
+    geom.addAttribute('color',    new THREE.BufferAttribute(colorBuffer, 4));
+    geom.computeVertexNormals();
+    return geom;
   }
   _tubeComposer() {
     return null;

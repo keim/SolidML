@@ -599,7 +599,7 @@ SolidML.Reference = class {
     if (label) {
       const s = label.split(":");
       this.label = s.shift();
-      this.option = (s.length>0) ? s : null;
+      this.option = (s.length>0) ? s[0] : null;
     } else {
       this.label = null;
       this.option = null;
