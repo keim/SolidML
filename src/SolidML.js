@@ -606,7 +606,6 @@ SolidML.Reference = class {
     }
     this.param = param;
     this.next = null;
-    console.log(this);
   }
   _build(stat) {
     const rule = stat.rule.find(this.label);

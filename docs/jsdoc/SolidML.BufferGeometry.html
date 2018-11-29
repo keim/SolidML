@@ -84,11 +84,15 @@
             
             <span class="subtitle">Members</span>
             
-                <li data-name="SolidML.BufferGeometry#geometryCreators"><a href="SolidML.BufferGeometry.html#geometryCreators">geometryCreators</a></li>
+                <li data-name="SolidML.BufferGeometry#geometryCreator"><a href="SolidML.BufferGeometry.html#geometryCreator">geometryCreator</a></li>
             
-                <li data-name="SolidML.BufferGeometry#geometryHash"><a href="SolidML.BufferGeometry.html#geometryHash">geometryHash</a></li>
+                <li data-name="SolidML.BufferGeometry#indexCount"><a href="SolidML.BufferGeometry.html#indexCount">indexCount</a></li>
+            
+                <li data-name="SolidML.BufferGeometry#objectCount"><a href="SolidML.BufferGeometry.html#objectCount">objectCount</a></li>
             
                 <li data-name="SolidML.BufferGeometry#solidML"><a href="SolidML.BufferGeometry.html#solidML">solidML</a></li>
+            
+                <li data-name="SolidML.BufferGeometry#vertexCount"><a href="SolidML.BufferGeometry.html#vertexCount">vertexCount</a></li>
             
             </ul>
             <ul class="typedefs itemMembers">
@@ -98,11 +102,15 @@
             
             <span class="subtitle">Methods</span>
             
-                <li data-name="SolidML.BufferGeometry#allocVertexBuffer"><a href="SolidML.BufferGeometry.html#allocVertexBuffer">allocVertexBuffer</a></li>
+                <li data-name="SolidML.BufferGeometry#allocBuffers"><a href="SolidML.BufferGeometry.html#allocBuffers">allocBuffers</a></li>
             
                 <li data-name="SolidML.BufferGeometry#build"><a href="SolidML.BufferGeometry.html#build">build</a></li>
             
+                <li data-name="SolidML.BufferGeometry#compile"><a href="SolidML.BufferGeometry.html#compile">compile</a></li>
+            
                 <li data-name="SolidML.BufferGeometry#estimateBufferCount"><a href="SolidML.BufferGeometry.html#estimateBufferCount">estimateBufferCount</a></li>
+            
+                <li data-name="SolidML.BufferGeometry#update"><a href="SolidML.BufferGeometry.html#update">update</a></li>
             
             </ul>
             <ul class="events itemMembers">
@@ -374,7 +382,7 @@
     BufferGeometry
     </h2>
     
-        <div class="class-description">TRHEE.BufferGeometry constructed by <a href="SolidML.html">SolidML</a>. SolidMLBUfferGeometry.js depends on three.js and SolidML.js. Import after these dependent files.</div>
+        <div class="class-description">THREE.BufferGeometry constructed by <a href="SolidML.html">SolidML</a>. SolidMLBUfferGeometry.js depends on three.js and SolidML.js. Import after these dependent files.</div>
     
 </header>  
 
@@ -592,7 +600,7 @@
         <h3 class="subsection-title">Extends</h3>
         
         <ul>
-            <li>TRHEE.BufferGeometry</li>
+            <li>THREE.BufferGeometry</li>
         </ul>
     
     
@@ -611,7 +619,7 @@
             
 <dt>
     <div class="nameContainer">
-        <h4 class="name" id="geometryCreators">geometryCreators<span class="type-signature type object.<function()>">object.&lt;function()></span> </h4>
+        <h4 class="name" id="geometryCreator">geometryCreator<span class="type-signature type object.<function()>">object.&lt;function()></span> </h4>
     </div>
     
     
@@ -656,7 +664,7 @@
             
 <dt>
     <div class="nameContainer">
-        <h4 class="name" id="geometryHash">geometryHash<span class="type-signature type object.<buffergeometry>">Object.&lt;BufferGeometry></span> </h4>
+        <h4 class="name" id="indexCount">indexCount<span class="type-signature type int">int</span> </h4>
     </div>
     
     
@@ -664,7 +672,52 @@
 <dd>
     
     <div class="description">
-        hash map of original geometries and keys in script.
+        index count, is equals to BufferGeometry.index.count after build()
+    </div>
+    
+    
+    
+<dl class="details">
+    
+        
+    
+    
+    
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+</dl>
+
+    
+    
+</dd>
+
+        
+            
+<dt>
+    <div class="nameContainer">
+        <h4 class="name" id="objectCount">objectCount<span class="type-signature type int">int</span> </h4>
+    </div>
+    
+    
+</dt>
+<dd>
+    
+    <div class="description">
+        object count
     </div>
     
     
@@ -742,6 +795,51 @@
     
 </dd>
 
+        
+            
+<dt>
+    <div class="nameContainer">
+        <h4 class="name" id="vertexCount">vertexCount<span class="type-signature type int">int</span> </h4>
+    </div>
+    
+    
+</dt>
+<dd>
+    
+    <div class="description">
+        vertex count, is equals to BufferGeometry.attributes.position.count after build()
+    </div>
+    
+    
+    
+<dl class="details">
+    
+        
+    
+    
+    
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+</dl>
+
+    
+    
+</dd>
+
         </dl>
     
     
@@ -752,14 +850,14 @@
             
 <dt>
     <div class="nameContainer">
-        <h4 class="name" id="allocVertexBuffer">
+        <h4 class="name" id="allocBuffers">
             
-            allocVertexBuffer<span class="signature">(<span class="optional">isDynamic</span>, <span class="optional">margin</span>, <span class="optional">margin</span>)</span>
+            allocBuffers<span class="signature">(<span class="optional">isDynamic</span>, <span class="optional">indexCount</span>, <span class="optional">vertexCount</span>)</span><span class="glyphicon glyphicon-circle-arrow-right"></span><span class="type-signature returnType">{<a href="SolidML.BufferGeometry.html">SolidML.BufferGeometry</a>}</span>
         </h4>
     
         
         <div class="tag-source">
-            <a href="global.html#SolidMLBufferGeometry.js">SolidMLBufferGeometry.js</a>, <a href="global.html#SolidMLBufferGeometry.js#line107">line 107</a>
+            <a href="global.html#SolidMLBufferGeometry.js">SolidMLBufferGeometry.js</a>, <a href="global.html#SolidMLBufferGeometry.js#line102">line 102</a>
         </div>
         
     </div>
@@ -770,7 +868,7 @@
     
     
     <div class="description">
-        allocate vertex buffer with some margins.
+        allocate index buffer and vertex buffer
     </div>
     
 
@@ -818,7 +916,7 @@
             
                 <td class="default">
                 
-                    false
+                    true
                 
                 </td>
             
@@ -839,13 +937,13 @@
 	
         <tr>
             
-                <td class="name"><code>margin</code></td>
+                <td class="name"><code>indexCount</code></td>
             
             
             <td class="type">
             
                 
-<span class="param-type">indexMargin</span>
+<span class="param-type">int</span>
 
 
             
@@ -853,6 +951,8 @@
             
             
                 <td class="default">
+                
+                    0
                 
                 </td>
             
@@ -866,20 +966,20 @@
                         
                     
                 
-                for index buffer</td>
+                index buffer size. pass 0 to allocate by SolidML.BufferGeometry.indexCount estimated by <a href="SolidML.BufferGeometry.html#estimateBufferCount">SolidML.BufferGeometry#estimateBufferCount</a></td>
         </tr>
 	
 	
 	
         <tr>
             
-                <td class="name"><code>margin</code></td>
+                <td class="name"><code>vertexCount</code></td>
             
             
             <td class="type">
             
                 
-<span class="param-type">vertexMargin</span>
+<span class="param-type">int</span>
 
 
             
@@ -887,6 +987,8 @@
             
             
                 <td class="default">
+                
+                    0
                 
                 </td>
             
@@ -900,7 +1002,7 @@
                         
                     
                 
-                for vertex buffer</td>
+                vertex buffer size. pass 0 to allocate by SolidML.BufferGeometry.vertexCount estimated by <a href="SolidML.BufferGeometry.html#estimateBufferCount">SolidML.BufferGeometry#estimateBufferCount</a></td>
         </tr>
 	
 	
@@ -943,6 +1045,35 @@
     
     
     
+    <h5>Returns:</h5>
+    
+
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Type</th>
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+    <tbody>
+    
+        <tr>
+            
+            <td class="type">
+            
+                        <a href="SolidML.BufferGeometry.html">SolidML.BufferGeometry</a>
+                        
+                    
+            </td>
+            <td class="description last">this instance</td>
+        </tr>
+    
+    </tbody>
+</table>
+
+    
     
     
 </dd>
@@ -958,7 +1089,7 @@
     
         
         <div class="tag-source">
-            <a href="global.html#SolidMLBufferGeometry.js">SolidMLBufferGeometry.js</a>, <a href="global.html#SolidMLBufferGeometry.js#line81">line 81</a>
+            <a href="global.html#SolidMLBufferGeometry.js">SolidMLBufferGeometry.js</a>, <a href="global.html#SolidMLBufferGeometry.js#line52">line 52</a>
         </div>
         
     </div>
@@ -969,7 +1100,7 @@
     
     
     <div class="description">
-        construct object by script. new BufferGeometry.solidML is created inside.
+        construct object by script. execute <a href="SolidML.BufferGeometry.html#compile">SolidML.BufferGeometry#compile</a>=><a href="SolidML.BufferGeometry.html#estimateBufferCount">SolidML.BufferGeometry#estimateBufferCount</a>=>SolidML.BufferGeometry#allocVertexBuffer=><a href="SolidML.BufferGeometry.html#update">SolidML.BufferGeometry#update</a> inside
     </div>
     
 
@@ -1179,14 +1310,14 @@
             
 <dt>
     <div class="nameContainer">
-        <h4 class="name" id="estimateBufferCount">
+        <h4 class="name" id="compile">
             
-            estimateBufferCount<span class="signature">()</span><span class="glyphicon glyphicon-circle-arrow-right"></span><span class="type-signature returnType">{object}</span>
+            compile<span class="signature">(script, <span class="optional">criteria</span>)</span><span class="glyphicon glyphicon-circle-arrow-right"></span><span class="type-signature returnType">{<a href="SolidML.BufferGeometry.html">SolidML.BufferGeometry</a>}</span>
         </h4>
     
         
         <div class="tag-source">
-            <a href="global.html#SolidMLBufferGeometry.js">SolidMLBufferGeometry.js</a>, <a href="global.html#SolidMLBufferGeometry.js#line90">line 90</a>
+            <a href="global.html#SolidMLBufferGeometry.js">SolidMLBufferGeometry.js</a>, <a href="global.html#SolidMLBufferGeometry.js#line64">line 64</a>
         </div>
         
     </div>
@@ -1197,7 +1328,395 @@
     
     
     <div class="description">
-        estimate index and vertex buffer count.
+        Parse script, make a structure of recursive calls inside.
+    </div>
+    
+
+    
+    
+    
+    
+    
+        
+
+<table class="params">
+    <thead>
+	<tr>
+		
+		<th>Name</th>
+		
+		
+		<th>Type</th>
+		
+		
+		<th>Default</th>
+		
+		
+		<th class="last">Description</th>
+	</tr>
+	</thead>
+	
+	<tbody>
+	
+	
+        <tr>
+            
+                <td class="name"><code>script</code></td>
+            
+            
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+            
+            </td>
+            
+            
+                <td class="default">
+                
+                </td>
+            
+            
+            <td class="description last">
+                
+                    
+                    
+                        
+                    
+                
+                script to construct object.</td>
+        </tr>
+	
+	
+	
+        <tr>
+            
+                <td class="name"><code>criteria</code></td>
+            
+            
+            <td class="type">
+            
+                
+<span class="param-type">object</span>
+
+
+            
+            </td>
+            
+            
+                <td class="default">
+                
+                    null
+                
+                </td>
+            
+            
+            <td class="description last">
+                
+                    
+                        <span class="optional">optional</span>
+                    
+                    
+                        
+                    
+                
+                default criteria of this structure, specified by "set *" commands in script.</td>
+        </tr>
+	
+	
+	</tbody>
+</table>
+    
+    
+    
+<dl class="details">
+    
+        
+    
+    
+    
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+</dl>
+
+    
+    
+
+    
+
+    
+    
+    
+    
+    
+    <h5>Returns:</h5>
+    
+
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Type</th>
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+    <tbody>
+    
+        <tr>
+            
+            <td class="type">
+            
+                        <a href="SolidML.BufferGeometry.html">SolidML.BufferGeometry</a>
+                        
+                    
+            </td>
+            <td class="description last">this instance</td>
+        </tr>
+    
+    </tbody>
+</table>
+
+    
+    
+    
+</dd>
+
+        
+            
+<dt>
+    <div class="nameContainer">
+        <h4 class="name" id="estimateBufferCount">
+            
+            estimateBufferCount<span class="signature">(<span class="optional">indexMargin</span>, <span class="optional">vertexMargin</span>)</span><span class="glyphicon glyphicon-circle-arrow-right"></span><span class="type-signature returnType">{<a href="SolidML.BufferGeometry.html">SolidML.BufferGeometry</a>}</span>
+        </h4>
+    
+        
+        <div class="tag-source">
+            <a href="global.html#SolidMLBufferGeometry.js">SolidMLBufferGeometry.js</a>, <a href="global.html#SolidMLBufferGeometry.js#line73">line 73</a>
+        </div>
+        
+    </div>
+
+    
+</dt>
+<dd>
+    
+    
+    <div class="description">
+        estimate index, vertex and object count with some margins. Counted values are set at SolidML.BufferGeometry.indexCount, SolidML.BufferGeometry.vertexCount and SolidML.BufferGeometry.objectCount.
+    </div>
+    
+
+    
+    
+    
+    
+    
+        
+
+<table class="params">
+    <thead>
+	<tr>
+		
+		<th>Name</th>
+		
+		
+		<th>Type</th>
+		
+		
+		<th>Default</th>
+		
+		
+		<th class="last">Description</th>
+	</tr>
+	</thead>
+	
+	<tbody>
+	
+	
+        <tr>
+            
+                <td class="name"><code>indexMargin</code></td>
+            
+            
+            <td class="type">
+            
+                
+<span class="param-type">int</span>
+
+
+            
+            </td>
+            
+            
+                <td class="default">
+                
+                    0
+                
+                </td>
+            
+            
+            <td class="description last">
+                
+                    
+                        <span class="optional">optional</span>
+                    
+                    
+                        
+                    
+                
+                margin for index buffer, added to requierd index buffer count</td>
+        </tr>
+	
+	
+	
+        <tr>
+            
+                <td class="name"><code>vertexMargin</code></td>
+            
+            
+            <td class="type">
+            
+                
+<span class="param-type">int</span>
+
+
+            
+            </td>
+            
+            
+                <td class="default">
+                
+                    0
+                
+                </td>
+            
+            
+            <td class="description last">
+                
+                    
+                        <span class="optional">optional</span>
+                    
+                    
+                        
+                    
+                
+                margin for vertex buffer, added to requierd vertex buffer count</td>
+        </tr>
+	
+	
+	</tbody>
+</table>
+    
+    
+    
+<dl class="details">
+    
+        
+    
+    
+    
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+</dl>
+
+    
+    
+
+    
+
+    
+    
+    
+    
+    
+    <h5>Returns:</h5>
+    
+
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Type</th>
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+    <tbody>
+    
+        <tr>
+            
+            <td class="type">
+            
+                        <a href="SolidML.BufferGeometry.html">SolidML.BufferGeometry</a>
+                        
+                    
+            </td>
+            <td class="description last">this instance</td>
+        </tr>
+    
+    </tbody>
+</table>
+
+    
+    
+    
+</dd>
+
+        
+            
+<dt>
+    <div class="nameContainer">
+        <h4 class="name" id="update">
+            
+            update<span class="signature">()</span><span class="glyphicon glyphicon-circle-arrow-right"></span><span class="type-signature returnType">{<a href="SolidML.BufferGeometry.html">SolidML.BufferGeometry</a>}</span>
+        </h4>
+    
+        
+        <div class="tag-source">
+            <a href="global.html#SolidMLBufferGeometry.js">SolidMLBufferGeometry.js</a>, <a href="global.html#SolidMLBufferGeometry.js#line118">line 118</a>
+        </div>
+        
+    </div>
+
+    
+</dt>
+<dd>
+    
+    
+    <div class="description">
+        update vertex buffer and send data to gpu.
     </div>
     
 
@@ -1260,11 +1779,11 @@
             
             <td class="type">
             
-                        object
+                        <a href="SolidML.BufferGeometry.html">SolidML.BufferGeometry</a>
                         
                     
             </td>
-            <td class="description last">object contains {indexCount, vertexCount}</td>
+            <td class="description last">this instance</td>
         </tr>
     
     </tbody>
@@ -1292,7 +1811,7 @@
         
 
         <footer>
-            Documentation generated by <a target="_blank" href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a> on Wed Nov 28 2018 18:47:15 GMT+0900 (東京 (標準時))
+            Documentation generated by <a target="_blank" href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a> on Thu Nov 29 2018 19:02:04 GMT+0900 (東京 (標準時))
         </footer>
     </div>
 </div>
