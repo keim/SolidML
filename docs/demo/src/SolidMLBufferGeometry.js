@@ -160,8 +160,8 @@ SolidML.GeometryCreator = class {
       "octa":     indexing(new THREE.OctahedronBufferGeometry(0.5)), 
       "dodeca":   indexing(new THREE.DodecahedronBufferGeometry(0.5)), 
       "icosa":    indexing(new THREE.IcosahedronBufferGeometry(0.5)), 
-      "grid":     null, 
-      "line":     new THREE.BoxBufferGeometry(1, 0.2, 0.2),
+      "grid":     new SolidML.GridBufferGeometry(1, 0.1), 
+      "line":     new THREE.BoxBufferGeometry(1, 0.1, 0.1),
       "point":    null, 
     }, geometryHash);
     // cahce area
@@ -169,6 +169,8 @@ SolidML.GeometryCreator = class {
       "sphere":   [],
       "cylinder": [],
       "cone":     [],
+      "grid":     [],
+      "line":     [],
       "torus":    {},
       "triangle": {}
     };
@@ -177,6 +179,8 @@ SolidML.GeometryCreator = class {
       "sphere":   this._sphereCreator.bind(this),
       "cylinder": this._cylinderCreator.bind(this),
       "cone":     this._coneCreator.bind(this),
+      "grid":     this._gridCreator.bind(this),
+      "line":     this._lineCreator.bind(this),
       "torus":    this._torusCreator.bind(this),
       "triangle": this._triangleCreator.bind(this),
       "mesh":     this._meshCreator.bind(this),
@@ -210,6 +214,16 @@ SolidML.GeometryCreator = class {
     let segment = Number(stat.option)>>0;
     if (!segment || segment<3) segment = 8;
     return this._cache.cone[segment] || (this._cache.cone[segment] = new THREE.ConeBufferGeometry(0.5, 1, segment).applyMatrix(this.rotz));
+  }
+  _gridCreator(stat) {
+    let edgeWidth = Number(stat.option)>>0;
+    if (!edgeWidth) edgeWidth = 10;
+    return this._cache.grid[edgeWidth] || (this._cache.grid[edgeWidth] = new SolidML.GridBufferGeometry(1, edgeWidth/100));
+  }
+  _lineCreator(stat) {
+    let lineWidth = Number(stat.option)>>0;
+    if (!lineWidth) lineWidth = 10;
+    return this._cache.line[lineWidth] || (this._cache.line[lineWidth] = new THREE.BoxBufferGeometry(1, lineWidth/100, lineWidth/100));
   }
   _torusCreator(stat) {
     if (stat.param in this._cache.torus) 
@@ -380,14 +394,17 @@ SolidML.MeshComposer = class {
     const pme = this._matrix.elements;
     this._v0.set(pme[12]/pme[15], pme[13]/pme[15], pme[14]/pme[15]);
     if (stat) {
+      // update extending directions quarternion
       const me = stat.matrix.elements;
       this._dir.set(me[12]/me[15], me[13]/me[15], me[14]/me[15]).sub(this._v0).normalize();
       this._qrt.setFromUnitVectors(this._vx.set(pme[0], pme[1], pme[2]).normalize(), this._dir);
     }
     if (this._tubeWidth > 0) {
+      // keep constant width
       this._vy.set(pme[4], pme[5], pme[6]).normalize().multiplyScalar(this._tubeWidth).applyQuaternion(this._qrt);
       this._vz.set(pme[8], pme[9], pme[10]).normalize().multiplyScalar(this._tubeWidth).applyQuaternion(this._qrt);
     } else {
+      // rotate
       this._vy.set(pme[4], pme[5], pme[6]).applyQuaternion(this._qrt);
       this._vz.set(pme[8], pme[9], pme[10]).applyQuaternion(this._qrt);
     }
@@ -396,4 +413,37 @@ SolidML.MeshComposer = class {
       this._vertexStac.push(this._vy.clone().multiplyScalar(v2.x).addScaledVector(this._vz, v2.y).add(this._v0));
     }
   }
+}
+SolidML.GridBufferGeometry = class extends THREE.BufferGeometry {
+  constructor(size, edgeWidth) {
+    super();
+    const l = size / 2, s = l - edgeWidth;
+    const positions = new Float32Array(24*6*3), indices = new Uint16Array(48*6);
+    const srcv = [new THREE.Vector3(-l,-l,l), new THREE.Vector3(l,-l,l), new THREE.Vector3(l,l,l), new THREE.Vector3(-l,l,l),
+                  new THREE.Vector3(-s,-s,l), new THREE.Vector3(s,-s,l), new THREE.Vector3(s,s,l), new THREE.Vector3(-s,s,l),
+                  new THREE.Vector3(-s,-s,l), new THREE.Vector3(s,-s,l), new THREE.Vector3(s,s,l), new THREE.Vector3(-s,s,l),
+                  new THREE.Vector3(-s,-s,s), new THREE.Vector3(s,-s,s), new THREE.Vector3(s,s,s), new THREE.Vector3(-s,s,s),
+                  new THREE.Vector3(-s,-s,l), new THREE.Vector3(s,-s,l), new THREE.Vector3(s,s,l), new THREE.Vector3(-s,s,l),
+                  new THREE.Vector3(-s,-s,s), new THREE.Vector3(s,-s,s), new THREE.Vector3(s,s,s), new THREE.Vector3(-s,s,s)];
+    const srci = [0,1,4,4,1,5, 1,2,5,5,2,6, 2,3,6,6,3,7, 3,0,7,7,0,4, 8,9,12,12,9,13, 17,18,21,21,18,22, 10,11,14,14,11,15, 19,16,23,23,16,20];
+    let vidx = 0, iidx = 0;
+    const face = (fidx,xx,xy,xz,yx,yy,yz,zx,zy,zz)=>{
+      for (let i=0; i<24; i++, vidx+=3) {
+        positions[vidx]   = srcv[i].x * xx + srcv[i].y * yx + srcv[i].z * zx;
+        positions[vidx+1] = srcv[i].x * xy + srcv[i].y * yy + srcv[i].z * zy;
+        positions[vidx+2] = srcv[i].x * xz + srcv[i].y * yz + srcv[i].z * zz;
+      }
+      for (let j=0; j<48; j++)
+        indices[iidx++] = srci[j]+fidx*24;
+    };
+    face(0,  1, 0, 0,  0, 1, 0,  0, 0, 1);
+    face(1,  0, 1, 0,  0, 0, 1,  1, 0, 0);
+    face(2,  0, 0, 1,  1, 0, 0,  0, 1, 0);
+    face(3,  1, 0, 0,  0,-1, 0,  0, 0,-1);
+    face(4,  0, 1, 0,  0, 0,-1, -1, 0, 0);
+    face(5,  0, 0, 1, -1, 0, 0,  0,-1, 0);
+    this.setIndex(new THREE.BufferAttribute(indices, 1));
+    this.addAttribute('position', new THREE.BufferAttribute(positions, 3));
+    this.computeVertexNormals();
+ }
 }

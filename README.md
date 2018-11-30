@@ -26,15 +26,19 @@ Eisen Script: http://structuresynth.sourceforge.net/reference.php
 - "36 * {" => "36{"
 - space between number and command can be omitted
 ## Additional concept
-- box, shpere, mesh, tube, triangle, line, cylinder, cone, torus, tetra, octa, dodeca, icosa are available as the built-in rules
-- cmesh (cylinder mesh) and ctube (cylinder tube) is available
+- box, shpere, mesh, tube, triangle, line, grid, cylinder, cone, torus, tetra, octa, dodeca and icosa are available as the built-in rules
+- cmesh (cylinder mesh) and ctube (cylinder tube) are available
 - mesh(cmesh) is under the effect of scaling, tube(ctube) is not (constant width).
-- grid, point are not implemented
+- point is not implemented
 - "set colorpool image:" is not implemented
-- "shpere:16" specify the segment count of 16, "cylinder:n", "cone:n", "mesh:n", "cmesh:n" are also available
+- "shpere:16" sets the segment count of 16, "cylinder:n", "cone:n", "mesh:n", "cmesh:n", "tube:n", "ctube:n" are also available
+- "grid:10" sets the edge width in percentage, "line:10" sets the line width in percentage
 - "torus[width,seg1,seg2]" for torus shape
-- "@cp:g5" specifies the grayscale colorpool table in 5 tone-steps, "@cp:g0" means no tone-steps.
+- "@cp:g5" sets the grayscale colorpool table in 5 tone-steps, "@cp:g0" means no tone-steps.
 - blending only one member sat, bri or hue by "*s0.5,0.1"
 - ... and so on
+## only for demonstration
+- "@floor#HEX" and "@sky#HEX" sets each color
+- "@mat[10,90]" sets material metalness and roughness in percentage
 ## API Reference
 https://keim.github.io/SolidML/jsdoc/index.html
