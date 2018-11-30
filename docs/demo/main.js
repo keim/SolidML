@@ -4,7 +4,9 @@ new Ptolemy({
     const editor = ace.edit("texteditor");
     const build = ()=>{
       try{
-        gl.mainGeometry = new SolidML.BufferGeometry(editor.getValue(), null, {floor:"#888", sky:"#679", mat:"10,90"});
+        const code = editor.getValue();
+        window.localStorage.setItem('backup', code);
+        gl.mainGeometry = new SolidML.BufferGeometry(code, null, {floor:"#888", sky:"#679", mat:"10,90"});
         gl.solidML = gl.mainGeometry.solidML;
 
         message("vertex:"+gl.mainGeometry.attributes.position.count+"/face:"+gl.mainGeometry.index.count/3);
@@ -50,12 +52,21 @@ new Ptolemy({
     };
     const message = msg=>{
       document.getElementById("message").innerText = msg;
-    }
+    };
+    const restore = ()=>{
+      const backup = window.localStorage.getItem('backup');
+      if(backup) editor.setValue(backup);
+    };
 
     editor.commands.addCommand({
       name : "play",
       bindKey: {win:"Ctrl-Enter", mac:"Command-Enter"},
       exec: build
+    });
+    editor.commands.addCommand({ // Restore last draft from localStorage
+      name : "restore",
+      bindKey: {win:"Alt-Z", mac:"Alt-Z"},
+      exec: restore
     });
     editor.setValue("@250\n@cp[red,yellow,green]\n{ry90x6white}10{rx36}R\n#R{{x4rz-4ry6s0.99}R{s10#?}torus}\n#R@w4{{x4rz4ry6s0.99}R{s8,4,4}cylinder}");
     document.getElementById("runscript").addEventListener("click", build);
