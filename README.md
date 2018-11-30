@@ -9,6 +9,7 @@ Eisen Script: http://structuresynth.sourceforge.net/reference.php
 ## Many Lazy Syntax Sugers
 - "set" => "@"
 - "rule" => "#"
+- "#define" => "$"
 - "color #ff0" => "#ff0"
 - "color red" => "red"
 - "color random" => "random" or "#?"
@@ -25,10 +26,15 @@ Eisen Script: http://structuresynth.sourceforge.net/reference.php
 - "36 * {" => "36{"
 - space between number and command can be omitted
 ## Additional concept
-- box, shpere, cylinder, torus, cone, tetra, octa, dodeca, icosa are available as the built-in rules
-- mesh, triangle, grid, line, point are not implemented
+- box, shpere, mesh, tube, triangle, line, cylinder, cone, torus, tetra, octa, dodeca, icosa are available as the built-in rules
+- cmesh (cylinder mesh) and ctube (cylinder tube) is available
+- mesh(cmesh) is under the effect of scaling, tube(ctube) is not (constant width).
+- grid, point are not implemented
 - "set colorpool image:" is not implemented
-- blending only one member sat, bri or hue by "*s#f00,0.1"
+- "shpere:16" specify the segment count of 16, "cylinder:n", "cone:n", "mesh:n", "cmesh:n" are also available
+- "torus[width,seg1,seg2]" for torus shape
+- "@cp:g5" specifies the grayscale colorpool table in 5 tone-steps, "@cp:g0" means no tone-steps.
+- blending only one member sat, bri or hue by "*s0.5,0.1"
 - ... and so on
 ## API Reference
 https://keim.github.io/SolidML/jsdoc/index.html

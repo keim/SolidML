@@ -84,8 +84,6 @@
             
             <span class="subtitle">Members</span>
             
-                <li data-name="SolidML.BufferGeometry#geometryCreator"><a href="SolidML.BufferGeometry.html#geometryCreator">geometryCreator</a></li>
-            
                 <li data-name="SolidML.BufferGeometry#indexCount"><a href="SolidML.BufferGeometry.html#indexCount">indexCount</a></li>
             
                 <li data-name="SolidML.BufferGeometry#objectCount"><a href="SolidML.BufferGeometry.html#objectCount">objectCount</a></li>
@@ -138,6 +136,8 @@
                 <li data-name="SolidML.BuildStatus#option"><a href="SolidML.BuildStatus.html#option">option</a></li>
             
                 <li data-name="SolidML.BuildStatus#param"><a href="SolidML.BuildStatus.html#param">param</a></li>
+            
+                <li data-name="SolidML.BuildStatus#referenceID"><a href="SolidML.BuildStatus.html#referenceID">referenceID</a></li>
             
                 <li data-name="SolidML.BuildStatus#result"><a href="SolidML.BuildStatus.html#result">result</a></li>
             
@@ -510,7 +510,7 @@
                         
                     
                 
-                hash map of original geometries and keys in script.</td>
+                hash map of source geometries and keys like {"box":new THREE.BoxBufferGeometry(1, 1, 1)}. The source geometory should be indexed.</td>
         </tr>
 	
 	
@@ -619,51 +619,6 @@
             
 <dt>
     <div class="nameContainer">
-        <h4 class="name" id="geometryCreator">geometryCreator<span class="type-signature type object.<function()>">object.&lt;function()></span> </h4>
-    </div>
-    
-    
-</dt>
-<dd>
-    
-    <div class="description">
-        hash map of functions return the geometry gemerated by parameter (written as "label[param]") and option (written as "label:option")
-    </div>
-    
-    
-    
-<dl class="details">
-    
-        
-    
-    
-    
-
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-</dl>
-
-    
-    
-</dd>
-
-        
-            
-<dt>
-    <div class="nameContainer">
         <h4 class="name" id="indexCount">indexCount<span class="type-signature type int">int</span> </h4>
     </div>
     
@@ -672,7 +627,7 @@
 <dd>
     
     <div class="description">
-        index count, is equals to BufferGeometry.index.count after build()
+        index count, same as BufferGeometry.index.count after build()
     </div>
     
     
@@ -717,7 +672,7 @@
 <dd>
     
     <div class="description">
-        object count
+        object count. one continuous mesh is counted as 1 object.
     </div>
     
     
@@ -807,7 +762,7 @@
 <dd>
     
     <div class="description">
-        vertex count, is equals to BufferGeometry.attributes.position.count after build()
+        vertex count, same as BufferGeometry.attributes.position.count after build()
     </div>
     
     
@@ -857,7 +812,7 @@
     
         
         <div class="tag-source">
-            <a href="global.html#SolidMLBufferGeometry.js">SolidMLBufferGeometry.js</a>, <a href="global.html#SolidMLBufferGeometry.js#line102">line 102</a>
+            <a href="global.html#SolidMLBufferGeometry.js">SolidMLBufferGeometry.js</a>, <a href="global.html#SolidMLBufferGeometry.js#line96">line 96</a>
         </div>
         
     </div>
@@ -1089,7 +1044,7 @@
     
         
         <div class="tag-source">
-            <a href="global.html#SolidMLBufferGeometry.js">SolidMLBufferGeometry.js</a>, <a href="global.html#SolidMLBufferGeometry.js#line52">line 52</a>
+            <a href="global.html#SolidMLBufferGeometry.js">SolidMLBufferGeometry.js</a>, <a href="global.html#SolidMLBufferGeometry.js#line48">line 48</a>
         </div>
         
     </div>
@@ -1100,7 +1055,7 @@
     
     
     <div class="description">
-        construct object by script. execute <a href="SolidML.BufferGeometry.html#compile">SolidML.BufferGeometry#compile</a>=><a href="SolidML.BufferGeometry.html#estimateBufferCount">SolidML.BufferGeometry#estimateBufferCount</a>=>SolidML.BufferGeometry#allocVertexBuffer=><a href="SolidML.BufferGeometry.html#update">SolidML.BufferGeometry#update</a> inside
+        construct object by script. execute <a href="SolidML.BufferGeometry.html#compile">SolidML.BufferGeometry#compile</a>=><a href="SolidML.BufferGeometry.html#estimateBufferCount">SolidML.BufferGeometry#estimateBufferCount</a>=><a href="SolidML.BufferGeometry.html#allocBuffers">SolidML.BufferGeometry#allocBuffers</a>=><a href="SolidML.BufferGeometry.html#update">SolidML.BufferGeometry#update</a> inside
     </div>
     
 
@@ -1317,7 +1272,7 @@
     
         
         <div class="tag-source">
-            <a href="global.html#SolidMLBufferGeometry.js">SolidMLBufferGeometry.js</a>, <a href="global.html#SolidMLBufferGeometry.js#line64">line 64</a>
+            <a href="global.html#SolidMLBufferGeometry.js">SolidMLBufferGeometry.js</a>, <a href="global.html#SolidMLBufferGeometry.js#line60">line 60</a>
         </div>
         
     </div>
@@ -1509,7 +1464,7 @@
     
         
         <div class="tag-source">
-            <a href="global.html#SolidMLBufferGeometry.js">SolidMLBufferGeometry.js</a>, <a href="global.html#SolidMLBufferGeometry.js#line73">line 73</a>
+            <a href="global.html#SolidMLBufferGeometry.js">SolidMLBufferGeometry.js</a>, <a href="global.html#SolidMLBufferGeometry.js#line69">line 69</a>
         </div>
         
     </div>
@@ -1705,7 +1660,7 @@
     
         
         <div class="tag-source">
-            <a href="global.html#SolidMLBufferGeometry.js">SolidMLBufferGeometry.js</a>, <a href="global.html#SolidMLBufferGeometry.js#line118">line 118</a>
+            <a href="global.html#SolidMLBufferGeometry.js">SolidMLBufferGeometry.js</a>, <a href="global.html#SolidMLBufferGeometry.js#line112">line 112</a>
         </div>
         
     </div>
@@ -1811,7 +1766,7 @@
         
 
         <footer>
-            Documentation generated by <a target="_blank" href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a> on Thu Nov 29 2018 19:02:04 GMT+0900 (東京 (標準時))
+            Documentation generated by <a target="_blank" href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a> on Fri Nov 30 2018 20:00:00 GMT+0900 (東京 (標準時))
         </footer>
     </div>
 </div>

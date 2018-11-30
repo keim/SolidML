@@ -1,6 +1,4 @@
-/**
- * @file Core module. SolidML.js does not depend on any other libraries.
- */
+/** @file Core module. SolidML.js does not depend on any other libraries. */
 /**
  * Construct fractal-like 3D models by cryptic script based on [Structure Synth]{@link http://structuresynth.sourceforge.net/}'s' Eisen Script.
  * SolidML.js does not depend on any other libraries. If you want to import model into three.js, see {@link SolidML.BufferGeometry}.
@@ -66,14 +64,11 @@ class SolidML {
  *  @param {SolidML.BuildStatus} status the status while building structure
  *  @return {any} the return value can be refered by {@link BuildStatus.result}, or {@link SolidML#build}.
  */
-/** 
- * current version number 
- * @type {String}
+/** current version number 
+ *  @type {String}
  */
-SolidML.VERSION = "0.2.1";
-/**
- * Represents a criteria of the structure, specified as "set [key] [value]" in script. Keep any user-defined criteria for your own purpose. {@link SolidML.Criteria#getValue} method refers them.
- */
+SolidML.VERSION = "0.2.2";
+/** Represents a criteria of the structure, specified as "set [key] [value]" in script. Keep any user-defined criteria for your own purpose. {@link SolidML.Criteria#getValue} method refers them. */
 SolidML.Criteria = class {
   /** SolidML.Criteria is created in the constructor of {@link SolidML}.  */
   constructor(randMT, hash) {
@@ -425,14 +420,18 @@ SolidML.BuildStatus = class {
      *  @type {string}
      */
     this.label = null;
-    /** Array of options of the object written as "name:option1:option2..."
+    /** Array of options of the object written as "name:option"
      *  @type {Array.<string>}
      */
     this.option = null;
-    /** parameters of the object written as "[...]"
+    /** parameters of the object written as "name[...]"
      *  @type {string}
      */
     this.param = null;
+    /** increment when the rule calls from root
+     *  @type {int}
+     */
+    this.referenceID = 0;
     /** current object count
      *  @type {int}
      */
@@ -462,6 +461,8 @@ SolidML.BuildStatus = class {
     this.color.copy(copyFrom.color);
   }
   _pushRule(rule) {
+    if (!(this.rule && this.rule.parent))
+      this.referenceID++;
     this._stacRule.push(this.rule);
     this.rule = rule;
     if (!(rule.name in this._ruleDepth))
@@ -1068,9 +1069,8 @@ SolidML.ScriptParser = class {
     return Boolean(this.$[SolidML.REX_RULE_END]);
   }
 }
-/**
- * svg name table for colors. SolidML.ColorTable["name"] returns hex string of the color.
- * @type {Object}
+/** svg name table for colors. SolidML.ColorTable["name"] returns hex string of the color.
+ *  @type {Object}
  */
 SolidML.ColorTable = {
   "black": "#000000",
