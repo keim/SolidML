@@ -50,7 +50,9 @@ class SolidML {
         objects.push({"matrix": stat.matrix.clone(), 
                       "color":  stat.color.getRGBA(), 
                       "label":  stat.label, 
-                      "param":  stat.param});
+                      "param":  stat.param,
+                      "option": stat.option,
+                      "referenceID" : stat.referenceID});
         return objects;
       };
     }
@@ -97,9 +99,9 @@ SolidML.Criteria = class {
      */
     this.background = null;
     // private
-    this._colorpoolInstance = new SolidML.ColorPool(hash["colorpool"] || "randomrgb", randMT);
+    this._colorpoolInstance = new SolidML.ColorPool((hash&&hash["colorpool"]) || "randomrgb", randMT);
 
-    if ("colorpool" in hash)
+    if (hash && ("colorpool" in hash))
       delete hash["colorpool"];
     Object.assign(this, hash);
   }
@@ -447,6 +449,7 @@ SolidML.BuildStatus = class {
     // private
     this._stacMatrix = [];
     this._stacRule = [];
+    this._referCounter = 0;
     this._ruleDepth = {};
     this._rule_min3 = 0;
     this._rule_max3 = 0;
@@ -461,21 +464,24 @@ SolidML.BuildStatus = class {
     this.color.copy(copyFrom.color);
   }
   _pushRule(rule) {
-    if (!(this.rule && this.rule.parent))
+    if (++this._referCounter > 1)
       this.referenceID++;
-    this._stacRule.push(this.rule);
+    this._stacRule.push({"rule":this.rule, "referCounter":this._referCounter});
     this.rule = rule;
+    this._referCounter = 0;
     if (!(rule.name in this._ruleDepth))
       this._ruleDepth[rule.name] = 0;
     let imin = this.rule.minsize,
         imax = this.rule.maxsize;
-    this._rule_min3 = imin*imin*imin;
-    this._rule_max3 = imax*imax*imax;
+    this._rule_min3 = imin * imin * imin;
+    this._rule_max3 = imax * imax * imax;
     return (++this._ruleDepth[rule.name] <= rule.maxdepth);
   }
   _popRule() {
     this._ruleDepth[this.rule.name]--;
-    this.rule = this._stacRule.pop();
+    const refCall = this._stacRule.pop();
+    this.rule = refCall.rule;
+    this._referCounter = refCall.referCounter;
   }
   _newObject(reference) {
     if (!this._checkCriteria())

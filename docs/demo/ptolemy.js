@@ -22,7 +22,7 @@ class Ptolemy {
     this.camera   = new THREE.PerspectiveCamera(30, 1, 0.1, 10000);
     this.scene    = new THREE.Scene();
     this.renderer = new THREE.WebGLRenderer();
-
+    
     // other
     this.screenCenter = new THREE.Vector3(0,0,0);
     this.screenSize = {"width":option.width||0, "height":option.height||0};

@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Class: SolidML</title>
+    <title>Class: Material</title>
     
     
     <script src="scripts/prettify/prettify.js"></script>
@@ -397,7 +397,7 @@
     </ul>
 </div>
     <div class="main">
-        <h1 class="page-title" data-filename="SolidML.html">Class: SolidML</h1>
+        <h1 class="page-title" data-filename="SolidML.Material.html">Class: Material</h1>
         
 
 
@@ -406,11 +406,12 @@
     
 <header>
     <h2>
-    SolidML
+        <span class="ancestors"><a href="SolidML.html">SolidML</a>.</span>
+    
+    Material
     </h2>
     
-        <div class="class-description">Construct fractal-like 3D models by cryptic script based on <a target="_blank" href="http://structuresynth.sourceforge.net/">Structure Synth</a>'s' Eisen Script.
-SolidML.js does not depend on any other libraries. If you want to import model into three.js, see <a href="SolidML.BufferGeometry.html">SolidML.BufferGeometry</a>.</div>
+        <div class="class-description">Physical Model Material with vertex alpha</div>
     
 </header>  
 
@@ -422,14 +423,14 @@ SolidML.js does not depend on any other libraries. If you want to import model i
         
 <dt>
     <div class="nameContainer">
-        <h4 class="name" id="SolidML">
+        <h4 class="name" id="Material">
             
-            new SolidML<span class="signature">(<span class="optional">script</span>, <span class="optional">criteria</span>)</span>
+            new SolidML.Material<span class="signature">()</span>
         </h4>
     
         
         <div class="tag-source">
-            <a href="global.html#SolidML.js">SolidML.js</a>, <a href="global.html#SolidML.js#line6">line 6</a>
+            <a href="global.html#SolidMLBufferGeometry.js">SolidMLBufferGeometry.js</a>, <a href="global.html#SolidMLBufferGeometry.js#line476">line 476</a>
         </div>
         
     </div>
@@ -439,97 +440,11 @@ SolidML.js does not depend on any other libraries. If you want to import model i
 <dd>
     
     
-    <div class="description">
-        Basically one instance for one script.
-    </div>
-    
 
     
     
     
     
-    
-        
-
-<table class="params">
-    <thead>
-	<tr>
-		
-		<th>Name</th>
-		
-		
-		<th>Type</th>
-		
-		
-		
-		<th class="last">Description</th>
-	</tr>
-	</thead>
-	
-	<tbody>
-	
-	
-        <tr>
-            
-                <td class="name"><code>script</code></td>
-            
-            
-            <td class="type">
-            
-                
-<span class="param-type">string</span>
-
-
-            
-            </td>
-            
-            
-            
-            <td class="description last">
-                
-                    
-                        <span class="optional">optional</span>
-                    
-                    
-                        
-                    
-                
-                SolidML script to compile, calls <a href="SolidML.html#compile">SolidML#compile</a> inside.</td>
-        </tr>
-	
-	
-	
-        <tr>
-            
-                <td class="name"><code>criteria</code></td>
-            
-            
-            <td class="type">
-            
-                
-<span class="param-type">object</span>
-
-
-            
-            </td>
-            
-            
-            
-            <td class="description last">
-                
-                    
-                        <span class="optional">optional</span>
-                    
-                    
-                        
-                    
-                
-                default criteria of this structure, specified by "set *" commands in script.</td>
-        </tr>
-	
-	
-	</tbody>
-</table>
     
     
     
@@ -580,37 +495,6 @@ SolidML.js does not depend on any other libraries. If you want to import model i
     
     
     
-    
-        <h3 class="subsection-title">Classes</h3>
-        
-        <dl>
-            <dt><a href="SolidML.BufferGeometry.html">BufferGeometry</a></dt>
-            <dd></dd>
-        
-            <dt><a href="SolidML.BuildStatus.html">BuildStatus</a></dt>
-            <dd></dd>
-        
-            <dt><a href="SolidML.ColorHSBA.html">ColorHSBA</a></dt>
-            <dd></dd>
-        
-            <dt><a href="SolidML.ColorPool.html">ColorPool</a></dt>
-            <dd></dd>
-        
-            <dt><a href="SolidML.Criteria.html">Criteria</a></dt>
-            <dd></dd>
-        
-            <dt><a href="SolidML.Material.html">Material</a></dt>
-            <dd></dd>
-        
-            <dt><a href="SolidML.Matrix4.html">Matrix4</a></dt>
-            <dd></dd>
-        
-            <dt><a href="SolidML.randMT.html">randMT</a></dt>
-            <dd></dd>
-        
-            <dt><a href="SolidML.Rule.html">Rule</a></dt>
-            <dd></dd>
-        </dl>
     
     
     
@@ -622,7 +506,7 @@ SolidML.js does not depend on any other libraries. If you want to import model i
             
 <dt>
     <div class="nameContainer">
-        <h4 class="name" id=".ColorTable"><span class="type-signature static">static</span>SolidML.ColorTable<span class="type-signature type object">Object</span> </h4>
+        <h4 class="name" id="clearCoat">clearCoat<span class="type-signature type number">number</span> </h4>
     </div>
     
     
@@ -630,7 +514,7 @@ SolidML.js does not depend on any other libraries. If you want to import model i
 <dd>
     
     <div class="description">
-        svg name table for colors. SolidML.ColorTable["name"] returns hex string of the color.
+        clearCoat (0-1)
     </div>
     
     
@@ -667,7 +551,7 @@ SolidML.js does not depend on any other libraries. If you want to import model i
             
 <dt>
     <div class="nameContainer">
-        <h4 class="name" id=".VERSION"><span class="type-signature static">static</span>SolidML.VERSION<span class="type-signature type string">String</span> </h4>
+        <h4 class="name" id="clearCoatRoughness">clearCoatRoughness<span class="type-signature type number">number</span> </h4>
     </div>
     
     
@@ -675,7 +559,7 @@ SolidML.js does not depend on any other libraries. If you want to import model i
 <dd>
     
     <div class="description">
-        current version number
+        clearCoatRoughness (0-1)
     </div>
     
     
@@ -712,7 +596,7 @@ SolidML.js does not depend on any other libraries. If you want to import model i
             
 <dt>
     <div class="nameContainer">
-        <h4 class="name" id="criteria">criteria<span class="type-signature type solidml.criteria"><a href="SolidML.Criteria.html">SolidML.Criteria</a></span> </h4>
+        <h4 class="name" id="metalness">metalness<span class="type-signature type number">number</span> </h4>
     </div>
     
     
@@ -720,7 +604,7 @@ SolidML.js does not depend on any other libraries. If you want to import model i
 <dd>
     
     <div class="description">
-        criteria of this structure, specified by "set *" commands in script
+        metalness (0-1)
     </div>
     
     
@@ -757,7 +641,7 @@ SolidML.js does not depend on any other libraries. If you want to import model i
             
 <dt>
     <div class="nameContainer">
-        <h4 class="name" id="randMT">randMT<span class="type-signature type solidml.randmt"><a href="SolidML.randMT.html">SolidML.randMT</a></span> </h4>
+        <h4 class="name" id="roughness">roughness<span class="type-signature type number">number</span> </h4>
     </div>
     
     
@@ -765,52 +649,7 @@ SolidML.js does not depend on any other libraries. If you want to import model i
 <dd>
     
     <div class="description">
-        random number generator for constuct model.
-    </div>
-    
-    
-    
-<dl class="details">
-    
-        
-    
-    
-    
-
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-</dl>
-
-    
-    
-</dd>
-
-        
-            
-<dt>
-    <div class="nameContainer">
-        <h4 class="name" id="variables">variables<span class="type-signature type object">object</span> </h4>
-    </div>
-    
-    
-</dt>
-<dd>
-    
-    <div class="description">
-        hash map of defined variables, specified by "#define *" commands in script
+        roughness (0-1)
     </div>
     
     
@@ -847,504 +686,7 @@ SolidML.js does not depend on any other libraries. If you want to import model i
     
     
     
-        <h3 class="subsection-title">Methods</h3>
-        
-        <dl>
-            
-<dt>
-    <div class="nameContainer">
-        <h4 class="name" id="build">
-            
-            build<span class="signature">(<span class="optional">callback</span>)</span><span class="glyphicon glyphicon-circle-arrow-right"></span><span class="type-signature returnType">{any}</span>
-        </h4>
     
-        
-        <div class="tag-source">
-            <a href="global.html#SolidML.js">SolidML.js</a>, <a href="global.html#SolidML.js#line44">line 44</a>
-        </div>
-        
-    </div>
-
-    
-</dt>
-<dd>
-    
-    
-    <div class="description">
-        Build object structure. This function has to be called after calling <a href="SolidML.html#compile">SolidML#compile</a>.
-    </div>
-    
-
-    
-    
-    
-    
-    
-        
-
-<table class="params">
-    <thead>
-	<tr>
-		
-		<th>Name</th>
-		
-		
-		<th>Type</th>
-		
-		
-		
-		<th class="last">Description</th>
-	</tr>
-	</thead>
-	
-	<tbody>
-	
-	
-        <tr>
-            
-                <td class="name"><code>callback</code></td>
-            
-            
-            <td class="type">
-            
-                
-<span class="param-type"><a href="SolidML.html#~buildCallback">SolidML~buildCallback</a></span>
-
-
-            
-            </td>
-            
-            
-            
-            <td class="description last">
-                
-                    
-                        <span class="optional">optional</span>
-                    
-                    
-                        
-                    
-                
-                function called back when new object has created.</td>
-        </tr>
-	
-	
-	</tbody>
-</table>
-    
-    
-    
-<dl class="details">
-    
-        
-    
-    
-    
-
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-</dl>
-
-    
-    
-
-    
-
-    
-    
-    
-    
-    
-    <h5>Returns:</h5>
-    
-
-
-<table class="params">
-    <thead>
-    <tr>
-        
-        <th>Type</th>
-        <th class="last">Description</th>
-    </tr>
-    </thead>
-    <tbody>
-    
-        <tr>
-            
-            <td class="type">
-            
-                        any
-                        
-                    
-            </td>
-            <td class="description last">returned value of callback. when callback is undefined, returns the array of {matrix:Matrix4, color:ColorRGB, label:String, param:String} for each objects.</td>
-        </tr>
-    
-    </tbody>
-</table>
-
-    
-    
-    
-</dd>
-
-        
-            
-<dt>
-    <div class="nameContainer">
-        <h4 class="name" id="compile">
-            
-            compile<span class="signature">(script, <span class="optional">seed</span>)</span><span class="glyphicon glyphicon-circle-arrow-right"></span><span class="type-signature returnType">{<a href="SolidML.html">SolidML</a>}</span>
-        </h4>
-    
-        
-        <div class="tag-source">
-            <a href="global.html#SolidML.js">SolidML.js</a>, <a href="global.html#SolidML.js#line32">line 32</a>
-        </div>
-        
-    </div>
-
-    
-</dt>
-<dd>
-    
-    
-    <div class="description">
-        Parse script, make a structure of recursive calls inside.
-    </div>
-    
-
-    
-    
-    
-    
-    
-        
-
-<table class="params">
-    <thead>
-	<tr>
-		
-		<th>Name</th>
-		
-		
-		<th>Type</th>
-		
-		
-		<th>Default</th>
-		
-		
-		<th class="last">Description</th>
-	</tr>
-	</thead>
-	
-	<tbody>
-	
-	
-        <tr>
-            
-                <td class="name"><code>script</code></td>
-            
-            
-            <td class="type">
-            
-                
-<span class="param-type">string</span>
-
-
-            
-            </td>
-            
-            
-                <td class="default">
-                
-                </td>
-            
-            
-            <td class="description last">
-                
-                    
-                    
-                        
-                    
-                
-                SolidML script to compile</td>
-        </tr>
-	
-	
-	
-        <tr>
-            
-                <td class="name"><code>seed</code></td>
-            
-            
-            <td class="type">
-            
-                
-<span class="param-type">int</span>
-
-
-            
-            </td>
-            
-            
-                <td class="default">
-                
-                    null
-                
-                </td>
-            
-            
-            <td class="description last">
-                
-                    
-                        <span class="optional">optional</span>
-                    
-                    
-                        
-                    
-                
-                seed number for MT-random number calculations, pass null to set by time. this value is overwritten by "set seed" command in the script.</td>
-        </tr>
-	
-	
-	</tbody>
-</table>
-    
-    
-    
-<dl class="details">
-    
-        
-    
-    
-    
-
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-</dl>
-
-    
-    
-
-    
-
-    
-    
-    
-    
-    
-    <h5>Returns:</h5>
-    
-
-
-<table class="params">
-    <thead>
-    <tr>
-        
-        <th>Type</th>
-        <th class="last">Description</th>
-    </tr>
-    </thead>
-    <tbody>
-    
-        <tr>
-            
-            <td class="type">
-            
-                        <a href="SolidML.html">SolidML</a>
-                        
-                    
-            </td>
-            <td class="description last">this instance</td>
-        </tr>
-    
-    </tbody>
-</table>
-
-    
-    
-    
-</dd>
-
-        </dl>
-    
-    
-    
-        <h3 class="subsection-title">Type Definitions</h3>
-        
-        <dl>
-                
-<dt>
-    <div class="nameContainer">
-        <h4 class="name" id="~buildCallback">
-            
-            buildCallback<span class="signature">(status)</span><span class="glyphicon glyphicon-circle-arrow-right"></span><span class="type-signature returnType">{any}</span>
-        </h4>
-    
-        
-        <div class="tag-source">
-            <a href="global.html#SolidML.js">SolidML.js</a>, <a href="global.html#SolidML.js#line64">line 64</a>
-        </div>
-        
-    </div>
-
-    
-</dt>
-<dd>
-    
-    
-    <div class="description">
-        callback function passed to <a href="SolidML.html#build">SolidML#build</a>
-    </div>
-    
-
-    
-    
-    
-    
-    
-        
-
-<table class="params">
-    <thead>
-	<tr>
-		
-		<th>Name</th>
-		
-		
-		<th>Type</th>
-		
-		
-		
-		<th class="last">Description</th>
-	</tr>
-	</thead>
-	
-	<tbody>
-	
-	
-        <tr>
-            
-                <td class="name"><code>status</code></td>
-            
-            
-            <td class="type">
-            
-                
-<span class="param-type"><a href="SolidML.BuildStatus.html">SolidML.BuildStatus</a></span>
-
-
-            
-            </td>
-            
-            
-            
-            <td class="description last">
-                
-                the status while building structure</td>
-        </tr>
-	
-	
-	</tbody>
-</table>
-    
-    
-    
-<dl class="details">
-    
-        
-    
-    
-    
-
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-</dl>
-
-    
-    
-
-    
-
-    
-    
-    
-    
-    
-    <h5>Returns:</h5>
-    
-
-
-<table class="params">
-    <thead>
-    <tr>
-        
-        <th>Type</th>
-        <th class="last">Description</th>
-    </tr>
-    </thead>
-    <tbody>
-    
-        <tr>
-            
-            <td class="type">
-            
-                        any
-                        
-                    
-            </td>
-            <td class="description last">the return value can be refered by BuildStatus.result, or <a href="SolidML.html#build">SolidML#build</a>.</td>
-        </tr>
-    
-    </tbody>
-</table>
-
-    
-    
-    
-</dd>
-
-            </dl>
     
     
     

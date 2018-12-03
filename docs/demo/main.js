@@ -15,6 +15,8 @@ new Ptolemy({
         const mat = gl.solidML.criteria.getValue("mat", "array");
         if (mat.length > 0) gl.mainMaterial.metalness = parseFloat(mat[0]) / 100;
         if (mat.length > 1) gl.mainMaterial.roughness = parseFloat(mat[1]) / 100;
+        if (mat.length > 2) gl.mainMaterial.clearCoat = parseFloat(mat[0]) / 100;
+        if (mat.length > 3) gl.mainMaterial.clearCoatRoughness = parseFloat(mat[1]) / 100;
         gl.mainMesh = new THREE.Mesh(gl.mainGeometry, gl.mainMaterial);
         gl.mainMesh.castShadow = true;
         gl.mainMesh.receiveShadow = true;
@@ -71,7 +73,7 @@ new Ptolemy({
     editor.setValue("20{x0.7h18rx25ry10}R\n#R{grid{s0.5sat0.7}dodeca}");
     document.getElementById("runscript").addEventListener("click", build);
 
-    gl.mainMaterial = new THREE.MeshStandardMaterial({vertexColors: THREE.VertexColors, metalness:0.1, roughness:0.9});
+    gl.mainMaterial = new SolidML.Material();
     gl.mainGeometry = null;
     gl.mainMesh = null;
     gl.floorMaterial = new THREE.MeshLambertMaterial({color:0x888888});
