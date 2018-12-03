@@ -46,15 +46,7 @@ class SolidML {
       throw Error("SolidML.complie() should be called before calling SolidML.build()");
     if (!callback) {
       const objects = [];
-      callback = stat=>{
-        objects.push({"matrix": stat.matrix.clone(), 
-                      "color":  stat.color.getRGBA(), 
-                      "label":  stat.label, 
-                      "param":  stat.param,
-                      "option": stat.option,
-                      "referenceID" : stat.referenceID});
-        return objects;
-      };
+      callback = stat=>{objects.push(stat.clone()); return objects;};
     }
     this.randMT.seed = this.criteria.seed || this._randMTSeed;
     const status = this._root._build(new SolidML.BuildStatus(callback));
@@ -69,7 +61,7 @@ class SolidML {
 /** current version number 
  *  @type {String}
  */
-SolidML.VERSION = "0.2.2";
+SolidML.VERSION = "0.2.4";
 /** Represents a criteria of the structure, specified as "set [key] [value]" in script. Keep any user-defined criteria for your own purpose. {@link SolidML.Criteria#getValue} method refers them. */
 SolidML.Criteria = class {
   /** SolidML.Criteria is created in the constructor of {@link SolidML}.  */
@@ -98,11 +90,11 @@ SolidML.Criteria = class {
      *  @type {string}
      */
     this.background = null;
-    // private
+    // private color pool instance
     this._colorpoolInstance = new SolidML.ColorPool((hash&&hash["colorpool"]) || "randomrgb", randMT);
-
     if (hash && ("colorpool" in hash))
       delete hash["colorpool"];
+    // copy hash to this
     Object.assign(this, hash);
   }
   /** colorpool referd from "color rondom" command.  default is "randomrgb"
@@ -438,6 +430,10 @@ SolidML.BuildStatus = class {
      *  @type {int}
      */
     this.objectCount = 0;
+    /** parent rule's last called contnuouns mesh ("mesh", "cmesh", "tube" and "ctube")
+     *  @type {SolidML.BuildStatus}
+     */
+    this.lastContinuousMesh = null;
     /** current rule
      *  @type {SolidML.Rule}
      */
@@ -450,10 +446,19 @@ SolidML.BuildStatus = class {
     this._stacMatrix = [];
     this._stacRule = [];
     this._referCounter = 0;
+    this._continuousMesh = null;
     this._ruleDepth = {};
     this._rule_min3 = 0;
     this._rule_max3 = 0;
     this._funcNewObject = funcNewObject;
+  }
+  clone() {
+    return {"matrix": this.matrix.clone(),
+            "color":  this.color.clone(),
+            "label":  this.label,
+            "param":  this.param,
+            "option": this.option,
+            "referenceID" : this.referenceID};
   }
   _push() {
     this._stacMatrix.push({"matrix":this.matrix.clone(), "color":this.color.clone()});
@@ -466,9 +471,15 @@ SolidML.BuildStatus = class {
   _pushRule(rule) {
     if (++this._referCounter > 1)
       this.referenceID++;
-    this._stacRule.push({"rule":this.rule, "referCounter":this._referCounter});
+    this._stacRule.push({
+      "rule": this.rule, 
+      "referCounter": this._referCounter, 
+      "continuousMesh": this._continuousMesh
+    });
     this.rule = rule;
     this._referCounter = 0;
+    this.lastContinuousMesh = this._continuousMesh;
+    this._continuousMesh = null;
     if (!(rule.name in this._ruleDepth))
       this._ruleDepth[rule.name] = 0;
     let imin = this.rule.minsize,
@@ -482,6 +493,8 @@ SolidML.BuildStatus = class {
     const refCall = this._stacRule.pop();
     this.rule = refCall.rule;
     this._referCounter = refCall.referCounter;
+    this._continuousMesh = refCall.continuousMesh;
+    this.lastContinuousMesh = (this._stacRule.length > 0) ? this._stacRule[this._stacRule.length-1].continuousMesh : null;
   }
   _newObject(reference) {
     if (!this._checkCriteria())
@@ -489,6 +502,8 @@ SolidML.BuildStatus = class {
     this.label = reference.label;
     this.param = reference.param;
     this.option = reference.option;
+    if (this.label in SolidML.BuildStatus._continuousMeshLabel) 
+      this._continuousMesh = this.clone();
     this.objectCount++;
     this.result = this._funcNewObject(this);
     return true;
@@ -498,6 +513,7 @@ SolidML.BuildStatus = class {
     return (this.objectCount < this.rule.rootInstance.criteria.maxobjects && this._rule_min3 < det3 && det3 < this._rule_max3);
   }
 }
+  SolidML.BuildStatus._continuousMeshLabel = {"mesh":true, "cmesh":true, "tube":true, "ctube":true};
 /** Represents rules in Eisen Script.  */
 SolidML.Rule = class {
   /** [SHOULD NOT CREATE new instance] SolidML.Rule is create by {@link SolidML} */

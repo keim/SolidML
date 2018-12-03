@@ -1,5 +1,5 @@
 /**
- * @file Extention for three.js. SolidMLBUfferGeometry.js depends on three.js and SolidML.js. Import after these dependent files.
+ * @file Extention for three.js. SolidMLBufferGeometry.js depends on three.js and SolidML.js. Import after these dependent files.
  */
 /**
  *  THREE.BufferGeometry constructed by {@link SolidML}. SolidMLBUfferGeometry.js depends on three.js and SolidML.js. Import after these dependent files.
@@ -33,6 +33,9 @@ SolidML.BufferGeometry = class extends THREE.BufferGeometry {
      *  @type {SolidML}
      */
     this.solidML = null;
+    /*
+     */
+    this.geometryFilter = null;
     // private
     this._vertexIndex = 0;
     this._indexIndex = 0;
@@ -66,16 +69,15 @@ SolidML.BufferGeometry = class extends THREE.BufferGeometry {
   /** estimate index, vertex and object count with some margins. Counted values are set at {@link SolidML.BufferGeometry.indexCount}, {@link SolidML.BufferGeometry.vertexCount} and {@link SolidML.BufferGeometry.objectCount}.
    *  @param {int} [indexMargin] margin for index buffer, added to requierd index buffer count
    *  @param {int} [vertexMargin] margin for vertex buffer, added to requierd vertex buffer count
-   *  @param {function} [filter] filtering function. (SolidML.BuildStatus)=>boolean.
    *  @return {SolidML.BufferGeometry} this instance
    */
-  estimateBufferCount(indexMargin=0, vertexMargin=0, filter=null) {
+  estimateBufferCount(indexMargin=0, vertexMargin=0) {
     this.indexCount = indexMargin;
     this.vertexCount = vertexMargin;
     this.objectCount = 0;
     this._geometryCreator.setup();
     this.solidML.build(stat=>{
-      if (filter && !filter(stat)) return;
+      if (this.geometryFilter && !this.geometryFilter(stat)) return;
       const geomCreated = this._geometryCreator.create(stat);
       if (geomCreated) {
         stat.color._incrementRandMT();
@@ -112,17 +114,16 @@ SolidML.BufferGeometry = class extends THREE.BufferGeometry {
   }
   /** update vertex buffer and send data to gpu.
    *  @param {THREE.Vector3} [sortingDotProduct] sort geometries by dot product with specified vector. pass null to sort by generated order. meshes are not sorted.
-   *  @param {function} [filter] filtering function. (SolidML.BuildStatus)=>boolean.
    *  @return {SolidML.BufferGeometry} this instance
    */
-  update(sortingDotProduct = null, filter=null) {
+  update(sortingDotProduct=null) {
     this._indexIndex = 0;
     this._vertexIndex = 0;
     this._geometryCreator.setup();
     if (sortingDotProduct) {
       let sorted = this.solidML.build();
-      if (filter) 
-        sorted.filter(filter);
+      if (this.geometryFilter) 
+        sorted.filter(this.geometryFilter);
       sorted.sort((statA, statB)=>{
         const ma = statA.matrix.elements, mb = statB.matrix.elements,
               da = ma[12]/ma[15]*sortingDotProduct.x + ma[13]/ma[15]*sortingDotProduct.y + ma[14]/ma[15]*sortingDotProduct.z,
@@ -133,7 +134,7 @@ SolidML.BufferGeometry = class extends THREE.BufferGeometry {
       });
     } else {
       this.solidML.build(stat=>{
-        if (filter && !filter(stat)) return;
+        if (this.geometryFilter && !this.geometryFilter(stat)) return;
         this._copyGeometory(stat, this._geometryCreator.create(stat));
       });
     }
@@ -273,26 +274,40 @@ SolidML.GeometryCreator = class {
     return geom;
   }
   _meshCreator(stat) {
-    if (!(stat.referenceID in this._composers))
+    if (!(stat.referenceID in this._composers)) {
       this._composers[stat.referenceID] = new SolidML.MeshComposer(stat, true, 0);
+      if (stat.lastContinuousMesh)
+        this._composers[stat.referenceID].compose(stat.lastContinuousMesh);
+    }
     this._composers[stat.referenceID].compose(stat);
     return null;
   }
   _cmeshCreator(stat) {
-    if (!(stat.referenceID in this._composers))
+    if (!(stat.referenceID in this._composers)) {
       this._composers[stat.referenceID] = new SolidML.MeshComposer(stat, false, 0);
+      if (stat.lastContinuousMesh)
+        this._composers[stat.referenceID].compose(stat.lastContinuousMesh);
+    }
     this._composers[stat.referenceID].compose(stat);
     return null;
   }
   _tubeCreator(stat) {
-    if (!(stat.referenceID in this._composers))
-      this._composers[stat.referenceID] = new SolidML.MeshComposer(stat, true, Math.pow(stat.matrix.det3(),1/3));
+    if (!(stat.referenceID in this._composers)) {
+      const tubeWidth = (stat.lastContinuousMesh) ? this._composers[stat.lastContinuousMesh.referenceID]._tubeWidth : Math.pow(stat.matrix.det3(), 1/3);
+      this._composers[stat.referenceID] = new SolidML.MeshComposer(stat, true, tubeWidth);
+      if (stat.lastContinuousMesh)
+        this._composers[stat.referenceID].compose(stat.lastContinuousMesh);
+    }
     this._composers[stat.referenceID].compose(stat);
     return null;
   }
   _ctubeCreator(stat) {
-    if (!(stat.referenceID in this._composers))
-      this._composers[stat.referenceID] = new SolidML.MeshComposer(stat, false, Math.pow(stat.matrix.det3(),1/3));
+    if (!(stat.referenceID in this._composers)) {
+      const tubeWidth = (stat.lastContinuousMesh) ? this._composers[stat.lastContinuousMesh.referenceID]._tubeWidth : Math.pow(stat.matrix.det3(), 1/3);
+      this._composers[stat.referenceID] = new SolidML.MeshComposer(stat, false, tubeWidth);
+      if (stat.lastContinuousMesh)
+        this._composers[stat.referenceID].compose(stat.lastContinuousMesh);
+    }
     this._composers[stat.referenceID].compose(stat);
     return null;
   }
@@ -468,136 +483,5 @@ SolidML.GridBufferGeometry = class extends THREE.BufferGeometry {
     this.setIndex(new THREE.BufferAttribute(indices, 1));
     this.addAttribute('position', new THREE.BufferAttribute(positions, 3));
     this.computeVertexNormals();
-  }
-}
-/** 
- *  Physical Model Material with vertex alpha
- */
-SolidML.Material = class extends THREE.ShaderMaterial {
-  constructor() {
-    super();
-    this.isShaderMaterial = false;
-    this.MeshPhysicalMaterial = true;
-    this.defines = {'PHYSICAL': ''};
-    this.uniforms = THREE.UniformsUtils.merge([
-      THREE.UniformsLib.common,
-      THREE.UniformsLib.fog,
-      THREE.UniformsLib.lights,
-      {
-        emissive: { value: new THREE.Color( 0x000000 ) },
-        roughness: { value: 0.9 },
-        metalness: { value: 0.1 },
-        clearCoat: { value: 0.5 },
-        clearCoatRoughness: { value: 0.3 },
-        envMapIntensity: { value: 1 }
-      }
-    ]);
-    const shaders = SolidML.Material._crateShaders()
-    this.vertexShader = shaders.vert;
-    this.fragmentShader = shaders.frag;
-    this.lights = true;
-    this.fog = true;
-    this.opacity = 1;
-    this.transparent = true;
-    this.envMap = null;
-    this.envMapIntensity = 1.0;
-    this.refractionRatio = 0.98;
-    this.reflectivity = 0.5;
-    this.color = new THREE.Color(0xffffff);
-  }
-  /** metalness 
-   *  @type {number} 0-1
-   */
-  get metalness(){
-    return this.uniforms.metalness.value;
-  }
-  set metalness(v){
-    this.uniforms.metalness.value = v;
-  }
-  /** roughness 
-   *  @type {number} 0-1
-   */
-  get roughness(){
-    return this.uniforms.roughness.value;
-  }
-  set roughness(v){
-    this.uniforms.roughness.value = v;
-  }
-  /** clearCoat
-   *  @type {number} 0-1
-   */
-  get clearCoat(){
-    return this.uniforms.clearCoat.value;
-  }
-  set clearCoat(v){
-    this.uniforms.clearCoat.value = v;
-  }
-  /** clearCoatRoughness
-   *  @type {number} 0-1
-   */
-  get clearCoatRoughness(){
-    return this.uniforms.clearCoatRoughness.value;
-  }
-  set clearCoatRoughness(v){
-    this.uniforms.clearCoatRoughness.value = v;
-  }
-  static _crateShaders() {
-    const include = libs=>libs.map(lib=>"#include <"+lib+">\n").join("");
-    const varying = vars=>vars.map(v  =>"varying "+v+";\n").join("");
-    const uniform = unis=>unis.map(uni=>"uniform "+uni+";\n").join("");
-    let vert = "", frag = "";
-    vert += include(["common", "fog_pars_vertex", "shadowmap_pars_vertex", "logdepthbuf_pars_vertex"]);
-    vert += varying(["vec3 vViewPosition", "vec3 vNormal", "vec4 vColor"]);
-    vert += "attribute vec4 color;\n";
-    vert += "void main() {\n";
-    vert += "vColor = color;\n";
-    vert += include(["beginnormal_vertex", "defaultnormal_vertex"]);
-    vert += "vNormal=normalize(transformedNormal);\n";
-    vert += include(["begin_vertex", "project_vertex", "logdepthbuf_vertex"]);
-    vert += "vViewPosition=-mvPosition.xyz;\n";
-    vert += include(["worldpos_vertex", "shadowmap_vertex", "fog_vertex"]);
-    vert += "}";
-    frag += uniform([
-      "vec3 diffuse", 
-      "vec3 emissive", 
-      "float roughness", 
-      "float metalness", 
-      "float opacity", 
-      "float clearCoat", 
-      "float clearCoatRoughness"
-    ]);
-    frag += include([
-      "common", 
-      "packing", 
-      "envmap_pars_fragment", 
-      "fog_pars_fragment", 
-      "bsdfs", 
-      "cube_uv_reflection_fragment",
-      "lights_pars",
-      "lights_physical_pars_fragment",
-      "shadowmap_pars_fragment", 
-      "logdepthbuf_pars_fragment"
-    ]);
-    frag += varying(["vec3 vViewPosition", "vec3 vNormal", "vec4 vColor"]);
-    frag += "void main() {\n";
-    frag += "vec4 diffuseColor = vec4(diffuse, opacity);\n"
-    frag += "ReflectedLight reflectedLight = ReflectedLight(vec3(0), vec3(0), vec3(0), vec3(0));\n"
-    frag += "vec3 totalEmissiveRadiance = emissive;\n"
-    frag += include(["logdepthbuf_fragment"]);
-    frag += "diffuseColor.rgba *= vColor;\n"
-    frag += include(["alphatest_fragment"]);
-    frag += "float metalnessFactor = metalness;\n";
-    frag += "float roughnessFactor = roughness;\n";
-    frag += include([
-      "normal_flip",
-      "normal_fragment",
-      "lights_physical_fragment",
-      "lights_template"
-    ]);
-    frag += "vec3 outgoingLight = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse + reflectedLight.directSpecular + reflectedLight.indirectSpecular + totalEmissiveRadiance;\n";
-    frag += "gl_FragColor = vec4(outgoingLight, diffuseColor.a);\n"
-    frag += include(["premultiplied_alpha_fragment", "encodings_fragment", "fog_fragment"]);
-    frag += "}";
-    return {vert, frag};
   }
 }

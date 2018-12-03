@@ -9,18 +9,15 @@ new Ptolemy({
         gl.mainGeometry = new SolidML.BufferGeometry(code, null, {floor:"#888", sky:"#679", mat:"10,90"});
         gl.solidML = gl.mainGeometry.solidML;
 
-        message("vertex:"+gl.mainGeometry.attributes.position.count+"/face:"+gl.mainGeometry.index.count/3);
+        message("vertex:"+gl.mainGeometry.vertexCount+"/face:"+gl.mainGeometry.indexCount/3+"/object:"+gl.mainGeometry.objectCount);
 
         if (gl.mainMesh) gl.scene.remove(gl.mainMesh);
+
         const mat = gl.solidML.criteria.getValue("mat", "array");
         if (mat.length > 0) gl.mainMaterial.metalness = parseFloat(mat[0]) / 100;
         if (mat.length > 1) gl.mainMaterial.roughness = parseFloat(mat[1]) / 100;
-        if (mat.length > 2) gl.mainMaterial.clearCoat = parseFloat(mat[0]) / 100;
-        if (mat.length > 3) gl.mainMaterial.clearCoatRoughness = parseFloat(mat[1]) / 100;
-        gl.mainMesh = new THREE.Mesh(gl.mainGeometry, gl.mainMaterial);
-        gl.mainMesh.castShadow = true;
-        gl.mainMesh.receiveShadow = true;
-        gl.scene.add(gl.mainMesh);
+        if (mat.length > 2) gl.mainMaterial.clearCoat = parseFloat(mat[2]) / 100;
+        if (mat.length > 3) gl.mainMaterial.clearCoatRoughness = parseFloat(mat[3]) / 100;
 
         gl.mainGeometry.computeBoundingBox();
         gl.mainGeometry.computeBoundingSphere();
@@ -47,6 +44,16 @@ new Ptolemy({
         gl.scene.fog.far = sphere.radius*25;
         gl.scene.fog.color = new THREE.Color(skyColor);
         gl.renderer.setClearColor(gl.scene.fog.color);
+
+/*
+        gl.cubeCamera.update(gl.renderer, gl.scene);
+        gl.mainMaterial.envMap = gl.cubeCamera.renderTarget.texture;
+        gl.mainMaterial.needsUpdate = true;
+*/
+        gl.mainMesh = new THREE.Mesh(gl.mainGeometry, gl.mainMaterial);
+        gl.mainMesh.castShadow = true;
+        gl.mainMesh.receiveShadow = true;
+        gl.scene.add(gl.mainMesh);
       } catch(e){
         message(e.message);
         console.error(e);
@@ -85,6 +92,11 @@ new Ptolemy({
 
     gl.scene.fog = new THREE.Fog(new THREE.Color(0x667799), 3000, 5000);
     gl.renderer.setClearColor(gl.scene.fog.color);
+
+    gl.cubeCamera = new THREE.CubeCamera( 1, 1000, 256 );
+    gl.cubeCamera.renderTarget.texture.generateMipmaps = true;
+    gl.cubeCamera.renderTarget.texture.minFilter = THREE.LinearMipMapLinearFilter;
+    gl.scene.add(gl.cubeCamera);
 
     gl.controls = new THREE.TrackballControls(gl.camera, gl.renderer.domElement);
     gl.controls.rotateSpeed = 4.0;
