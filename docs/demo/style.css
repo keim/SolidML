@@ -7,6 +7,28 @@ body {
   overflow: hidden;
   height:100%;
   display: flex;
+  flex-flow: column nowrap;
+}
+#header {
+  padding: 2px 20px;
+  height: 48px;
+  font-size: 30px;
+  color: #fff;
+  background-color: #333;
+}
+#header a {
+  color: #fff;
+  text-decoration: none;
+}
+#header a:hover {
+  color: #ccf;
+}
+#header small {
+  font-size: 14px;
+}
+#content {
+  height:100%;
+  display: flex;
   flex-flow: row nowrap;
 }
 #screen {
@@ -31,18 +53,22 @@ body {
   font: normal 12px Arial;
   color: red;
 }
-button#runscript {
+button {
   width: 180px;
   height: 40px;
-  margin-left:50px;
   border: solid 1px #ccc;
+  border-radius: 3px;
+}
+button#runscript {
+  margin-left:50px;
 }
 button#capture {
   position: absolute;
-  width: 180px;
-  height: 40px;
   right:  20px;
   bottom: 20px;
-  border: solid 1px #ccc;
-  border-radius: 3px;
+}
+button#scripturl {
+  position: absolute;
+  right:  20px;
+  bottom: 80px;
 }

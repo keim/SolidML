@@ -142,7 +142,7 @@ SolidML.BufferGeometry = class extends THREE.BufferGeometry {
         const ma = statA.matrix.elements, mb = statB.matrix.elements,
               da = ma[12]/ma[15]*vec.x + ma[13]/ma[15]*vec.y + ma[14]/ma[15]*vec.z,
               db = mb[12]/mb[15]*vec.x + mb[13]/mb[15]*vec.y + mb[14]/mb[15]*vec.z;
-        return da - db;
+        return db - da;
       }).forEach(stat=>{
         this._copyGeometory(stat, this._geometryCreator.create(stat));
       });

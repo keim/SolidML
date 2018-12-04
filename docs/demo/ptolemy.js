@@ -103,6 +103,7 @@ class Ptolemy {
   _setup() {
     this._adjustScreen();
 
+    this.renderer.antialias = true;
     this.renderer.gammaOutput = true;
     this.renderer.physicallyCorrectLights = true;
     this.renderer.shadowMap.enabled = true;

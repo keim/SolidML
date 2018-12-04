@@ -1,6 +1,7 @@
 function build(gl) {
   try{
     const code = gl.editor.getValue();
+    if (/^\s*$/.test(code)) return;
     window.localStorage.setItem('backup', code);
     gl.mainGeometry = new SolidML.BufferGeometry().build(code, {floor:"#888", sky:"#679", mat:"10,90,60,30"});
     gl.solidML = gl.mainGeometry.solidML;
@@ -42,11 +43,16 @@ function build(gl) {
       gl.scene.fog.color = new THREE.Color(skyColor);
       gl.renderer.setClearColor(gl.scene.fog.color);
 
-/*
+      /**/
+      gl.cubeCamera.position.copy(sphere.center);
       gl.cubeCamera.update(gl.renderer, gl.scene);
-      gl.mainMaterial.envMap = gl.cubeCamera.renderTarget.texture;
+      //gl.mainMaterial.envMap = gl.cubeCamera.renderTarget.texture;
+      gl.mainMaterial.envMapIntensity = 1;
       gl.mainMaterial.needsUpdate = true;
-*/
+
+      /**/
+      gl.needsUpdate = false;
+
       gl.mainMesh = new THREE.Mesh(gl.mainGeometry, gl.mainMaterial);
       gl.mainMesh.castShadow = true;
       gl.mainMesh.receiveShadow = true;
@@ -77,6 +83,17 @@ function capture(gl) {
 }
 
 function setup(gl) {
+  let initialScript = "20{x0.7h18rx25ry10}R\n#R{grid{s0.5sat0.7}dodeca}";
+  if (location.search) {
+    location.search.substring(1).split("&").map(s=>s.split("=")).forEach(query=>{
+      switch(query[0]) {
+        case "s":
+          initialScript = decodeURIComponent(query[1]);
+          break;
+      }
+    });
+  }
+
   gl.editor = ace.edit("texteditor");
   gl.editor.commands.addCommand({
     name : "play",
@@ -93,10 +110,16 @@ function setup(gl) {
     bindKey: {win:"Ctrl-S", mac:"Command-S"},
     exec: ()=>capture(gl)
   });
-  gl.editor.setValue("20{x0.7h18rx25ry10}R\n#R{grid{s0.5sat0.7}dodeca}");
+  gl.editor.setValue(initialScript);
   document.getElementById("runscript").addEventListener("click", ()=>build(gl));
   document.getElementById("capture").addEventListener("click", ()=>capture(gl));
+  document.getElementById("scripturl").addEventListener("click", ()=>{
+    const code = gl.editor.getValue();
+    const query = (/^\s*$/.test(code)) ? "" : "?s=" + encodeURIComponent(code);
+    history.pushState(null, null, location.href.replace(/\?.*$/, "") + query);
+  });
 
+  //gl.mainMaterial = new THREE.MeshPhysicalMaterial({vertexColors:THREE.VertexColors});
   gl.mainMaterial = new SolidML.Material();
   gl.mainGeometry = null;
   gl.mainMesh = null;
@@ -128,6 +151,10 @@ function setup(gl) {
 
 function draw(gl) {
   gl.controls.update();
+  if (gl.needsUpdate) {
+    const camdir = gl.controls.target.clone().sub(gl.camera.position).normalize();
+    gl.mainGeometry.update(camdir);
+  }
 }
 
 
