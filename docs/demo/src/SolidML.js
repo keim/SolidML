@@ -46,7 +46,10 @@ class SolidML {
       throw Error("SolidML.complie() should be called before calling SolidML.build()");
     if (!callback) {
       const objects = [];
-      callback = stat=>{objects.push(stat.clone()); return objects;};
+      callback = stat=>{
+        objects.push(stat.reference());
+        return objects;
+      };
     }
     this.randMT.seed = this.criteria.seed || this._randMTSeed;
     const status = this._root._build(new SolidML.BuildStatus(callback));
@@ -61,7 +64,7 @@ class SolidML {
 /** current version number 
  *  @type {String}
  */
-SolidML.VERSION = "0.2.4";
+SolidML.VERSION = "0.2.5";
 /** Represents a criteria of the structure, specified as "set [key] [value]" in script. Keep any user-defined criteria for your own purpose. {@link SolidML.Criteria#getValue} method refers them. */
 SolidML.Criteria = class {
   /** SolidML.Criteria is created in the constructor of {@link SolidML}.  */
@@ -452,13 +455,14 @@ SolidML.BuildStatus = class {
     this._rule_max3 = 0;
     this._funcNewObject = funcNewObject;
   }
-  clone() {
+  reference() {
     return {"matrix": this.matrix.clone(),
             "color":  this.color.clone(),
             "label":  this.label,
-            "param":  this.param,
             "option": this.option,
-            "referenceID" : this.referenceID};
+            "param":  this.param,
+            "referenceID" : this.referenceID,
+            "objectCount" : this.objectCount};
   }
   _push() {
     this._stacMatrix.push({"matrix":this.matrix.clone(), "color":this.color.clone()});
@@ -502,8 +506,8 @@ SolidML.BuildStatus = class {
     this.label = reference.label;
     this.param = reference.param;
     this.option = reference.option;
-    if (this.label in SolidML.BuildStatus._continuousMeshLabel) 
-      this._continuousMesh = this.clone();
+    if (this.label in SolidML.ScriptParser._continuousMeshLabel) 
+      this._continuousMesh = this.reference();
     this.objectCount++;
     this.result = this._funcNewObject(this);
     return true;
@@ -513,7 +517,6 @@ SolidML.BuildStatus = class {
     return (this.objectCount < this.rule.rootInstance.criteria.maxobjects && this._rule_min3 < det3 && det3 < this._rule_max3);
   }
 }
-  SolidML.BuildStatus._continuousMeshLabel = {"mesh":true, "cmesh":true, "tube":true, "ctube":true};
 /** Represents rules in Eisen Script.  */
 SolidML.Rule = class {
   /** [SHOULD NOT CREATE new instance] SolidML.Rule is create by {@link SolidML} */
@@ -951,10 +954,11 @@ SolidML.randMT = class {
     return ((this._nextInt() >>> 5) * 0x4000000 + (this._nextInt() >>> 6)) / 0x20000000000000; 
   }
 }
-// private 
+// [private] script parser
 SolidML.ScriptParser = class {
   static _initialize() {
     if (!SolidML.ScriptParser.ruleRexString) {
+      SolidML.ScriptParser._continuousMeshLabel = {"mesh":true, "cmesh":true, "tube":true, "ctube":true};
       SolidML.ScriptParser.nameRexString = "([a-zA-Z_][a-zA-Z0-9_:]*)";
       SolidML.ScriptParser.defineRexString = "(#define|\\$)\\s*([a-zA-Z_]+)[\\s=]*([^\\s]+)";
       SolidML.ScriptParser.criteriaRexString = "(set|@)\\s*([a-z:]*)\\s*([a-z:,]+|[\\-\\d.]+|#[0-9a-fA-F]+|\\[.+?\\])";

@@ -39,6 +39,26 @@ class Ptolemy {
     }
   }
 
+  render() {
+    this.renderer.render(this.scene, this.camera);
+  }
+
+  capture(downloadName=null, mimeType="image/jpeg") {
+    this.render();
+    const data = this.renderer.domElement.toDataURL(mimeType);
+    if (downloadName) {
+      const link = document.createElement('a');
+      document.body.appendChild(link);
+      link.download = downloadName;
+      link.href = data;
+      link.click();
+      document.body.removeChild(link);
+    } else {
+      const newWindow = window.open("about:blank", "_blank");
+      newWindow.document.write('<iframe src="' + data  + '" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>');
+    }
+  }
+
   setCameraDistance(verticalSize, targetPosition, cameraDirection) {
     const dist = (verticalSize || this.renderer.getSize().height) * 0.5 / Math.tan(this.camera.fov * 0.008726646259971648);
     const target = targetPosition || this.screenCenter;
@@ -114,7 +134,7 @@ class Ptolemy {
 
   _draw() {
     if (this.draw) this.draw(this);
-    this.renderer.render(this.scene, this.camera);
+    this.render();
   }
 }
 

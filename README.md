@@ -39,6 +39,6 @@ Eisen Script: http://structuresynth.sourceforge.net/reference.php
 - ... and so on
 ## only for demonstration
 - "@floor#HEX" and "@sky#HEX" sets each color
-- "@mat[10,90]" sets material metalness and roughness in percentage
+- "@mat[10,90,50,30]" sets material metalness, roughness, clearCoat and clearCoatRoughness in percentage
 ## API Reference
 https://keim.github.io/SolidML/jsdoc/index.html

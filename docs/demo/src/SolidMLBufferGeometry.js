@@ -8,10 +8,10 @@
 SolidML.BufferGeometry = class extends THREE.BufferGeometry {
   /** THREE.BufferGeometry constructed by {@link SolidML} script.
    *  @param {string} [script] script to construct object. call {@link SolidML.BufferGeometry#build} inside.
-   *  @param {Object.<BufferGeometry>} [geometryHash] hash map of source geometries and keys like {"box":new THREE.BoxBufferGeometry(1, 1, 1)}. The source geometory should be indexed.
    *  @param {object} [criteria] default criteria of this structure, specified by "set *" commands in script.
+   *  @param {Object.<BufferGeometry>} [geometryHash] hash map of source geometries and keys like {"box":new THREE.BoxBufferGeometry(1, 1, 1)}. The source geometory should be indexed.
    */
-  constructor(script=null, geometryHash=null, criteria=null) {
+  constructor(script=null, criteria=null, geometryHash=null) {
     super();
     /** 
      *  vertex count, same as BufferGeometry.attributes.position.count after build()
@@ -33,14 +33,24 @@ SolidML.BufferGeometry = class extends THREE.BufferGeometry {
      *  @type {SolidML}
      */
     this.solidML = null;
-    /*
+    /**
+     *  filtering function(SolidML.BuildStatus)=>boolean.
+     *  @type {function}
      */
     this.geometryFilter = null;
     // private
     this._vertexIndex = 0;
     this._indexIndex = 0;
     this._geometryCreator = new SolidML.GeometryCreator(geometryHash);
-    if (script) this.build(script, criteria);
+    if (script) 
+      this.build(script, criteria);
+  }
+  /**
+   * returns true when the script is already compiled
+   * @return {boolean} 
+   */
+  isCompiled() {
+    return !!this.solidML;
   }
   /** construct object by script. execute {@link SolidML.BufferGeometry#compile}=>{@link SolidML.BufferGeometry#estimateBufferCount}=>{@link SolidML.BufferGeometry#allocBuffers}=>{@link SolidML.BufferGeometry#update} inside
    *  @param {string} script script to construct object. 
@@ -48,9 +58,11 @@ SolidML.BufferGeometry = class extends THREE.BufferGeometry {
    *  @param {boolean} [isDynamic] set THREE.BufferAttribute.dynamic
    *  @param {int} [indexMargin] margin for index buffer, added to requierd index buffer count
    *  @param {int} [vertexMargin] margin for vertex buffer, added to requierd vertex buffer count
+   *  @param {function} [filter] filter filtering function(SolidML.BuildStatus)=>boolean.
    *  @return {SolidML.BufferGeometry} this instance
    */
-  build(script, criteria=null, isDynamic=false, indexMargin=0, vertexMargin=0) {
+  build(script, criteria=null, isDynamic=false, indexMargin=0, vertexMargin=0, filter=null) {
+    this.geometryFilter = filter;
     this.compile(script, criteria);
     this.estimateBufferCount(indexMargin, vertexMargin);
     this.allocBuffers(isDynamic);
@@ -121,13 +133,15 @@ SolidML.BufferGeometry = class extends THREE.BufferGeometry {
     this._vertexIndex = 0;
     this._geometryCreator.setup();
     if (sortingDotProduct) {
-      let sorted = this.solidML.build();
-      if (this.geometryFilter) 
-        sorted.filter(this.geometryFilter);
-      sorted.sort((statA, statB)=>{
+      const statList = [], vec = sortingDotProduct;
+      this.solidML.build(stat=>{
+        if (this.geometryFilter && !this.geometryFilter(stat)) return;
+        statList.push(stat.reference());
+        return statList;
+      }).sort((statA, statB)=>{
         const ma = statA.matrix.elements, mb = statB.matrix.elements,
-              da = ma[12]/ma[15]*sortingDotProduct.x + ma[13]/ma[15]*sortingDotProduct.y + ma[14]/ma[15]*sortingDotProduct.z,
-              db = mb[12]/mb[15]*sortingDotProduct.x + mb[13]/mb[15]*sortingDotProduct.y + mb[14]/mb[15]*sortingDotProduct.z;
+              da = ma[12]/ma[15]*vec.x + ma[13]/ma[15]*vec.y + ma[14]/ma[15]*vec.z,
+              db = mb[12]/mb[15]*vec.x + mb[13]/mb[15]*vec.y + mb[14]/mb[15]*vec.z;
         return da - db;
       }).forEach(stat=>{
         this._copyGeometory(stat, this._geometryCreator.create(stat));
