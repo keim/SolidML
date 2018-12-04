@@ -64,7 +64,7 @@ class SolidML {
 /** current version number 
  *  @type {String}
  */
-SolidML.VERSION = "0.2.5";
+SolidML.VERSION = "0.2.6";
 /** Represents a criteria of the structure, specified as "set [key] [value]" in script. Keep any user-defined criteria for your own purpose. {@link SolidML.Criteria#getValue} method refers them. */
 SolidML.Criteria = class {
   /** SolidML.Criteria is created in the constructor of {@link SolidML}.  */

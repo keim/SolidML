@@ -154,6 +154,9 @@ SolidML.BufferGeometry = class extends THREE.BufferGeometry {
     }
     this._geometryCreator.composeMeshes().forEach(geom=>this._copyGeometory(null, geom));
     this.computeVertexNormals();
+    this.attributes.position.needsUpdate = true;
+    this.attributes.normal.needsUpdate = true;
+    this.attributes.color.needsUpdate = true;
     return this;
   }
   _copyGeometory(stat, geom) {

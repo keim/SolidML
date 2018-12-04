@@ -7,21 +7,24 @@
 SolidML.Material = class extends THREE.ShaderMaterial {
   constructor() {
     super();
+    this.isMeshStandardMaterial = true;
+    this.isMeshPhysicalMaterial = true;
     this.defines = {'PHYSICAL': ''};
     this.uniforms = THREE.UniformsUtils.merge([
       THREE.UniformsLib.common,
       THREE.UniformsLib.fog,
       THREE.UniformsLib.lights,
+      THREE.UniformsLib.envmap,
       {
         emissive: { value: new THREE.Color( 0x000000 ) },
-        roughness: { value: 0.9 },
         metalness: { value: 0.1 },
-        clearCoat: { value: 0.0 },
-        clearCoatRoughness: { value: 0.0 },
+        roughness: { value: 0.9 },
+        clearCoat: { value: 0.3 },
+        clearCoatRoughness: { value: 0.2 },
         envMapIntensity: { value: 1 }
       }
     ]);
-    const shaders = SolidML.Material._crateShaders()
+    const shaders = SolidML.Material._crateShaders();
     this.vertexShader = shaders.vert;
     this.fragmentShader = shaders.frag;
     this.lights = true;
@@ -186,7 +189,6 @@ SolidML.Material = class extends THREE.ShaderMaterial {
     frag += "gl_FragColor = vec4(outgoingLight, diffuseColor.a);\n"
     frag += include(["tonemapping_fragment", "encodings_fragment", "fog_fragment", "premultiplied_alpha_fragment", "dithering_fragment"]);
     frag += "}";
-    //return {vert:THREE.ShaderChunk.meshphysical_vert, frag:THREE.ShaderChunk.meshphysical_frag};
     return {vert, frag};
   }
 }

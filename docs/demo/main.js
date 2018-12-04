@@ -3,7 +3,7 @@ function build(gl) {
     const code = gl.editor.getValue();
     if (/^\s*$/.test(code)) return;
     window.localStorage.setItem('backup', code);
-    gl.mainGeometry = new SolidML.BufferGeometry().build(code, {floor:"#888", sky:"#679", mat:"10,90,60,30"});
+    gl.mainGeometry = new SolidML.BufferGeometry().build(code, {floor:"#888", sky:"#679", mat:"10,90,30,20"}, true);
     gl.solidML = gl.mainGeometry.solidML;
 
     message("vertex:"+gl.mainGeometry.vertexCount+"/face:"+gl.mainGeometry.indexCount/3+"/object:"+gl.mainGeometry.objectCount);
@@ -46,12 +46,12 @@ function build(gl) {
       /**/
       gl.cubeCamera.position.copy(sphere.center);
       gl.cubeCamera.update(gl.renderer, gl.scene);
-      //gl.mainMaterial.envMap = gl.cubeCamera.renderTarget.texture;
+      gl.mainMaterial.envMap = gl.cubeCamera.renderTarget.texture;
       gl.mainMaterial.envMapIntensity = 1;
       gl.mainMaterial.needsUpdate = true;
 
       /**/
-      gl.needsUpdate = false;
+      gl.updateFrame = false;
 
       gl.mainMesh = new THREE.Mesh(gl.mainGeometry, gl.mainMaterial);
       gl.mainMesh.castShadow = true;
@@ -151,7 +151,7 @@ function setup(gl) {
 
 function draw(gl) {
   gl.controls.update();
-  if (gl.needsUpdate) {
+  if (gl.updateFrame) {
     const camdir = gl.controls.target.clone().sub(gl.camera.position).normalize();
     gl.mainGeometry.update(camdir);
   }
