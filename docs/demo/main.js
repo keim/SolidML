@@ -43,14 +43,12 @@ function build(gl) {
       gl.scene.fog.color = new THREE.Color(skyColor);
       gl.renderer.setClearColor(gl.scene.fog.color);
 
-      /**/
       gl.cubeCamera.position.copy(sphere.center);
       gl.cubeCamera.update(gl.renderer, gl.scene);
       gl.mainMaterial.envMap = gl.cubeCamera.renderTarget.texture;
       gl.mainMaterial.envMapIntensity = 1;
       gl.mainMaterial.needsUpdate = true;
 
-      /**/
       gl.updateFrame = false;
 
       gl.mainMesh = new THREE.Mesh(gl.mainGeometry, gl.mainMaterial);
@@ -111,6 +109,7 @@ function setup(gl) {
     exec: ()=>capture(gl)
   });
   gl.editor.setValue(initialScript);
+  document.getElementById("version").textContent = SolidML.VERSION;
   document.getElementById("runscript").addEventListener("click", ()=>build(gl));
   document.getElementById("capture").addEventListener("click", ()=>capture(gl));
   document.getElementById("scripturl").addEventListener("click", ()=>{

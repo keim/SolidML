@@ -8,7 +8,7 @@ class SolidML {
    *  @param {string} [script] SolidML script to compile, calls {@link SolidML#compile} inside.
    *  @param {object} [criteria] default criteria of this structure, specified by "set *" commands in script.
    */
-  constructor(script, criteria) {
+  constructor(script=null, criteria=null) {
     SolidML.ScriptParser._initialize();
     /** random number generator for constuct model.
      *  @type {SolidML.randMT}
@@ -22,7 +22,8 @@ class SolidML {
      *  @type {object}
      */
     this.variables = {};
-    if (script) this.compile(script);
+    if (script)
+      this.compile(script);
   }
   /** Parse script, make a structure of recursive calls inside.
    *  @param  {string} script SolidML script to compile
@@ -38,33 +39,30 @@ class SolidML {
     return this;
   }
   /** Build object structure. This function has to be called after calling {@link SolidML#compile}.
-   *  @param {SolidML~buildCallback} [callback] function called back when new object has created.
-   *  @return {any} returned value of callback. when callback is undefined, returns the array of {matrix:Matrix4, color:ColorRGB, label:String, param:String} for each objects.
+   *  @param {SolidML~buildCallback} [callback] function called back when new object has created. Call passed {@link SolidML.BuildStatus#stopBuilding} to stop building immediatly.
+   *  @return {any} returned value of callback. when callback is undefined, returns the array of cloned {@link SolidML.BuildStatus}.
    */
-  build(callback) {
+  build(callback=null) {
     if (!this._root)
       throw Error("SolidML.complie() should be called before calling SolidML.build()");
-    if (!callback) {
-      const objects = [];
-      callback = stat=>{
-        objects.push(stat.reference());
-        return objects;
-      };
-    }
     this.randMT.seed = this.criteria.seed || this._randMTSeed;
-    const status = this._root._build(new SolidML.BuildStatus(callback));
+    const status = this._root._build(new SolidML.BuildStatus(callback || this.defaultBuildCallback));
     return status.result;
+  }
+  defaultBuildCallback(stat) {
+    stat.result = stat.result || [];
+    stat.result.push(stat.reference());
   }
 }
 /** callback function passed to {@link SolidML#build}
  *  @callback SolidML~buildCallback
  *  @param {SolidML.BuildStatus} status the status while building structure
- *  @return {any} the return value can be refered by {@link BuildStatus.result}, or {@link SolidML#build}.
+ *  @return {any} value of {@link SolidML.BuildStatus.result}.
  */
 /** current version number 
  *  @type {String}
  */
-SolidML.VERSION = "0.2.6";
+SolidML.VERSION = "0.2.7";
 /** Represents a criteria of the structure, specified as "set [key] [value]" in script. Keep any user-defined criteria for your own purpose. {@link SolidML.Criteria#getValue} method refers them. */
 SolidML.Criteria = class {
   /** SolidML.Criteria is created in the constructor of {@link SolidML}.  */
@@ -73,10 +71,10 @@ SolidML.Criteria = class {
      *  @type {int}
      */
     this.maxdepth = 10000;
-    /** maximum object count to terminate constuction. default is 100000
+    /** maximum object count to terminate constuction. default is 1000000
      *  @type {int}
      */
-    this.maxobjects = 100000;
+    this.maxobjects = 1000000;
     /** minimun size to create object, check [the 3dim-determinant of matrix] < [minsize] ^ 3. default is 0
      *  @type {number}
      */
@@ -405,11 +403,11 @@ SolidML.ColorHSBA = class {
 SolidML.BuildStatus = class {
   /** [SHOULD NOT CREATE new instance] SolidML.BuildStatus instance is created by {@link SolidML}  */
   constructor(funcNewObject) {
-    /** matrix to transform the object. convert for three.js by pass this to THREE.Matrix4.copy()
+    /** matrix to transform the object. convert for three.js by pass this to THREE.Matrix4.copy(). this instance has been updated in the building computation. Use {@link SolidML.Matrix4#clone} to remember and reuse the status.
      *  @type {SolidML.Matrix4}
      */
     this.matrix = new SolidML.Matrix4();
-    /** color for the object. get RGBA values by {@link ColorHSBA#getRGBA}
+    /** color for the object. get RGBA values by {@link SolidML.ColorHSBA#getRGBA}. this instance has been updated in the building computation. Use {@link SolidML.ColorHSBA#clone} to remember and reuse the status.
      *  @type {SolidML.ColorHSBA}
      */
     this.color  = new SolidML.ColorHSBA(0,1,1,1);
@@ -418,14 +416,14 @@ SolidML.BuildStatus = class {
      */
     this.label = null;
     /** Array of options of the object written as "name:option"
-     *  @type {Array.<string>}
+     *  @type {string}
      */
     this.option = null;
-    /** parameters of the object written as "name[...]"
+    /** parameters of the object written as "name[param]"
      *  @type {string}
      */
     this.param = null;
-    /** increment when the rule calls from root
+    /** increment when the rule is called. used in composing contnuous mesh
      *  @type {int}
      */
     this.referenceID = 0;
@@ -433,7 +431,7 @@ SolidML.BuildStatus = class {
      *  @type {int}
      */
     this.objectCount = 0;
-    /** parent rule's last called contnuouns mesh ("mesh", "cmesh", "tube" and "ctube")
+    /** parent rule's last called contnuous mesh ("mesh", "cmesh", "tube" and "ctube")
      *  @type {SolidML.BuildStatus}
      */
     this.lastContinuousMesh = null;
@@ -441,7 +439,7 @@ SolidML.BuildStatus = class {
      *  @type {SolidML.Rule}
      */
     this.rule = null;
-    /** return value of previous callback
+    /** return value of {@link SolidML#build}
      *  @type {object}
      */
     this.result = null;
@@ -453,8 +451,12 @@ SolidML.BuildStatus = class {
     this._ruleDepth = {};
     this._rule_min3 = 0;
     this._rule_max3 = 0;
+    this._newObjectStatus = true;
     this._funcNewObject = funcNewObject;
   }
+  /** create new Object including clones of current status
+   *  @return {Object} typeof {matrix, color, label, option, param, referenceID, objectCount}. rule, lastContinuousMesh and result are not cloned. 
+   */
   reference() {
     return {"matrix": this.matrix.clone(),
             "color":  this.color.clone(),
@@ -463,6 +465,10 @@ SolidML.BuildStatus = class {
             "param":  this.param,
             "referenceID" : this.referenceID,
             "objectCount" : this.objectCount};
+  }
+  /** call this method to stop building immediately */
+  stopBuilding() {
+    this._newObjectStatus = false;
   }
   _push() {
     this._stacMatrix.push({"matrix":this.matrix.clone(), "color":this.color.clone()});
@@ -509,8 +515,8 @@ SolidML.BuildStatus = class {
     if (this.label in SolidML.ScriptParser._continuousMeshLabel) 
       this._continuousMesh = this.reference();
     this.objectCount++;
-    this.result = this._funcNewObject(this);
-    return true;
+    this._funcNewObject(this);
+    return this._newObjectStatus;
   }
   _checkCriteria() {
     const det3 = this.matrix.det3();

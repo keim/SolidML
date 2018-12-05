@@ -87,7 +87,7 @@ SolidML.BufferGeometry = class extends THREE.BufferGeometry {
     this.indexCount = indexMargin;
     this.vertexCount = vertexMargin;
     this.objectCount = 0;
-    this._geometryCreator.setup();
+    this._geometryCreator.setup(true);
     this.solidML.build(stat=>{
       if (this.geometryFilter && !this.geometryFilter(stat)) return;
       const geomCreated = this._geometryCreator.create(stat);
@@ -98,9 +98,9 @@ SolidML.BufferGeometry = class extends THREE.BufferGeometry {
         this.objectCount++;
       }
     });
-    this._geometryCreator.composeMeshes().forEach(geom=>{
-      this.indexCount += geom.index.array.length;
-      this.vertexCount += geom.attributes.position.count;
+    this._geometryCreator.composeMeshes(true).forEach(reference=>{
+      this.indexCount += reference.indexCount;
+      this.vertexCount += reference.vertexCount;
       this.objectCount++;
     });
     return this;
@@ -131,14 +131,14 @@ SolidML.BufferGeometry = class extends THREE.BufferGeometry {
   update(sortingDotProduct=null) {
     this._indexIndex = 0;
     this._vertexIndex = 0;
-    this._geometryCreator.setup();
+    this._geometryCreator.setup(false);
     if (sortingDotProduct) {
       const statList = [], vec = sortingDotProduct;
       this.solidML.build(stat=>{
         if (this.geometryFilter && !this.geometryFilter(stat)) return;
         statList.push(stat.reference());
-        return statList;
-      }).sort((statA, statB)=>{
+      });
+      statList.sort((statA, statB)=>{
         const ma = statA.matrix.elements, mb = statB.matrix.elements,
               da = ma[12]/ma[15]*vec.x + ma[13]/ma[15]*vec.y + ma[14]/ma[15]*vec.z,
               db = mb[12]/mb[15]*vec.x + mb[13]/mb[15]*vec.y + mb[14]/mb[15]*vec.z;
@@ -152,7 +152,7 @@ SolidML.BufferGeometry = class extends THREE.BufferGeometry {
         this._copyGeometory(stat, this._geometryCreator.create(stat));
       });
     }
-    this._geometryCreator.composeMeshes().forEach(geom=>this._copyGeometory(null, geom));
+    this._geometryCreator.composeMeshes(false).forEach(geom=>this._copyGeometory(null, geom));
     this.computeVertexNormals();
     this.attributes.position.needsUpdate = true;
     this.attributes.normal.needsUpdate = true;
@@ -230,16 +230,19 @@ SolidML.GeometryCreator = class {
       "ctube":    this._ctubeCreator.bind(this),
     };
   }
-  setup() {
+  setup(isEstimationOnly) {
     // tempolaly area
     this._composers = {};
+    this._isEstimationOnly = isEstimationOnly;
   }
   create(stat) {
     return (stat.label in this._creatorFunctions && (!(stat.label in this._geometryHash) || stat.param || stat.option)) ?
            this._creatorFunctions[stat.label](stat) : this._geometryHash[stat.label];
   }
-  composeMeshes() {
-    return Object.keys(this._composers).map(key=>this._composers[key].create());
+  composeMeshes(isEstimationOnly) {
+    if (isEstimationOnly != this._isEstimationOnly)
+      throw Error("fatal error : MeshComposer");
+    return Object.keys(this._composers).map(key=>this._composers[key].create(isEstimationOnly));
   }
   _sphereCreator(stat) {
     let segment = Number(stat.option)>>0;
@@ -294,18 +297,18 @@ SolidML.GeometryCreator = class {
     if (!(stat.referenceID in this._composers)) {
       this._composers[stat.referenceID] = new SolidML.MeshComposer(stat, true, 0);
       if (stat.lastContinuousMesh)
-        this._composers[stat.referenceID].compose(stat.lastContinuousMesh);
+        this._composers[stat.referenceID].compose(stat.lastContinuousMesh, this._isEstimationOnly);
     }
-    this._composers[stat.referenceID].compose(stat);
+    this._composers[stat.referenceID].compose(stat, this._isEstimationOnly);
     return null;
   }
   _cmeshCreator(stat) {
     if (!(stat.referenceID in this._composers)) {
       this._composers[stat.referenceID] = new SolidML.MeshComposer(stat, false, 0);
       if (stat.lastContinuousMesh)
-        this._composers[stat.referenceID].compose(stat.lastContinuousMesh);
+        this._composers[stat.referenceID].compose(stat.lastContinuousMesh, this._isEstimationOnly);
     }
-    this._composers[stat.referenceID].compose(stat);
+    this._composers[stat.referenceID].compose(stat, this._isEstimationOnly);
     return null;
   }
   _tubeCreator(stat) {
@@ -313,9 +316,9 @@ SolidML.GeometryCreator = class {
       const tubeWidth = (stat.lastContinuousMesh) ? this._composers[stat.lastContinuousMesh.referenceID]._tubeWidth : Math.pow(stat.matrix.det3(), 1/3);
       this._composers[stat.referenceID] = new SolidML.MeshComposer(stat, true, tubeWidth);
       if (stat.lastContinuousMesh)
-        this._composers[stat.referenceID].compose(stat.lastContinuousMesh);
+        this._composers[stat.referenceID].compose(stat.lastContinuousMesh, this._isEstimationOnly);
     }
-    this._composers[stat.referenceID].compose(stat);
+    this._composers[stat.referenceID].compose(stat, this._isEstimationOnly);
     return null;
   }
   _ctubeCreator(stat) {
@@ -323,9 +326,9 @@ SolidML.GeometryCreator = class {
       const tubeWidth = (stat.lastContinuousMesh) ? this._composers[stat.lastContinuousMesh.referenceID]._tubeWidth : Math.pow(stat.matrix.det3(), 1/3);
       this._composers[stat.referenceID] = new SolidML.MeshComposer(stat, false, tubeWidth);
       if (stat.lastContinuousMesh)
-        this._composers[stat.referenceID].compose(stat.lastContinuousMesh);
+        this._composers[stat.referenceID].compose(stat.lastContinuousMesh, this._isEstimationOnly);
     }
-    this._composers[stat.referenceID].compose(stat);
+    this._composers[stat.referenceID].compose(stat, this._isEstimationOnly);
     return null;
   }
 }
@@ -336,6 +339,7 @@ SolidML.MeshComposer = class {
     this._tubeWidth = tubeWidth;
     this._vertexStac = [];
     this._colorStac = [];
+    this._vertexEstimation = 0;
     // for caluculation
     this._matrix = null;
     this._qrt = new THREE.Quaternion();
@@ -353,15 +357,31 @@ SolidML.MeshComposer = class {
       this._crossSection.push(new THREE.Vector2(Math.cos(rad)*0.707, Math.sin(rad)*0.707));
     }
   }
-  compose(stat) {
-    if (this._matrix) 
-      this._extendMesh(stat);
-    else 
-      this._matrix = new THREE.Matrix4();
-    this._matrix.copy(stat.matrix);
-    this._colorStac.push(stat.color.getRGBA());
+  compose(stat, isEstimationOnly) {
+    if (isEstimationOnly) {
+      this._vertexEstimation += this._crossSection.length;
+      stat.color._incrementRandMT();
+    } else {
+      if (this._matrix) 
+        this._extendMesh(stat);
+      else 
+        this._matrix = new THREE.Matrix4();
+      this._matrix.copy(stat.matrix);
+      this._colorStac.push(stat.color.getRGBA());
+    }
   }
-  create() {
+  create(isEstimationOnly) {
+    if (isEstimationOnly) {
+      const vmax = this._vertexEstimation,
+            seg = this._crossSection.length,
+            sidefaceCount = vmax - seg,
+            capfaceCount = seg - 2,
+            vertexCount = vmax * ((this._isFlat) ? 2 : 1) + seg * 2;
+      return {
+        vertexCount,
+        indexCount: sidefaceCount * 6 + capfaceCount * 6
+      };
+    }
     // last extention
     this._extendMesh(null);
     // face indexing
