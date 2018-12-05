@@ -138,14 +138,20 @@ function setup(gl) {
   gl.scene.add(gl.cubeCamera);
 
   gl.controls = new THREE.TrackballControls(gl.camera, gl.renderer.domElement);
-  gl.controls.rotateSpeed = 4.0;
-  gl.controls.zoomSpeed = 4.0;
-  gl.controls.panSpeed = 0.6;
+  gl.controls.rotateSpeed = 3.0;
+  gl.controls.zoomSpeed = 3.0;
+  gl.controls.panSpeed = 0.5;
   gl.controls.noZoom = false;
   gl.controls.noPan = false;
   gl.controls.staticMoving = true;
-  gl.controls.dynamicDampingFactor = 0.8;
+  gl.controls.dynamicDampingFactor = 0.3;
   gl.controls.keys = [ 65, 83, 68 ];
+
+  gl.postProcess = new PostProcess(gl);
+  gl.render = ()=>{
+    gl.renderer.render(gl.scene, gl.camera, gl.postProcess.renderTarget);
+    gl.renderer.render(gl.postProcess.postScene, gl.postProcess.postCamera);
+  };
 }
 
 function draw(gl) {
@@ -156,7 +162,60 @@ function draw(gl) {
   }
 }
 
+class PostProcess {
+  constructor(gl) {
+    const size = gl.renderer.getSize();
+    this.renderTarget = new THREE.WebGLRenderTarget(size.width, size.height);
+    this.renderTarget.texture.format = THREE.RGBFormat;
+    this.renderTarget.texture.minFilter = THREE.NearestFilter;
+    this.renderTarget.texture.magFilter = THREE.NearestFilter;
+    this.renderTarget.texture.generateMipmaps = false;
+    this.renderTarget.stencilBuffer = false;
+    this.renderTarget.depthBuffer = true;
+    this.renderTarget.depthTexture = new THREE.DepthTexture();
+    this.renderTarget.depthTexture.type = THREE.UnsignedShortType;
 
+    const shader = this._shader();
+    this.postCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+    this.postMaterial = new THREE.ShaderMaterial( {
+      vertexShader: shader.vert,
+      fragmentShader: shader.frag,
+      uniforms: {
+        cameraNear: { value: gl.camera.near },
+        cameraFar: { value: gl.camera.far },
+        tDiffuse: { value: this.renderTarget.texture },
+        tDepth: { value: this.renderTarget.depthTexture }
+      }
+    });
+    this.postScene = new THREE.Scene();
+    this.postScene.add(new THREE.Mesh(new THREE.PlaneBufferGeometry(2, 2), this.postMaterial));
+  }
+  _shader() {
+    const include = libs=>libs.map(lib=>"#include <"+lib+">").join("\n");
+    const varying = vars=>vars.map(v  =>"varying "+v+";").join("\n");
+    const uniform = unis=>unis.map(uni=>"uniform "+uni+";").join("\n");
+    return {
+      vert: "varying vec2 vUv; void main(){ vUv=uv; gl_Position=vec4(position,1.); }",
+      frag: [
+        include(["packing"]),
+        varying(["vec2 vUv"]),
+        uniform(["sampler2D tDiffuse", "sampler2D tDepth", "float cameraNear", "float cameraFar"]),
+        "float readDepth( sampler2D depthSampler, vec2 coord ) {",
+          "float fragCoordZ = texture2D( depthSampler, coord ).x;",
+          "float viewZ = perspectiveDepthToViewZ( fragCoordZ, cameraNear, cameraFar );",
+          "return viewZToOrthographicDepth( viewZ, cameraNear, cameraFar );",
+        "}",
+        "void main() {",
+          "vec3 diffuse = texture2D( tDiffuse, vUv ).rgb;",
+          "float depth = readDepth( tDepth, vUv );",
+          "gl_FragColor.rgb = diffuse;",
+          "gl_FragColor.a = 1.0;",
+        "}"
+      ].join("\n")
+    };
+  }
+}
+      
 new Ptolemy({
   containerid: 'screen',
   setup,

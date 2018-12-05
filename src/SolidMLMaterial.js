@@ -21,7 +21,7 @@ SolidML.Material = class extends THREE.ShaderMaterial {
     this.aoMap = null;
     this.aoMapIntensity = 1.0;
     this.emissive = new THREE.Color( 0x000000 );
-    this.emissiveIntensity = 1.0;
+    this.emissiveIntensity = 0.0;
     this.emissiveMap = null;
     this.bumpMap = null;
     this.bumpScale = 1;
@@ -46,8 +46,8 @@ SolidML.Material = class extends THREE.ShaderMaterial {
     this.morphNormals = false;
     // copy from THREE.MeshPhysicalMaterial
     this.reflectivity = 0.5; // maps to F0 = 0.04
-    this.clearCoat = 0.0;
-    this.clearCoatRoughness = 0.0;
+    this.clearCoat = 0.3;
+    this.clearCoatRoughness = 0.2;
     // set uniforms
     this.uniforms = THREE.UniformsUtils.merge([
       THREE.ShaderLib.standard.uniforms,
