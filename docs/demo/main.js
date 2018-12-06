@@ -21,7 +21,7 @@ function build(gl) {
       gl.mainGeometry.computeBoundingSphere();
       const bbox = gl.mainGeometry.boundingBox,
             sphere = gl.mainGeometry.boundingSphere;
-      const floorHeight = bbox.min.z - 5;
+      const floorHeight = bbox.min.z - sphere.radius * 0.3;
 
       gl.setCameraDistance(sphere.radius*2, sphere.center, new THREE.Vector3(0,1,-1));
       gl.controls.target = sphere.center;
@@ -35,13 +35,10 @@ function build(gl) {
 
       const floorColor = gl.solidML.criteria.background || gl.solidML.criteria.getValue("floor", "color");
       const skyColor   = gl.solidML.criteria.background || gl.solidML.criteria.getValue("sky", "color");
-      gl.floorMaterial.color = new THREE.Color(floorColor);
-      gl.floorLight.color = gl.floorMaterial.color;
+      //gl.floorMaterial.color = new THREE.Color(floorColor);
+      gl.floorLight.color = new THREE.Color(floorColor);
       gl.floor.position.z = floorHeight;
-      gl.scene.fog.near = sphere.radius*20;
-      gl.scene.fog.far = sphere.radius*25;
-      gl.scene.fog.color = new THREE.Color(skyColor);
-      gl.renderer.setClearColor(gl.scene.fog.color);
+      gl.renderer.setClearColor(new THREE.Color(skyColor));
 
       gl.cubeCamera.position.copy(sphere.center);
       gl.cubeCamera.update(gl.renderer, gl.scene);
@@ -54,6 +51,9 @@ function build(gl) {
       gl.mainMesh = new THREE.Mesh(gl.mainGeometry, gl.mainMaterial);
       gl.mainMesh.castShadow = true;
       gl.mainMesh.receiveShadow = true;
+
+      gl.shadowAccumlator.target(gl.mainMesh);
+
       gl.scene.add(gl.mainMesh);
     }
   } catch(e){
@@ -122,15 +122,14 @@ function setup(gl) {
   gl.mainMaterial = new SolidML.Material();
   gl.mainGeometry = null;
   gl.mainMesh = null;
-  gl.floorMaterial = new THREE.MeshLambertMaterial({color:0x888888});
+  gl.floorMaterial = new THREE.ShadowMaterial({color:0x000000, opacity:0.2});
   gl.floorGeometry = new THREE.PlaneBufferGeometry(50000,50000);
   gl.floorGeometry.attributes.position.dynamic = true;
   gl.floor = new THREE.Mesh(gl.floorGeometry, gl.floorMaterial);
   gl.floor.receiveShadow = true;
   gl.scene.add(gl.floor);
 
-  gl.scene.fog = new THREE.Fog(new THREE.Color(0x667799), 3000, 5000);
-  gl.renderer.setClearColor(gl.scene.fog.color);
+  gl.renderer.setClearColor(new THREE.Color(0x667799));
 
   gl.cubeCamera = new THREE.CubeCamera( 1, 1000, 256 );
   gl.cubeCamera.renderTarget.texture.generateMipmaps = true;
@@ -147,11 +146,64 @@ function setup(gl) {
   gl.controls.dynamicDampingFactor = 0.3;
   gl.controls.keys = [ 65, 83, 68 ];
 
-  gl.postProcess = new PostProcess(gl);
+  gl.shadowAccumlator = new ShadowAccumlator(gl);
+  gl.postProcess = new PostProcess(gl, gl.shadowAccumlator.accumBuffer.texture);
   gl.render = ()=>{
+    //gl.shadowAccumlator.render(gl);
     gl.renderer.render(gl.scene, gl.camera, gl.postProcess.renderTarget);
     gl.renderer.render(gl.postProcess.postScene, gl.postProcess.postCamera);
   };
+}
+
+class ShadowAccumlator {
+  constructor(gl) {
+    const size = gl.renderer.getSize();
+    this.accumBuffer = new THREE.WebGLRenderTarget(size.width, size.height);
+    this.accumBuffer.texture.format = THREE.RGBFormat;
+    this.accumBuffer.texture.minFilter = THREE.NearestFilter;
+    this.accumBuffer.texture.magFilter = THREE.NearestFilter;
+    this.accumBuffer.texture.generateMipmaps = false;
+    this.accumBuffer.stencilBuffer = false;
+    this.accumBuffer.depthBuffer = false;
+    this.shadowMaterial = new THREE.ShadowMaterial({color:0x000000, opacity:1});
+    this.light = new THREE.DirectionalLight(0xffffff, 1);
+    this.light.castShadow = true;
+    this.light.shadow.radius = 2;
+    this.light.shadow.mapSize.width = 2048;
+    this.light.shadow.mapSize.height = 2048;
+    this.light.shadow.camera.near = 0.01;
+    this.light.shadow.camera.far = 100000;
+    this.light.position.set(0,0,100);
+    this.light.lookAt(0,0,0);
+    this.renderer = new THREE.WebGLRenderer();
+    this.scene = new THREE.Scene();
+    this.scene.add(this.light);
+  }
+  target(targetMesh) {
+    if (this.targetMesh)
+      this.scene.remove(this.targetMesh);
+    this.targetMesh = targetMesh.clone();
+    this.targetMesh.material = this.shadowMaterial;
+    this.targetMesh.castShadow = true;
+    this.targetMesh.receiveShadow = true;
+    this.scene.add(this.targetMesh);
+  }
+  render(gl) {
+    if (!this.targetMesh) return;
+    const sphere = this.targetMesh.geometry.boundingSphere,
+          sp = new THREE.Spherical();
+    this.light.shadow.camera.bottom = sphere.center.y - sphere.radius;
+    this.light.shadow.camera.top    = sphere.center.y + sphere.radius;
+    this.light.shadow.camera.left   = sphere.center.x - sphere.radius;
+    this.light.shadow.camera.right  = sphere.center.x + sphere.radius;
+    this.light.lookAt(sphere.center);
+    this.light.shadow.camera.updateProjectionMatrix();
+    const clearColor = gl.renderer.getClearColor();
+    gl.renderer.setClearColor(new THREE.Color(0xffffff));
+    this.light.position.setFromSpherical(sp.set(sphere.radius, Math.random()*Math.PI, Math.random()*Math.PI*2));
+    gl.renderer.render(this.scene, gl.camera, this.accumBuffer);
+    gl.renderer.setClearColor(clearColor);
+  }
 }
 
 function draw(gl) {
@@ -163,7 +215,7 @@ function draw(gl) {
 }
 
 class PostProcess {
-  constructor(gl) {
+  constructor(gl, accumMap) {
     const size = gl.renderer.getSize();
     this.renderTarget = new THREE.WebGLRenderTarget(size.width, size.height);
     this.renderTarget.texture.format = THREE.RGBFormat;
@@ -184,7 +236,8 @@ class PostProcess {
         cameraNear: { value: gl.camera.near },
         cameraFar: { value: gl.camera.far },
         tDiffuse: { value: this.renderTarget.texture },
-        tDepth: { value: this.renderTarget.depthTexture }
+        tDepth: { value: this.renderTarget.depthTexture },
+        tAccum: { value: accumMap }
       }
     });
     this.postScene = new THREE.Scene();
@@ -199,7 +252,7 @@ class PostProcess {
       frag: [
         include(["packing"]),
         varying(["vec2 vUv"]),
-        uniform(["sampler2D tDiffuse", "sampler2D tDepth", "float cameraNear", "float cameraFar"]),
+        uniform(["sampler2D tDiffuse", "sampler2D tDepth", "sampler2D tAccum", "float cameraNear", "float cameraFar"]),
         "float readDepth( sampler2D depthSampler, vec2 coord ) {",
           "float fragCoordZ = texture2D( depthSampler, coord ).x;",
           "float viewZ = perspectiveDepthToViewZ( fragCoordZ, cameraNear, cameraFar );",
@@ -207,8 +260,9 @@ class PostProcess {
         "}",
         "void main() {",
           "vec3 diffuse = texture2D( tDiffuse, vUv ).rgb;",
+          "vec3 accum = texture2D( tAccum, vUv ).rgb;",
           "float depth = readDepth( tDepth, vUv );",
-          "gl_FragColor.rgb = diffuse;",
+          "gl_FragColor.rgb = diffuse;//*accum",
           "gl_FragColor.a = 1.0;",
         "}"
       ].join("\n")

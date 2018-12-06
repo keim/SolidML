@@ -112,25 +112,30 @@ class Ptolemy {
     this.sky = new THREE.Mesh(new THREE.BoxBufferGeometry(1,1,1));
 
     this.ambient = new THREE.AmbientLight(0xffffff, 0.5);
-    this.light   = new THREE.DirectionalLight(0xffffff, 1.0);
-    this.light.castShadow = true;
-    this.light.shadow.radius = 3;
-    this.light.shadow.mapSize.width = 1024;
-    this.light.shadow.mapSize.height = 1024;
-    this.light.shadow.camera.near = 0.01;
-    this.light.shadow.camera.far = 100000;
-    this.light.position.set(0, 0, 250);
     this.floorLight = new THREE.DirectionalLight(0xffffff, 0.3);
     this.floorLight.position.set(0, 0, -1);
-
+    this.light = this._light(0, 0, 1, 2048);
     this.setCameraDistance();
 
     this.scene.add(this.ambient);
-    this.scene.add(this.light);
     this.scene.add(this.floorLight);
+    this.scene.add(this.light);
     this.scene.add(this.camera);
 
     if (this.setup) this.setup(this);
+  }
+
+  _light(x, y, z, mapsize) {
+    const light = new THREE.DirectionalLight(0xffffff, 1);
+    light.castShadow = true;
+    light.shadow.radius = 2;
+    light.shadow.mapSize.width = mapsize;
+    light.shadow.mapSize.height = mapsize;
+    light.shadow.camera.near = 0.01;
+    light.shadow.camera.far = 100000;
+    light.position.set(x,y,z);
+    light.lookAt(0,0,0);
+    return light;
   }
 
   _draw() {
