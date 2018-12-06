@@ -8,7 +8,8 @@ function build(gl) {
 
     message("vertex:"+gl.mainGeometry.vertexCount+"/face:"+gl.mainGeometry.indexCount/3+"/object:"+gl.mainGeometry.objectCount);
 
-    if (gl.mainMesh) gl.scene.remove(gl.mainMesh);
+    if (gl.mainMesh) 
+      gl.scene.remove(gl.mainMesh);
 
     if (gl.mainGeometry.isCompiled()) {
       const mat = gl.solidML.criteria.getValue("mat", "array");
@@ -23,15 +24,12 @@ function build(gl) {
             sphere = gl.mainGeometry.boundingSphere;
       const floorHeight = bbox.min.z - sphere.radius * 0.3;
 
-      gl.setCameraDistance(sphere.radius*2, sphere.center, new THREE.Vector3(0,1,-1));
       gl.controls.target = sphere.center;
+      gl.camera.position.sub(sphere.center).normalize().multiplyScalar(sphere.radius*4).add(sphere.center);
 
-      gl.light.shadow.camera.bottom = sphere.center.y - sphere.radius;
-      gl.light.shadow.camera.top    = sphere.center.y + sphere.radius;
-      gl.light.shadow.camera.left   = sphere.center.x - sphere.radius;
-      gl.light.shadow.camera.right  = sphere.center.x + sphere.radius;
-      gl.light.position.set(0, 0, sphere.center.z+sphere.radius + 1);
-      gl.light.shadow.camera.updateProjectionMatrix();
+      gl.topLight.position.set(0, 0, sphere.center.z + sphere.radius + 1);
+      gl.topLight.lookAt(sphere.center);
+      gl.calcShadowingRange(gl.topLight, sphere);
 
       const floorColor = gl.solidML.criteria.background || gl.solidML.criteria.getValue("floor", "color");
       const skyColor   = gl.solidML.criteria.background || gl.solidML.criteria.getValue("sky", "color");
@@ -142,16 +140,19 @@ function setup(gl) {
   gl.controls.panSpeed = 0.5;
   gl.controls.noZoom = false;
   gl.controls.noPan = false;
-  gl.controls.staticMoving = true;
-  gl.controls.dynamicDampingFactor = 0.3;
-  gl.controls.keys = [ 65, 83, 68 ];
+  gl.controls.dynamicDampingFactor = 0.25;
 
   gl.shadowAccumlator = new ShadowAccumlator(gl);
-  gl.postProcess = new PostProcess(gl, gl.shadowAccumlator.accumBuffer.texture);
+  gl.shadowAccumlatorMaterial = new ShadowAccumlator.Material(gl);
+  gl.shadowAccumlatorMaterial.uniforms.tDiffuse.value = gl.shadowAccumlator.accumBuffer.texture;
+  gl.shadowAccumlatorMaterial.uniforms.opacity.value = 1;
+  gl.accumLayer = new THREE.Mesh(new THREE.PlaneBufferGeometry(2,2), this.accumMaterial);
+  gl.accumLayer.renderOrder = 9999;
+  gl.scene.add(gl.accumLayer);
   gl.render = ()=>{
-    //gl.shadowAccumlator.render(gl);
-    gl.renderer.render(gl.scene, gl.camera, gl.postProcess.renderTarget);
-    gl.renderer.render(gl.postProcess.postScene, gl.postProcess.postCamera);
+    gl.shadowAccumlator.render(gl);
+    gl.renderer.render(gl.scene, gl.camera);
+    //gl.renderer.render(gl.postProcess.postScene, gl.postProcess.postCamera);
   };
 }
 
@@ -165,12 +166,15 @@ class ShadowAccumlator {
     this.accumBuffer.texture.generateMipmaps = false;
     this.accumBuffer.stencilBuffer = false;
     this.accumBuffer.depthBuffer = false;
+    this.accumMaterial = new ShadowAccumlator.Material(this.accumBuffer);
+    this.accumLayer = new THREE.Mesh(new THREE.PlaneBufferGeometry(2,2), this.accumMaterial);
+    this.accumLayer.renderOrder = 9999;
     this.shadowMaterial = new THREE.ShadowMaterial({color:0x000000, opacity:1});
     this.light = new THREE.DirectionalLight(0xffffff, 1);
     this.light.castShadow = true;
     this.light.shadow.radius = 2;
-    this.light.shadow.mapSize.width = 2048;
-    this.light.shadow.mapSize.height = 2048;
+    this.light.shadow.mapSize.width = 512;
+    this.light.shadow.mapSize.height = 512;
     this.light.shadow.camera.near = 0.01;
     this.light.shadow.camera.far = 100000;
     this.light.position.set(0,0,100);
@@ -178,6 +182,7 @@ class ShadowAccumlator {
     this.renderer = new THREE.WebGLRenderer();
     this.scene = new THREE.Scene();
     this.scene.add(this.light);
+    //this.scene.add(this.accumLayer);
   }
   target(targetMesh) {
     if (this.targetMesh)
@@ -198,11 +203,47 @@ class ShadowAccumlator {
     this.light.shadow.camera.right  = sphere.center.x + sphere.radius;
     this.light.lookAt(sphere.center);
     this.light.shadow.camera.updateProjectionMatrix();
+
     const clearColor = gl.renderer.getClearColor();
     gl.renderer.setClearColor(new THREE.Color(0xffffff));
-    this.light.position.setFromSpherical(sp.set(sphere.radius, Math.random()*Math.PI, Math.random()*Math.PI*2));
-    gl.renderer.render(this.scene, gl.camera, this.accumBuffer);
+    for (let i=0; i<256; i++) {
+      this.accumMaterial.uniforms.opacity.value = 1/(i+1);
+      this.light.position.setFromSpherical(sp.set(sphere.radius, Math.random()*Math.PI, Math.random()*Math.PI*2));
+      gl.renderer.render(this.scene, gl.camera, this.accumBuffer);
+    }
+
     gl.renderer.setClearColor(clearColor);
+  }
+}
+ShadowAccumlator.Material = class extends THREE.RawShaderMaterial {
+  constructor(renderTarget) {
+    super({
+      uniforms: {
+        "tDiffuse": { value: renderTarget.texture },
+        "opacity":  { value: 1.0 }
+      },
+      vertexShader: [
+        "attribute vec3 position;",
+        "attribute vec3 normal;",
+        "attribute vec2 uv;",
+        "varying vec2 vUv;",
+        "void main() {",
+          "vUv = uv;",
+          "gl_Position = vec4( position, 1.0 );",
+        "}"
+      ].join( "\n" ),
+      fragmentShader: [
+        "uniform float opacity;",
+        "uniform sampler2D tDiffuse;",
+        "varying vec2 vUv;",
+        "void main() {",
+          "vec4 pixel = texture2D( tDiffuse, vUv );",
+          "pixel.a *= opacity;",
+          "gl_FragColor = pixel;",
+        "}"
+      ].join( "\n" ),
+      transparent : true
+    });
   }
 }
 
@@ -214,61 +255,6 @@ function draw(gl) {
   }
 }
 
-class PostProcess {
-  constructor(gl, accumMap) {
-    const size = gl.renderer.getSize();
-    this.renderTarget = new THREE.WebGLRenderTarget(size.width, size.height);
-    this.renderTarget.texture.format = THREE.RGBFormat;
-    this.renderTarget.texture.minFilter = THREE.NearestFilter;
-    this.renderTarget.texture.magFilter = THREE.NearestFilter;
-    this.renderTarget.texture.generateMipmaps = false;
-    this.renderTarget.stencilBuffer = false;
-    this.renderTarget.depthBuffer = true;
-    this.renderTarget.depthTexture = new THREE.DepthTexture();
-    this.renderTarget.depthTexture.type = THREE.UnsignedShortType;
-
-    const shader = this._shader();
-    this.postCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
-    this.postMaterial = new THREE.ShaderMaterial( {
-      vertexShader: shader.vert,
-      fragmentShader: shader.frag,
-      uniforms: {
-        cameraNear: { value: gl.camera.near },
-        cameraFar: { value: gl.camera.far },
-        tDiffuse: { value: this.renderTarget.texture },
-        tDepth: { value: this.renderTarget.depthTexture },
-        tAccum: { value: accumMap }
-      }
-    });
-    this.postScene = new THREE.Scene();
-    this.postScene.add(new THREE.Mesh(new THREE.PlaneBufferGeometry(2, 2), this.postMaterial));
-  }
-  _shader() {
-    const include = libs=>libs.map(lib=>"#include <"+lib+">").join("\n");
-    const varying = vars=>vars.map(v  =>"varying "+v+";").join("\n");
-    const uniform = unis=>unis.map(uni=>"uniform "+uni+";").join("\n");
-    return {
-      vert: "varying vec2 vUv; void main(){ vUv=uv; gl_Position=vec4(position,1.); }",
-      frag: [
-        include(["packing"]),
-        varying(["vec2 vUv"]),
-        uniform(["sampler2D tDiffuse", "sampler2D tDepth", "sampler2D tAccum", "float cameraNear", "float cameraFar"]),
-        "float readDepth( sampler2D depthSampler, vec2 coord ) {",
-          "float fragCoordZ = texture2D( depthSampler, coord ).x;",
-          "float viewZ = perspectiveDepthToViewZ( fragCoordZ, cameraNear, cameraFar );",
-          "return viewZToOrthographicDepth( viewZ, cameraNear, cameraFar );",
-        "}",
-        "void main() {",
-          "vec3 diffuse = texture2D( tDiffuse, vUv ).rgb;",
-          "vec3 accum = texture2D( tAccum, vUv ).rgb;",
-          "float depth = readDepth( tDepth, vUv );",
-          "gl_FragColor.rgb = diffuse;//*accum",
-          "gl_FragColor.a = 1.0;",
-        "}"
-      ].join("\n")
-    };
-  }
-}
       
 new Ptolemy({
   containerid: 'screen',
