@@ -51,7 +51,7 @@ function build(gl) {
       gl.mainMesh.castShadow = true;
       gl.mainMesh.receiveShadow = true;
 
-      gl.shadowAccumlator.target(gl.mainMesh);
+      gl.shadowAccumlator.setMeshes([gl.mainMesh], bbox);
 
       gl.scene.add(gl.mainMesh);
     }
@@ -163,7 +163,7 @@ function setup(gl) {
       gl.renderer.setClearColor(gl.skyColor);
       gl.renderer.render(gl.scene, gl.camera, gl.renderTarget);
       gl.shadowAccumlator.render(gl.camera, 8);
-      gl.shadowAccumlator.accumlator.render(gl.renderTarget.texture, 0);
+      gl.shadowAccumlator.accumlator.render(gl.renderTarget, 1);
     }
   };
 }
