@@ -27,23 +27,24 @@ function build(gl) {
       gl.controls.target = sphere.center;
       gl.camera.position.sub(sphere.center).normalize().multiplyScalar(sphere.radius*4).add(sphere.center);
 
-      gl.topLight.position.set(0, 0, sphere.center.z + sphere.radius + 1);
-      gl.topLight.lookAt(sphere.center);
+      gl.topLight.position.set(sphere.center.x, sphere.center.y, sphere.center.z+sphere.radius+1);
+      gl.topLight.target.position.copy(sphere.center);
       gl.calcShadowingRange(gl.topLight, sphere);
 
-      const floorColor = gl.solidML.criteria.background || gl.solidML.criteria.getValue("floor", "color");
-      const skyColor   = gl.solidML.criteria.background || gl.solidML.criteria.getValue("sky", "color");
-      //gl.floorMaterial.color = new THREE.Color(floorColor);
-      gl.floorLight.color = new THREE.Color(floorColor);
+      gl.floorColor = new THREE.Color(gl.solidML.criteria.background || gl.solidML.criteria.getValue("floor", "color"));
+      gl.skyColor   = new THREE.Color(gl.solidML.criteria.background || gl.solidML.criteria.getValue("sky", "color"));
+      //gl.floorMaterial.color = floorColor;
+      gl.floorLight.color = gl.floorColor;
       gl.floor.position.z = floorHeight;
-      gl.renderer.setClearColor(new THREE.Color(skyColor));
 
+      /*
       gl.cubeCamera.position.copy(sphere.center);
       gl.cubeCamera.update(gl.renderer, gl.scene);
       gl.mainMaterial.envMap = gl.cubeCamera.renderTarget.texture;
       gl.mainMaterial.envMapIntensity = 1;
       gl.mainMaterial.needsUpdate = true;
-
+      */
+     
       gl.updateFrame = false;
 
       gl.mainMesh = new THREE.Mesh(gl.mainGeometry, gl.mainMaterial);
@@ -127,6 +128,8 @@ function setup(gl) {
   gl.floor.receiveShadow = true;
   gl.scene.add(gl.floor);
 
+  gl.renderTarget = gl.newRenderTarget();
+
   gl.renderer.setClearColor(new THREE.Color(0x667799));
 
   gl.cubeCamera = new THREE.CubeCamera( 1, 1000, 256 );
@@ -140,111 +143,29 @@ function setup(gl) {
   gl.controls.panSpeed = 0.5;
   gl.controls.noZoom = false;
   gl.controls.noPan = false;
-  gl.controls.dynamicDampingFactor = 0.25;
+  gl.controls.staticMoving = true;
+  gl.controls.addEventListener("start", ()=>{
+    gl.shadowAccumlator.stop();
+    return true;
+  });
+  gl.controls.addEventListener("end", ()=>{
+    gl.shadowAccumlator.start();
+    return true;
+  });
 
   gl.shadowAccumlator = new ShadowAccumlator(gl);
-  gl.shadowAccumlatorMaterial = new ShadowAccumlator.Material(gl);
-  gl.shadowAccumlatorMaterial.uniforms.tDiffuse.value = gl.shadowAccumlator.accumBuffer.texture;
-  gl.shadowAccumlatorMaterial.uniforms.opacity.value = 1;
-  gl.accumLayer = new THREE.Mesh(new THREE.PlaneBufferGeometry(2,2), this.accumMaterial);
-  gl.accumLayer.renderOrder = 9999;
-  gl.scene.add(gl.accumLayer);
+
   gl.render = ()=>{
-    gl.shadowAccumlator.render(gl);
-    gl.renderer.render(gl.scene, gl.camera);
-    //gl.renderer.render(gl.postProcess.postScene, gl.postProcess.postCamera);
-  };
-}
-
-class ShadowAccumlator {
-  constructor(gl) {
-    const size = gl.renderer.getSize();
-    this.accumBuffer = new THREE.WebGLRenderTarget(size.width, size.height);
-    this.accumBuffer.texture.format = THREE.RGBFormat;
-    this.accumBuffer.texture.minFilter = THREE.NearestFilter;
-    this.accumBuffer.texture.magFilter = THREE.NearestFilter;
-    this.accumBuffer.texture.generateMipmaps = false;
-    this.accumBuffer.stencilBuffer = false;
-    this.accumBuffer.depthBuffer = false;
-    this.accumMaterial = new ShadowAccumlator.Material(this.accumBuffer);
-    this.accumLayer = new THREE.Mesh(new THREE.PlaneBufferGeometry(2,2), this.accumMaterial);
-    this.accumLayer.renderOrder = 9999;
-    this.shadowMaterial = new THREE.ShadowMaterial({color:0x000000, opacity:1});
-    this.light = new THREE.DirectionalLight(0xffffff, 1);
-    this.light.castShadow = true;
-    this.light.shadow.radius = 2;
-    this.light.shadow.mapSize.width = 512;
-    this.light.shadow.mapSize.height = 512;
-    this.light.shadow.camera.near = 0.01;
-    this.light.shadow.camera.far = 100000;
-    this.light.position.set(0,0,100);
-    this.light.lookAt(0,0,0);
-    this.renderer = new THREE.WebGLRenderer();
-    this.scene = new THREE.Scene();
-    this.scene.add(this.light);
-    //this.scene.add(this.accumLayer);
-  }
-  target(targetMesh) {
-    if (this.targetMesh)
-      this.scene.remove(this.targetMesh);
-    this.targetMesh = targetMesh.clone();
-    this.targetMesh.material = this.shadowMaterial;
-    this.targetMesh.castShadow = true;
-    this.targetMesh.receiveShadow = true;
-    this.scene.add(this.targetMesh);
-  }
-  render(gl) {
-    if (!this.targetMesh) return;
-    const sphere = this.targetMesh.geometry.boundingSphere,
-          sp = new THREE.Spherical();
-    this.light.shadow.camera.bottom = sphere.center.y - sphere.radius;
-    this.light.shadow.camera.top    = sphere.center.y + sphere.radius;
-    this.light.shadow.camera.left   = sphere.center.x - sphere.radius;
-    this.light.shadow.camera.right  = sphere.center.x + sphere.radius;
-    this.light.lookAt(sphere.center);
-    this.light.shadow.camera.updateProjectionMatrix();
-
-    const clearColor = gl.renderer.getClearColor();
-    gl.renderer.setClearColor(new THREE.Color(0xffffff));
-    for (let i=0; i<256; i++) {
-      this.accumMaterial.uniforms.opacity.value = 1/(i+1);
-      this.light.position.setFromSpherical(sp.set(sphere.radius, Math.random()*Math.PI, Math.random()*Math.PI*2));
-      gl.renderer.render(this.scene, gl.camera, this.accumBuffer);
+    if (gl.shadowAccumlator.pause) {
+      gl.renderer.setClearColor(gl.skyColor);
+      gl.renderer.render(gl.scene, gl.camera);
+    } else {
+      gl.renderer.setClearColor(gl.skyColor);
+      gl.renderer.render(gl.scene, gl.camera, gl.renderTarget);
+      gl.shadowAccumlator.render(gl.camera, 8);
+      gl.shadowAccumlator.accumlator.render(gl.renderTarget.texture, 0);
     }
-
-    gl.renderer.setClearColor(clearColor);
-  }
-}
-ShadowAccumlator.Material = class extends THREE.RawShaderMaterial {
-  constructor(renderTarget) {
-    super({
-      uniforms: {
-        "tDiffuse": { value: renderTarget.texture },
-        "opacity":  { value: 1.0 }
-      },
-      vertexShader: [
-        "attribute vec3 position;",
-        "attribute vec3 normal;",
-        "attribute vec2 uv;",
-        "varying vec2 vUv;",
-        "void main() {",
-          "vUv = uv;",
-          "gl_Position = vec4( position, 1.0 );",
-        "}"
-      ].join( "\n" ),
-      fragmentShader: [
-        "uniform float opacity;",
-        "uniform sampler2D tDiffuse;",
-        "varying vec2 vUv;",
-        "void main() {",
-          "vec4 pixel = texture2D( tDiffuse, vUv );",
-          "pixel.a *= opacity;",
-          "gl_FragColor = pixel;",
-        "}"
-      ].join( "\n" ),
-      transparent : true
-    });
-  }
+  };
 }
 
 function draw(gl) {

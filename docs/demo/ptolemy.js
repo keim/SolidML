@@ -59,6 +59,11 @@ class Ptolemy {
     }
   }
 
+  newRenderTarget(option) {
+    const size = this.renderer.getSize();
+    return new THREE.WebGLRenderTarget(size.width, size.height, option);
+  }
+
   setCameraDistance(verticalSize, targetPosition, cameraDirection) {
     const dist = (verticalSize || this.renderer.getSize().height) * 0.5 / Math.tan(this.camera.fov * 0.008726646259971648);
     const target = targetPosition || this.screenCenter;
@@ -120,6 +125,8 @@ class Ptolemy {
     this.scene.add(this.ambient);
     this.scene.add(this.floorLight);
     this.scene.add(this.topLight);
+    this.scene.add(this.topLight.target);
+    //this.scene.add(new THREE.CameraHelper(this.topLight.shadow.camera));
     this.scene.add(this.camera);
 
     if (this.setup) this.setup(this);
@@ -132,15 +139,15 @@ class Ptolemy {
     light.shadow.mapSize.width = mapsize;
     light.shadow.mapSize.height = mapsize;
     light.position.set(x,y,z);
-    light.lookAt(0,0,0);
+    light.target.position.set(0,0,0);
     return light;
   }
 
   calcShadowingRange(light, sphere) {
-    light.shadow.camera.bottom = sphere.center.y - sphere.radius;
-    light.shadow.camera.top    = sphere.center.y + sphere.radius;
-    light.shadow.camera.left   = sphere.center.x - sphere.radius;
-    light.shadow.camera.right  = sphere.center.x + sphere.radius;
+    light.shadow.camera.bottom = -sphere.radius;
+    light.shadow.camera.top    = +sphere.radius;
+    light.shadow.camera.left   = -sphere.radius;
+    light.shadow.camera.right  = +sphere.radius;
     light.shadow.camera.near   = 0.01;
     light.shadow.camera.far    = 100000;
     light.shadow.camera.updateProjectionMatrix();

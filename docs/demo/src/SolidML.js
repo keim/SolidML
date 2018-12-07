@@ -62,15 +62,23 @@ class SolidML {
 /** current version number 
  *  @type {String}
  */
-SolidML.VERSION = "0.2.7";
+SolidML.VERSION = "0.2.8";
 /** Represents a criteria of the structure, specified as "set [key] [value]" in script. Keep any user-defined criteria for your own purpose. {@link SolidML.Criteria#getValue} method refers them. */
 SolidML.Criteria = class {
   /** SolidML.Criteria is created in the constructor of {@link SolidML}.  */
   constructor(randMT, hash) {
-    /** maximum depth to terminate recursive rule calls. default is 10000 
+    /** the maximum limit of {@link SolidML.Criteria.maxdepth}. default is 10000 
      *  @type {int}
      */
-    this.maxdepth = 10000;
+    this.systemMaxDepth = 10000;
+    /** the maximum limit of {@link SolidML.Criteria.maxobjects}. default is 5000000
+     *  @type {int}
+     */
+    this.systemMaxObjects = 5000000;
+    /** maximum depth to terminate recursive rule calls. default is 5000 
+     *  @type {int}
+     */
+    this.maxdepth = 5000;
     /** maximum object count to terminate constuction. default is 1000000
      *  @type {int}
      */
@@ -111,9 +119,11 @@ SolidML.Criteria = class {
     switch(key) {
       case "maxdepth": case "":
         this.maxdepth = this._getNumber(value, this.maxdepth);
+        if (this.maxdepth > this.systemMaxDepth) this.maxdepth = this.systemMaxDepth;
         break;
       case "maxobjects": case "mo":
         this.maxobjects = this._getNumber(value, this.maxobjects);
+        if (this.maxobjects > this.systemMaxObjects) this.maxobjects = this.systemMaxObjects;
         break;
       case "minsize": case "min":
         this.minsize = this._getNumber(value, this.minsize);
