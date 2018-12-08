@@ -99,12 +99,12 @@ class BufferAccumlator {
   }
   accumlate(accumRenderTarget, alpha=1) {
     this.accumlateCount++;
-    const blend = (this.accumlateCount < 512) ? this.accumlateCount : 512;
+    const blend = (this.accumlateCount < 1024) ? this.accumlateCount : 1024;
     this.blend(this.accumlationBuffer, accumRenderTarget, alpha/blend, this.renderTarget);
     this.copy(this.renderTarget, this.accumlationBuffer);
   }
   render(renderTarget, alpha) {
-    this.mult(renderTarget, this.accumlationBuffer, 4, -0.5, null);
+    this.mult(renderTarget, this.accumlationBuffer, 2, 0, null);
   }
 }
 class ShadowAccumlator {
@@ -165,7 +165,7 @@ class ShadowAccumlator {
     this.scene.add(tempCamera);
     if (this.accumlator.accumlateCount > 512) times = 1;
     for (let i=0; i<times; i++) {
-      dir.set(Math.random()-0.5, Math.random()-0.5, Math.random()-0.5).setLength(this.boundingBoxRadius);
+      dir.set(Math.random()-0.5, Math.random()-0.5, Math.random()-0.2).setLength(this.boundingBoxRadius);
       this.light.position.addVectors(this.boundingBoxCenter, dir);
       this.renderer.render(this.scene, tempCamera, this.renderTarget);
       this.accumlator.accumlate(this.renderTarget);

@@ -72,3 +72,14 @@ button#scripturl {
   right:  20px;
   bottom: 80px;
 }
+button#aocheck {
+  position: absolute;
+  right:  20px;
+  top: 70px;
+}
+button#aocheck>.fas {
+  display: none;
+}
+button#aocheck.checked>.fas {
+  display: inline;
+}

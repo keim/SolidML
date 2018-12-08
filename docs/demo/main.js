@@ -116,6 +116,10 @@ function setup(gl) {
     const query = (/^\s*$/.test(code)) ? "" : "?s=" + encodeURIComponent(code);
     history.pushState(null, null, location.href.replace(/\?.*$/, "") + query);
   });
+  document.getElementById("aocheck").addEventListener("click", e=>{
+    gl.enableAO = !gl.enableAO;
+    e.target.className = (gl.enableAO) ? "checked" : "";
+  });
 
   //gl.mainMaterial = new THREE.MeshPhysicalMaterial({vertexColors:THREE.VertexColors});
   gl.mainMaterial = new SolidML.Material();
@@ -154,9 +158,10 @@ function setup(gl) {
   });
 
   gl.shadowAccumlator = new ShadowAccumlator(gl);
+  gl.enableAO = true;
 
   gl.render = ()=>{
-    if (gl.shadowAccumlator.pause) {
+    if (gl.shadowAccumlator.pause || !gl.enableAO) {
       gl.renderer.setClearColor(gl.skyColor);
       gl.renderer.render(gl.scene, gl.camera);
     } else {
