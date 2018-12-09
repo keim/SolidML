@@ -39,6 +39,10 @@ class Ptolemy {
     }
   }
 
+  get domElement() {
+    return (this._containerid) ? document.getElementById(this._containerid) : null;
+  }
+
   render() {
     this.renderer.render(this.scene, this.camera);
   }
@@ -81,14 +85,14 @@ class Ptolemy {
 
   /** start updating */
   start() {
-    if (this._containerid) document.getElementById(this._containerid).appendChild(this.renderer.domElement);
+    if (this._containerid) this.domElement.appendChild(this.renderer.domElement);
     this._starttime = this._prevtime = performance.now();
     this._setup();
     this._loop();
   }
 
   _adjustScreen() {
-    const dom = document.getElementById(this._containerid)
+    const dom = this.domElement;
     const width  = this.screenSize.width  || dom.clientWidth,
           height = this.screenSize.height || dom.clientHeight;
     this.camera.aspect = width / height;

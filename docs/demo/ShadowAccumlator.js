@@ -103,8 +103,8 @@ class BufferAccumlator {
     this.blend(this.accumlationBuffer, accumRenderTarget, alpha/blend, this.renderTarget);
     this.copy(this.renderTarget, this.accumlationBuffer);
   }
-  render(renderTarget, alpha) {
-    this.mult(renderTarget, this.accumlationBuffer, 2, 0, null);
+  render(renderTarget, scale, add) {
+    this.mult(renderTarget, this.accumlationBuffer, scale, add, null);
   }
 }
 class ShadowAccumlator {

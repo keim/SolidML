@@ -37,13 +37,11 @@ function build(gl) {
       gl.floorLight.color = gl.floorColor;
       gl.floor.position.z = floorHeight;
 
-      /*
       gl.cubeCamera.position.copy(sphere.center);
       gl.cubeCamera.update(gl.renderer, gl.scene);
       gl.mainMaterial.envMap = gl.cubeCamera.renderTarget.texture;
       gl.mainMaterial.envMapIntensity = 1;
       gl.mainMaterial.needsUpdate = true;
-      */
      
       gl.updateFrame = false;
 
@@ -116,10 +114,18 @@ function setup(gl) {
     const query = (/^\s*$/.test(code)) ? "" : "?s=" + encodeURIComponent(code);
     history.pushState(null, null, location.href.replace(/\?.*$/, "") + query);
   });
-  document.getElementById("aocheck").addEventListener("click", e=>{
-    gl.enableAO = !gl.enableAO;
-    e.target.className = (gl.enableAO) ? "checked" : "";
-  });
+
+  gl.AOenable = true;
+  gl.AOsharpness = 2;
+  gl._AOsharpnessFactor = 4;
+  gl.AOoffset = 0;
+
+  gl.gui = new dat.GUI({autoPlace: false});
+  document.getElementById("paramgui").appendChild(gl.gui.domElement);
+  const ao = gl.gui.addFolder("Ambient Occlusion");
+  ao.add(gl, 'AOenable');
+  ao.add(gl, 'AOsharpness', 0, 5).step(0.1).onChange(v=>{gl._AOsharpnessFactor=Math.pow(2, gl.AOsharpness);});
+  ao.add(gl, 'AOoffset', -1, 1).step(0.1);
 
   //gl.mainMaterial = new THREE.MeshPhysicalMaterial({vertexColors:THREE.VertexColors});
   gl.mainMaterial = new SolidML.Material();
@@ -158,17 +164,16 @@ function setup(gl) {
   });
 
   gl.shadowAccumlator = new ShadowAccumlator(gl);
-  gl.enableAO = true;
 
   gl.render = ()=>{
-    if (gl.shadowAccumlator.pause || !gl.enableAO) {
+    if (gl.shadowAccumlator.pause || !gl.AOenable) {
       gl.renderer.setClearColor(gl.skyColor);
       gl.renderer.render(gl.scene, gl.camera);
     } else {
       gl.renderer.setClearColor(gl.skyColor);
       gl.renderer.render(gl.scene, gl.camera, gl.renderTarget);
       gl.shadowAccumlator.render(gl.camera, 8);
-      gl.shadowAccumlator.accumlator.render(gl.renderTarget, 1);
+      gl.shadowAccumlator.accumlator.render(gl.renderTarget, gl._AOsharpnessFactor, gl.AOoffset-(gl._AOsharpnessFactor*0.125));
     }
   };
 }

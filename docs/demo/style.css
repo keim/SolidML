@@ -35,6 +35,11 @@ body {
   height:100%;
   flex: 1 1 auto;
 }
+#paramgui {
+  position:absolute;
+  top:50px;
+  right:20px;
+}
 #editor {
   height:100%;
   width: 480px;
@@ -71,15 +76,4 @@ button#scripturl {
   position: absolute;
   right:  20px;
   bottom: 80px;
-}
-button#aocheck {
-  position: absolute;
-  right:  20px;
-  top: 70px;
-}
-button#aocheck>.fas {
-  display: none;
-}
-button#aocheck.checked>.fas {
-  display: inline;
 }
