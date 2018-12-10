@@ -32,14 +32,13 @@ class ShadowAccumlator {
     this.accumlator = new BufferAccumlator(gl);
     this.renderer = gl.renderer;
     this.renderTarget = gl.newRenderTarget({generateMipmaps: false});
-    //this.material = new THREE.ShadowMaterial({color:0});//, vertexColors: THREE.VertexColors
     this.material = new THREE.MeshLambertMaterial({color:0xffffff});//, vertexColors: THREE.VertexColors
     this.light = new THREE.DirectionalLight(0xffffff, 1);
     this.light.castShadow = true;
     this.light.shadow.mapSize.width = 512;
     this.light.shadow.mapSize.height = 512;
     this.light.shadow.camera.near = 0.01;
-    this.light.shadow.camera.far = 100000;
+    this.light.shadow.camera.far = 10000;
     this.boundingBoxSize = new THREE.Vector3();
     this.boundingBoxCenter = new THREE.Vector3();
     this.boundingBoxRadius = 0;

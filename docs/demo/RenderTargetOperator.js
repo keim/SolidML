@@ -17,14 +17,15 @@ class RenderTargetOperator {
   calc(uniforms, target=null) {
     RenderTargetOperator._mesh.material = this.material;
     for (let key in this.material.uniforms) 
-      this.material.uniforms[key].value = (key in uniforms) ? (uniforms[key].texture || uniforms[key]) : this.defaultUniforms[key];
+      this.material.uniforms[key].value = (key in uniforms) ? 
+        (uniforms[key].texture || uniforms[key]) : this.defaultUniforms[key];
     RenderTargetOperator._render(target);
   }
   static _initialize(webGLRenderer) {
     if (!RenderTargetOperator._renderer) {
       RenderTargetOperator._renderer = webGLRenderer;
       RenderTargetOperator._vertexShader = "varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4( position, 1.0 ); }";
-      RenderTargetOperator._mesh   = new THREE.Mesh(new THREE.PlaneBufferGeometry(2,2), null);
+      RenderTargetOperator._mesh   = new THREE.Mesh(new THREE.PlaneBufferGeometry(2, 2), null);
       RenderTargetOperator._camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
       RenderTargetOperator._scene  = new THREE.Scene();
       RenderTargetOperator._scene.add(RenderTargetOperator._camera);

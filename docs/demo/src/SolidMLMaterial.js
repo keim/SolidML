@@ -170,7 +170,7 @@ SolidML.Material = class extends THREE.ShaderMaterial {
           "fog_pars_fragment",
           "lights_pars_begin",
           "lights_physical_pars_fragment",
-          "shadowmap_pars_fragment",
+          "shadowmap_pars_fragment", // <= change getShadow() call 
           "bumpmap_pars_fragment",
           "normalmap_pars_fragment",
           "roughnessmap_pars_fragment",
@@ -197,7 +197,8 @@ SolidML.Material = class extends THREE.ShaderMaterial {
             "normal_fragment_maps",
             "emissivemap_fragment",
             "lights_physical_fragment",
-            "lights_fragment_begin",
+            "lights_fragment_begin", // <= change getShadow() call 
+            /* insert irradiance caluration here */
             "lights_fragment_maps",
             "lights_fragment_end"
           ]),
