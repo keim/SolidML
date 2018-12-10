@@ -116,7 +116,8 @@ class Ptolemy {
     this.renderer.gammaOutput = true;
     this.renderer.physicallyCorrectLights = true;
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFShadowMap;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    //this.renderer.shadowMap.type = THREE.BasicShadowMap;
 
     this.sky = new THREE.Mesh(new THREE.BoxBufferGeometry(1,1,1));
 
@@ -139,7 +140,7 @@ class Ptolemy {
   newShadowingDirectionalLight(x, y, z, mapsize) {
     const light = new THREE.DirectionalLight(0xffffff, 1);
     light.castShadow = true;
-    light.shadow.radius = 0;
+    light.shadow.radius = 2;
     light.shadow.mapSize.width = mapsize;
     light.shadow.mapSize.height = mapsize;
     light.position.set(x,y,z);
@@ -153,7 +154,7 @@ class Ptolemy {
     light.shadow.camera.left   = -sphere.radius;
     light.shadow.camera.right  = +sphere.radius;
     light.shadow.camera.near   = 0.01;
-    light.shadow.camera.far    = 100000;
+    light.shadow.camera.far    = sphere.radius*2;
     light.shadow.camera.updateProjectionMatrix();
   }
 

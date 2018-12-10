@@ -48,6 +48,7 @@ function build(gl) {
       gl.mainMesh = new THREE.Mesh(gl.mainGeometry, gl.mainMaterial);
       gl.mainMesh.castShadow = true;
       gl.mainMesh.receiveShadow = true;
+      gl.mainMesh.customDepthMaterial = gl.mainMaterial.customDepthMaterial;
 
       gl.shadowAccumlator.setMeshes([gl.mainMesh], bbox);
 
@@ -127,7 +128,6 @@ function setup(gl) {
   ao.add(gl, 'AOsharpness', 0, 5).step(0.1).onChange(v=>{gl._AOsharpnessFactor=Math.pow(2, gl.AOsharpness);});
   ao.add(gl, 'AOoffset', -1, 1).step(0.1);
 
-  //gl.mainMaterial = new THREE.MeshPhysicalMaterial({vertexColors:THREE.VertexColors});
   gl.mainMaterial = new SolidML.Material();
   gl.mainGeometry = null;
   gl.mainMesh = null;

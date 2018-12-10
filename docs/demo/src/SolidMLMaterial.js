@@ -60,6 +60,16 @@ SolidML.Material = class extends THREE.ShaderMaterial {
     const shaders = SolidML.Material._shaders();
     this.vertexShader = shaders.vert;
     this.fragmentShader = shaders.frag;
+    // custom depth map for shadowmap
+    this.customDepthMaterial = new THREE.ShaderMaterial({
+      defines: {
+        'INSTANCED': "",
+        'DEPTH_PACKING': THREE.RGBADepthPacking
+      },
+      vertexShader: shaders.depthVert,
+      fragmentShader: shaders.depthFrag
+    });
+    this.shadowSide = THREE.FrontSide;
     // transparent
     this.fog = true;
     this.lights = true;
@@ -205,6 +215,71 @@ SolidML.Material = class extends THREE.ShaderMaterial {
             "premultiplied_alpha_fragment", 
             "dithering_fragment"
           ]),
+        "}"
+      ].join("\n"),
+      "depthVert" : [
+        include([
+          "common",
+          "uv_pars_vertex",
+          "displacementmap_pars_vertex",
+          "morphtarget_pars_vertex",
+          "skinning_pars_vertex",
+          "logdepthbuf_pars_vertex",
+          "clipping_planes_pars_vertex",
+          "uv_vertex",
+          "skinbase_vertex"
+        ]),
+        "void main() {",
+          "#ifdef USE_DISPLACEMENTMAP",
+          include([
+            "beginnormal_vertex",
+            "morphnormal_vertex",
+            "skinnormal_vertex"
+          ]),
+          "#endif",
+          include([
+            "begin_vertex",
+            "morphtarget_vertex",
+            "skinning_vertex",
+            "displacementmap_vertex",
+            "project_vertex",
+            "logdepthbuf_vertex",
+            "clipping_planes_vertex"
+          ]),
+        "}"
+      ].join("\n"), 
+      "depthFrag" : [
+        "#if DEPTH_PACKING == 3200",
+          "uniform float opacity;",
+        "#endif",
+        include([
+          "common",
+          "packing",
+          "uv_pars_fragment",
+          "map_pars_fragment",
+          "alphamap_pars_fragment",
+          "logdepthbuf_pars_fragment",
+          "clipping_planes_pars_fragment"
+        ]),
+        "void main() {",
+          include([
+            "clipping_planes_fragment"
+          ]),
+          "vec4 diffuseColor = vec4( 1.0 );",
+          "#if DEPTH_PACKING == 3200",
+            "diffuseColor.a = opacity;",
+          "#endif",
+          include([
+            "map_fragment",
+            "alphamap_fragment",
+            "alphatest_fragment",
+            "logdepthbuf_fragment"
+          ]),
+          "#if DEPTH_PACKING == 3200",
+            "gl_FragColor = vec4( vec3( 1.0 - (gl_FragCoord.z + 1./256.) ), opacity );",
+          "#elif DEPTH_PACKING == 3201",
+            "gl_FragColor = packDepthToRGBA( gl_FragCoord.z + 1./256.);",
+          "#endif",
         "}"
       ].join("\n")
     };
