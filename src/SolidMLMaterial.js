@@ -67,7 +67,7 @@ SolidML.Material = class extends THREE.ShaderMaterial {
         'DEPTH_PACKING': THREE.RGBADepthPacking
       },
       vertexShader: shaders.depthVert,
-      fragmentShader: shaders.depthFrag
+      fragmentShader: shaders.depthFrag,
     });
     this.shadowSide = THREE.FrontSide;
     // transparent
@@ -86,6 +86,53 @@ SolidML.Material = class extends THREE.ShaderMaterial {
     const include = libs=>libs.map(lib=>"#include <"+lib+">").join("\n");
     const varying = vars=>vars.map(v  =>"varying "+v+";").join("\n");
     const uniform = unis=>unis.map(uni=>"uniform "+uni+";").join("\n");
+    const rsm_pars_fragment = [
+      "#ifdef USE_SHADOWMAP",
+        "#if NUM_DIR_LIGHTS > 0",
+          "uniform sampler2D directionalShadowMap[ NUM_DIR_LIGHTS ];",
+          "varying vec4 vDirectionalShadowCoord[ NUM_DIR_LIGHTS ];",
+        "#endif",
+        "#if NUM_SPOT_LIGHTS > 0",
+          "uniform sampler2D spotShadowMap[ NUM_SPOT_LIGHTS ];",
+          "varying vec4 vSpotShadowCoord[ NUM_SPOT_LIGHTS ];",
+        "#endif",
+        "#if NUM_POINT_LIGHTS > 0",
+          "uniform sampler2D pointShadowMap[ NUM_POINT_LIGHTS ];",
+          "varying vec4 vPointShadowCoord[ NUM_POINT_LIGHTS ];",
+        "#endif",
+        "float unpackRGBAToRSMDepth(const in vec4 v) { return v.z * 255. / 65536. + v.w; }",
+        "vec4 unpackRGBAToRSMAlbedo(const in vec4 v) {",
+          "return vec4(floor(v.x*255./16.), fract(v.x*255./16.)*16., floor(v.y*255./16.), fract(v.y*255./16.)*16.) / 15.;",
+        "}",
+        "float shadowDepth;",
+        "vec4  shadowAlbedo;",
+        "float getShadow( sampler2D shadowMap, vec2 shadowMapSize, float shadowBias, float shadowRadius, vec4 shadowCoord ) {",
+          "float shadow = 1.0;",
+          "vec4 v;",
+          "shadowCoord.xyz /= shadowCoord.w;",
+          "shadowCoord.z += shadowBias;",
+          "bool inFrustum = all(bvec4(shadowCoord.x >= 0.0, shadowCoord.x <= 1.0, shadowCoord.y >= 0.0, shadowCoord.y <= 1.0));",
+          "if (all(bvec2(inFrustum, shadowCoord.z <= 1.0))) {",
+            "v = texture2D(shadowMap, shadowCoord.xy);",
+            "shadowDepth = unpackRGBAToRSMDepth(v);",
+            "shadowAlbedo = unpackRGBAToRSMAlbedo(v);",
+            "shadow = step(shadowCoord.z, shadowDepth);",
+          "}",
+          "return shadow;",
+        "}",
+        "vec2 cubeToUV( vec3 v, float texelSizeY ) { return vec2(0); }",
+      "#endif"
+    ].join("\n");
+    const rsmdepth_pars_fragment = [
+      "vec4 packRSMtoRGBA(const in float depth, const in vec4 albedo, const in float glow){",
+        "vec4 r = vec4(",
+          "(floor(albedo.x * 15.) * 16. + floor(albedo.y * 15.)) / 256.,",
+          "(floor(albedo.z * 15.) * 16. + floor(albedo.w * 15.)) / 256.,",
+          "fract(depth*256.), depth);",
+        "r.w -= r.z * ShiftRight8; // tidy overflow",
+        "return r * PackUpscale;",
+      "}"
+    ].join("\n");
     return {
       vert: [
         include([
@@ -170,7 +217,7 @@ SolidML.Material = class extends THREE.ShaderMaterial {
           "fog_pars_fragment",
           "lights_pars_begin",
           "lights_physical_pars_fragment",
-          "shadowmap_pars_fragment", // <= change getShadow() call 
+          //"shadowmap_pars_fragment", // <= change getShadow() call 
           "bumpmap_pars_fragment",
           "normalmap_pars_fragment",
           "roughnessmap_pars_fragment",
@@ -178,6 +225,7 @@ SolidML.Material = class extends THREE.ShaderMaterial {
           "logdepthbuf_pars_fragment",
           "clipping_planes_pars_fragment"
         ]),
+        rsm_pars_fragment,
         "void main() {",
           include(["clipping_planes_fragment"]),
           "vec4 diffuseColor = vec4(diffuse, opacity);",
@@ -198,7 +246,10 @@ SolidML.Material = class extends THREE.ShaderMaterial {
             "emissivemap_fragment",
             "lights_physical_fragment",
             "lights_fragment_begin", // <= change getShadow() call 
+          ]),
             /* insert irradiance caluration here */
+          //"irradiance += shadowAlbedo.xyz * (1.-shadowAlbedo.a);",
+          include([
             "lights_fragment_maps",
             "lights_fragment_end"
           ]),
@@ -230,7 +281,10 @@ SolidML.Material = class extends THREE.ShaderMaterial {
           "uv_vertex",
           "skinbase_vertex"
         ]),
+        "attribute vec4 color;",
+        "varying vec4 vColor;",
         "void main() {",
+          "vColor = color;",
           "#ifdef USE_DISPLACEMENTMAP",
           include([
             "beginnormal_vertex",
@@ -253,6 +307,7 @@ SolidML.Material = class extends THREE.ShaderMaterial {
         "#if DEPTH_PACKING == 3200",
           "uniform float opacity;",
         "#endif",
+        "varying vec4 vColor;",
         include([
           "common",
           "packing",
@@ -262,6 +317,7 @@ SolidML.Material = class extends THREE.ShaderMaterial {
           "logdepthbuf_pars_fragment",
           "clipping_planes_pars_fragment"
         ]),
+        rsmdepth_pars_fragment,
         "void main() {",
           include([
             "clipping_planes_fragment"
@@ -277,9 +333,9 @@ SolidML.Material = class extends THREE.ShaderMaterial {
             "logdepthbuf_fragment"
           ]),
           "#if DEPTH_PACKING == 3200",
-            "gl_FragColor = vec4( vec3( 1.0 - (gl_FragCoord.z + 1./256.) ), opacity );",
+            "gl_FragColor = vec4( vec3( 1.0 - (gl_FragCoord.z) ), opacity );",
           "#elif DEPTH_PACKING == 3201",
-            "gl_FragColor = packDepthToRGBA( gl_FragCoord.z + 1./256.);",
+            "gl_FragColor = packRSMtoRGBA( gl_FragCoord.z, vColor, 0.);",
           "#endif",
         "}"
       ].join("\n")

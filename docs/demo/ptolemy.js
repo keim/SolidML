@@ -122,7 +122,7 @@ class Ptolemy {
     this.sky = new THREE.Mesh(new THREE.BoxBufferGeometry(1, 1, 1));
 
     this.ambient = new THREE.AmbientLight(0xffffff, 0.5);
-    this.topLight = this.newShadowingDirectionalLight(0, 0, 1, 2048);
+    this.topLight = this.newShadowingDirectionalLight(0, 0, 1, 1024);
     this.floorLight = new THREE.DirectionalLight(0xffffff, 0.3);
     this.floorLight.position.set(0, 0, -1);
     this.setCameraDistance();
@@ -141,6 +141,7 @@ class Ptolemy {
     const light = new THREE.DirectionalLight(0xffffff, 1);
     light.castShadow = true;
     light.shadow.radius = 2;
+    light.shadow.bias = -1/256;
     light.shadow.mapSize.width = mapsize;
     light.shadow.mapSize.height = mapsize;
     light.position.set(x,y,z);
