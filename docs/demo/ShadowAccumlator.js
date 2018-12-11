@@ -35,6 +35,7 @@ class ShadowAccumlator {
     this.material = new THREE.MeshLambertMaterial({color:0xffffff});//, vertexColors: THREE.VertexColors
     this.light = new THREE.DirectionalLight(0xffffff, 1);
     this.light.castShadow = true;
+    this.light.shadow.radius = 2.5;
     this.light.shadow.mapSize.width = 512;
     this.light.shadow.mapSize.height = 512;
     this.light.shadow.camera.near = 0.01;
@@ -60,7 +61,8 @@ class ShadowAccumlator {
   setMeshes(meshList, boundingBox) {
     this.group.children.forEach(child=>this.group.remove(child));
     meshList.forEach(mesh=>{
-      const newMesh = new THREE.Mesh(mesh.geometry, this.material); 
+      const newMesh = mesh.clone(); 
+      newMesh.material = this.material;
       newMesh.castShadow = true;
       newMesh.receiveShadow = true;
       this.group.add(newMesh);
@@ -73,6 +75,8 @@ class ShadowAccumlator {
     this.light.shadow.camera.top    = + this.boundingBoxRadius;
     this.light.shadow.camera.left   = - this.boundingBoxRadius;
     this.light.shadow.camera.right  = + this.boundingBoxRadius;
+    this.light.shadow.camera.near = 0.01;
+    this.light.shadow.camera.far = this.boundingBoxRadius*2;
     this.light.shadow.camera.updateProjectionMatrix();
     this.accumlator.clear();
   }
@@ -81,7 +85,7 @@ class ShadowAccumlator {
     const tempCamera = camera.clone(), 
           dir = new THREE.Vector3(),
           currentShadowMapType = this.renderer.shadowMap.type;
-    this.renderer.shadowMap.type = THREE.BasicShadowMap;
+    this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.renderer.setClearColor(new THREE.Color(0xffffff));
     this.light.target.position.copy(this.boundingBoxCenter);
     this.scene.add(tempCamera);

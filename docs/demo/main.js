@@ -34,7 +34,6 @@ function build(gl) {
       gl.floorColor = new THREE.Color(gl.solidML.criteria.background || gl.solidML.criteria.getValue("floor", "color"));
       gl.skyColor   = new THREE.Color(gl.solidML.criteria.background || gl.solidML.criteria.getValue("sky", "color"));
       //gl.floorMaterial.color = floorColor;
-      gl.floorLight.color = gl.floorColor;
       gl.floor.position.z = floorHeight;
 
       gl.cubeCamera.position.copy(sphere.center);
@@ -50,7 +49,7 @@ function build(gl) {
       gl.mainMesh.receiveShadow = true;
       gl.mainMesh.customDepthMaterial = gl.mainMaterial.customDepthMaterial;
 
-      gl.shadowAccumlator.setMeshes([gl.mainMesh], bbox);
+      gl.shadowAccumlator.setMeshes([gl.mainMesh, gl.floor], bbox);
 
       gl.scene.add(gl.mainMesh);
     }

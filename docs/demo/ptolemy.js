@@ -123,12 +123,9 @@ class Ptolemy {
 
     this.ambient = new THREE.AmbientLight(0xffffff, 0.5);
     this.topLight = this.newShadowingDirectionalLight(0, 0, 1, 1024);
-    this.floorLight = new THREE.DirectionalLight(0xffffff, 0.3);
-    this.floorLight.position.set(0, 0, -1);
     this.setCameraDistance();
 
     this.scene.add(this.ambient);
-    this.scene.add(this.floorLight);
     this.scene.add(this.topLight);
     this.scene.add(this.topLight.target);
     //this.scene.add(new THREE.CameraHelper(this.topLight.shadow.camera));
