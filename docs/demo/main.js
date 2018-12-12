@@ -22,7 +22,7 @@ function build(gl) {
       gl.mainGeometry.computeBoundingSphere();
       const bbox = gl.mainGeometry.boundingBox,
             sphere = gl.mainGeometry.boundingSphere;
-      const floorHeight = bbox.min.z - sphere.radius * 0.3;
+      const floorHeight = bbox.min.z;
 
       gl.controls.target = sphere.center;
       gl.camera.position.sub(sphere.center).normalize().multiplyScalar(sphere.radius*4).add(sphere.center);
@@ -33,8 +33,12 @@ function build(gl) {
 
       gl.floorColor = new THREE.Color(gl.solidML.criteria.background || gl.solidML.criteria.getValue("floor", "color"));
       gl.skyColor   = new THREE.Color(gl.solidML.criteria.background || gl.solidML.criteria.getValue("sky", "color"));
-      //gl.floorMaterial.color = floorColor;
-      gl.floor.position.z = floorHeight;
+      gl.floorMaterial.color = gl.floorColor;
+      gl.floor.position.set(sphere.center.x, sphere.center.y, floorHeight);
+      gl.floor.scale.set(sphere.radius*4, sphere.radius*4, 1);
+      gl.roomMaterial.color = gl.skyColor;
+      gl.room.position.copy(sphere.center);
+      gl.room.scale.setScalar(sphere.radius*4);
 
       gl.cubeCamera.position.copy(sphere.center);
       gl.cubeCamera.update(gl.renderer, gl.scene);
@@ -49,7 +53,7 @@ function build(gl) {
       gl.mainMesh.receiveShadow = true;
       gl.mainMesh.customDepthMaterial = gl.mainMaterial.customDepthMaterial;
 
-      gl.shadowAccumlator.setMeshes([gl.mainMesh, gl.floor], bbox);
+      gl.shadowAccumlator.setMeshes([gl.mainMesh, gl.floor, gl.room], bbox);
 
       gl.scene.add(gl.mainMesh);
     }
@@ -58,6 +62,7 @@ function build(gl) {
     console.error(e);
   }
 }
+
 
 function message(msg) {
   document.getElementById("message").innerText = msg;
@@ -130,18 +135,24 @@ function setup(gl) {
   gl.mainMaterial = new SolidML.Material();
   gl.mainGeometry = null;
   gl.mainMesh = null;
-  gl.floorMaterial = new THREE.ShadowMaterial({color:0x000000, opacity:0.2});
-  gl.floorGeometry = new THREE.PlaneBufferGeometry(50000,50000);
+  gl.floorMaterial = new THREE.MeshBasicMaterial({color:0xffffff});
+  gl.floorGeometry = new THREE.PlaneBufferGeometry(1,1);
   gl.floorGeometry.attributes.position.dynamic = true;
+  gl.roomMaterial = new THREE.MeshBasicMaterial({color:0xffffff});
+  gl.roomGeometry = new THREE.BoxBufferGeometry(1,1,1).scale(-1,-1,-1);
+  gl.roomGeometry.attributes.position.dynamic = true;
+  gl.room = new THREE.Mesh(gl.roomGeometry, gl.roomMaterial);
   gl.floor = new THREE.Mesh(gl.floorGeometry, gl.floorMaterial);
-  gl.floor.receiveShadow = true;
+  //gl.room.receiveShadow = true;
+  //gl.floor.receiveShadow = true;
+  gl.scene.add(gl.room);
   gl.scene.add(gl.floor);
 
   gl.renderTarget = gl.newRenderTarget();
 
   gl.renderer.setClearColor(new THREE.Color(0x667799));
 
-  gl.cubeCamera = new THREE.CubeCamera( 1, 1000, 256 );
+  gl.cubeCamera = new THREE.CubeCamera( 0.001, 100, 256 );
   gl.cubeCamera.renderTarget.texture.generateMipmaps = true;
   gl.cubeCamera.renderTarget.texture.minFilter = THREE.LinearMipMapLinearFilter;
   gl.scene.add(gl.cubeCamera);
@@ -171,7 +182,7 @@ function setup(gl) {
     } else {
       gl.renderer.setClearColor(gl.skyColor);
       gl.renderer.render(gl.scene, gl.camera, gl.renderTarget);
-      gl.shadowAccumlator.render(gl.camera, 8);
+      gl.shadowAccumlator.render(gl.camera, 16);
       gl.shadowAccumlator.accumlator.render(gl.renderTarget, gl._AOsharpnessFactor, gl.AOoffset-(gl._AOsharpnessFactor*0.125));
     }
   };

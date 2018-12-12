@@ -137,7 +137,7 @@ class Ptolemy {
   newShadowingDirectionalLight(x, y, z, mapsize) {
     const light = new THREE.DirectionalLight(0xffffff, 1);
     light.castShadow = true;
-    light.shadow.radius = 2;
+    light.shadow.radius = 1;
     light.shadow.bias = -1/256;
     light.shadow.mapSize.width = mapsize;
     light.shadow.mapSize.height = mapsize;
