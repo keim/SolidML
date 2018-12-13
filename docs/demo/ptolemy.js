@@ -119,16 +119,14 @@ class Ptolemy {
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     //this.renderer.shadowMap.type = THREE.BasicShadowMap;
 
-    this.sky = new THREE.Mesh(new THREE.BoxBufferGeometry(1, 1, 1));
-
-    this.ambient = new THREE.AmbientLight(0xffffff, 0.5);
-    this.topLight = this.newShadowingDirectionalLight(0, 0, 1, 1024);
     this.setCameraDistance();
 
+    this.ambient = new THREE.AmbientLight(0xffffff, 0.5);
+    this.topLight = this.newShadowingDirectionalLight(1, 1, 1, 1024);
     this.scene.add(this.ambient);
     this.scene.add(this.topLight);
     this.scene.add(this.topLight.target);
-    //this.scene.add(new THREE.CameraHelper(this.topLight.shadow.camera));
+
     this.scene.add(this.camera);
 
     if (this.setup) this.setup(this);

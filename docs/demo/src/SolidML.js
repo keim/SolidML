@@ -134,7 +134,7 @@ SolidML.Criteria = class {
       case "seed": case "s":
         this.seed = this._getNumber(value, null);
         break;
-      case "background": case "bg":
+      case "background": 
         this.background = this._getColor(value);
         break;
       case "colorpool": case "cp":

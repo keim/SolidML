@@ -40,14 +40,11 @@ class ShadowAccumlator {
     this.light.shadow.mapSize.height = 512;
     this.light.shadow.camera.near = 0.01;
     this.light.shadow.camera.far = 10000;
-    this.boundingBoxSize = new THREE.Vector3();
-    this.boundingBoxCenter = new THREE.Vector3();
-    this.boundingBoxRadius = 0;
+    this.boundingSphere = null;
+    this.group = null;
     this.scene = new THREE.Scene();
     this.scene.add(this.light);
     this.scene.add(this.light.target);
-    this.group = new THREE.Group();
-    this.scene.add(this.group);
     this.pause = false;
   }
   stop() {
@@ -58,41 +55,39 @@ class ShadowAccumlator {
     this.accumlator.clear();
     this.pause = false;
   }
-  setMeshes(meshList, boundingBox) {
-    this.group.children.forEach(child=>this.group.remove(child));
+  setMeshes(meshList, boundingSphere) {
+    if (this.group)
+      this.scene.remove(this.group);
+    this.group = new THREE.Group();
     meshList.forEach(mesh=>{
       const newMesh = mesh.clone(); 
       newMesh.material = this.material;
-      newMesh.castShadow = true;
-      newMesh.receiveShadow = true;
       this.group.add(newMesh);
     });
-    this.boundingBox = boundingBox;
-    boundingBox.getSize(this.boundingBoxSize);
-    boundingBox.getCenter(this.boundingBoxCenter);
-    this.boundingBoxRadius = this.boundingBoxSize.length() * 0.5;
-    this.light.shadow.camera.bottom = - this.boundingBoxRadius;
-    this.light.shadow.camera.top    = + this.boundingBoxRadius;
-    this.light.shadow.camera.left   = - this.boundingBoxRadius;
-    this.light.shadow.camera.right  = + this.boundingBoxRadius;
+    this.boundingSphere = boundingSphere;
+    this.light.shadow.camera.bottom = - this.boundingSphere.radius;
+    this.light.shadow.camera.top    = + this.boundingSphere.radius;
+    this.light.shadow.camera.left   = - this.boundingSphere.radius;
+    this.light.shadow.camera.right  = + this.boundingSphere.radius;
     this.light.shadow.camera.near = 0.01;
-    this.light.shadow.camera.far = this.boundingBoxRadius*2;
+    this.light.shadow.camera.far = this.boundingSphere.radius*2;
     this.light.shadow.camera.updateProjectionMatrix();
     this.accumlator.clear();
+    this.scene.add(this.group);
   }
   render(camera, times) {
-    if (this.group.children.length == 0 || this.pause) return;
+    if (!this.group || this.pause) return;
     const tempCamera = camera.clone(), 
           dir = new THREE.Vector3(),
           currentShadowMapType = this.renderer.shadowMap.type;
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.renderer.setClearColor(new THREE.Color(0xffffff));
-    this.light.target.position.copy(this.boundingBoxCenter);
+    this.light.target.position.copy(this.boundingSphere.center);
     this.scene.add(tempCamera);
     if (this.accumlator.accumlateCount > 512) times = 1;
     for (let i=0; i<times; i++) {
-      dir.set(Math.random()-0.5, Math.random()-0.5, Math.random()-0.5).setLength(this.boundingBoxRadius);
-      this.light.position.addVectors(this.boundingBoxCenter, dir);
+      dir.set(Math.random()-0.5, Math.random()-0.5, Math.random()-0.5).setLength(this.boundingSphere.radius);
+      this.light.position.addVectors(this.boundingSphere.center, dir);
       this.renderer.render(this.scene, tempCamera, this.renderTarget);
       this.accumlator.accumlate(this.renderTarget);
     }
