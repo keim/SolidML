@@ -12,18 +12,16 @@ function build(gl) {
 
     if (gl.mainGeometry.isCompiled()) {
       // read criteria
-      let sharpness, offset;
       const ao = gl.solidML.criteria.getValue("ao", "array");
-      if (ao.length > 0) sharpness = parseFloat(ao[0]);
-      if (ao.length > 1) offset    = parseFloat(ao[1]);
-      updateAO(gl, sharpness, offset);
+      if (ao.length > 0) updateAOSharpness(gl, parseFloat(ao[0]));
+      if (ao.length > 1) gl.AOoffset = parseFloat(ao[1]);
       const mat = gl.solidML.criteria.getValue("mat", "array");
       if (mat.length > 0) gl.mainMaterial.metalness = parseFloat(mat[0]) / 100;
       if (mat.length > 1) gl.mainMaterial.roughness = parseFloat(mat[1]) / 100;
       if (mat.length > 2) gl.mainMaterial.clearCoat = parseFloat(mat[2]) / 100;
       if (mat.length > 3) gl.mainMaterial.clearCoatRoughness = parseFloat(mat[3]) / 100;
       const bg = gl.solidML.criteria.getValue("bg", "array");
-      gl.backScreen.skyColor = new THREE.Color(gl.solidML.criteria.background || bg[0]);
+      gl.backScreen.skyColor   = new THREE.Color(gl.solidML.criteria.background || bg[0]);
       gl.backScreen.floorColor = new THREE.Color(gl.solidML.criteria.background || bg[1] || bg[0]);
       gl.backScreen.checkColor = new THREE.Color(gl.solidML.criteria.background || bg[2] || bg[1] || bg[0]);
 
@@ -32,7 +30,7 @@ function build(gl) {
       gl.mainGeometry.computeBoundingSphere();
       const bbox = gl.mainGeometry.boundingBox,
             sphere = gl.mainGeometry.boundingSphere.clone(),
-            zMargin = - Math.min(bbox.min.z, 0) + bbox.getSize(new THREE.Vector3()).z * 0.1;
+            zMargin = (gl.autoZPosition) ? - Math.min(bbox.min.z, 0) + bbox.getSize(new THREE.Vector3()).z * 0.1 : 0;
       sphere.center.z += zMargin;
 
       gl.controls.target = sphere.center;
@@ -50,8 +48,8 @@ function build(gl) {
       gl.floor.position.set(sphere.center.x, sphere.center.y, 0);
       gl.floor.scale.set(sphere.radius*4, sphere.radius*4, 1);
 
-      gl.floor.visible = true;
-      gl.room.visible = false;
+      gl.floor.visible = gl.visibleFloor;
+      gl.room.visible = gl.visibleRoom;
       gl.updateFrame = false;
 
       gl.cubeCamera.position.copy(sphere.center);
@@ -76,7 +74,6 @@ function build(gl) {
   }
 }
 
-
 function message(msg) {
   document.getElementById("message").innerText = msg;
 }
@@ -95,24 +92,15 @@ function capture(gl) {
   }
 }
 
-function updateAO(gl, sharpness, offset) {
+function updateAOSharpness(gl, sharpness) {
   gl.AOenable = (sharpness > 0);
   gl.AOsharpness = sharpness;
   gl._AOsharpnessFactor = Math.pow(2, gl.AOsharpness);
-  gl.AOoffset = offset;
-}
+};
+
 
 function setup(gl) {
   let initialScript = "20{x0.7h18rx25ry10}R\n#R{grid{s0.5sat0.7}dodeca}";
-  if (location.search) {
-    location.search.substring(1).split("&").map(s=>s.split("=")).forEach(query=>{
-      switch(query[0]) {
-        case "s":
-          initialScript = decodeURIComponent(query[1]);
-          break;
-      }
-    });
-  }
 
   gl.editor = ace.edit("texteditor");
   gl.editor.commands.addCommand({
@@ -140,14 +128,25 @@ function setup(gl) {
     history.pushState(null, null, location.href.replace(/\?.*$/, "") + query);
   });
 
-  updateAO(gl, 2, 0);
+  updateAOSharpness(gl, 2);
+  gl.AOoffset = 0;
+  gl.autoZPosition = true;
+  gl.visibleFloor = true;
+  gl.visibleRoom = false;
 
-  gl.gui = new dat.GUI({autoPlace: false});
+  gl.gui = new dat.GUI({autoPlace: false, closed: false});
   document.getElementById("paramgui").appendChild(gl.gui.domElement);
   const ao = gl.gui.addFolder("Ambient Occlusion");
+  ao.closed = false;
   ao.add(gl, 'AOenable');
-  ao.add(gl, 'AOsharpness', 0, 5).step(0.1).onChange(v=>updateAO(gl, v, gl.AOoffset));
-  ao.add(gl, 'AOoffset',   -1, 1).step(0.1).onChange(v=>updateAO(gl, gl.AOsharpness, v));
+  ao.add(gl, 'AOsharpness', 0, 5).step(0.1).onChange(v=>updateAOSharpness(gl, v));
+  ao.add(gl, 'AOoffset',   -1, 1).step(0.1).onChange(v=>gl.AOoffset=v);
+  const bg = gl.gui.addFolder("Background");
+  bg.closed = false;
+  bg.add(gl, 'autoZPosition').onChange(v=>{gl.autoZPosition=v;build(gl);});
+  bg.add(gl, 'visibleFloor').onChange(v=>{gl.visibleFloor=v;build(gl);});
+  //bg.add(gl, 'visibleRoom').onChange(v=>{gl.visibleRoom=v;build(gl);});
+  
 
   gl.mainMaterial = new SolidML.Material();
   gl.mainGeometry = null;
@@ -156,6 +155,7 @@ function setup(gl) {
   gl.floorGeometry = new THREE.PlaneBufferGeometry(1,1);
   gl.floorGeometry.attributes.position.dynamic = true;
   gl.floor = new THREE.Mesh(gl.floorGeometry, gl.floorMaterial);
+  gl.floor.renderOrder = -1;
   gl.floor.receiveShadow = true;
   gl.roomMaterial = new THREE.MeshLambertMaterial({color:0xffffff});
   gl.roomGeometry = new THREE.BoxBufferGeometry(1,1,1).scale(-1,-1,-1);
@@ -192,6 +192,17 @@ function setup(gl) {
 
   gl.shadowAccumlator = new ShadowAccumlator(gl);
 
+  if (location.search) {
+    location.search.substring(1).split("&").map(s=>s.split("=")).forEach(query=>{
+      switch(query[0]) {
+        case "s":
+          gl.editor.setValue(decodeURIComponent(query[1]));
+          build(gl);
+          break;
+      }
+    });
+  }
+
   gl.render = ()=>{
     if (gl.shadowAccumlator.pause || !gl.AOenable) {
       gl.renderer.setClearColor(new THREE.Color(0xff0000));
@@ -224,7 +235,6 @@ class BackScreen extends THREE.Mesh {
     super(new THREE.PlaneBufferGeometry(2, 2), null);
     this.material = new THREE.ShaderMaterial({
       depthWrite:false,
-      depthTest:false,
       uniforms: {
         skyColor:   {value:new THREE.Color()},
         floorColor: {value:new THREE.Color()},
@@ -263,6 +273,7 @@ class BackScreen extends THREE.Mesh {
         "}"
       ].join("\n")
     });
+    this.frustumCulled = false;
   }
   set skyColor(c) {
     this.material.uniforms.skyColor.value = c;

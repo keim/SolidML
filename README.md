@@ -38,7 +38,8 @@ Eisen Script: http://structuresynth.sourceforge.net/reference.php
 - blending only one member sat, bri or hue by "*s0.5,0.1"
 - ... and so on
 ## only for demonstration
-- "@floor#HEX" and "@sky#HEX" sets each color
+- "@bg[#HEX,#HEX,#HEX]" sets sky, floor and checker board colors.
 - "@mat[10,90,50,30]" sets material metalness, roughness, clearCoat and clearCoatRoughness in percentage
+- "@ao[2,0]" sets ambient occlusion parameters, 0 of the 1st parameter sets disabled.
 ## API Reference
 https://keim.github.io/SolidML/jsdoc/index.html
