@@ -86,6 +86,23 @@ SolidML.Material = class extends THREE.ShaderMaterial {
     const include = libs=>libs.map(lib=>"#include <"+lib+">").join("\n");
     const varying = vars=>vars.map(v  =>"varying "+v+";").join("\n");
     const uniform = unis=>unis.map(uni=>"uniform "+uni+";").join("\n");
+    const rsm_packing = [ // packing functions for reflective shadow map
+      "float unpackRGBAToRSMDepth(const in vec4 v) {",
+        "return v.z * 255. / 65536. + v.w;",
+      "}",
+      "vec4 unpackRGBAToRSMAlbedo(const in vec4 v) {",
+        "vec2 w = v.xy * 255. / 16.;",
+        "return vec4(floor(w.x), fract(w.x)*16., floor(w.y), fract(w.y)*16.) / 15.;",
+      "}",
+      "vec4 packRSMtoRGBA(const in float depth, const in vec4 albedo, const in float glow){",
+        "vec4 r = vec4(",
+          "(floor(albedo.x * 15.) * 16. + floor(albedo.y * 15.)) / 256.,",
+          "(floor(albedo.z * 15.) * 16. + floor(albedo.w * 15.)) / 256.,",
+          "fract(depth*256.), depth);",
+        "r.w -= r.z * ShiftRight8; // tidy overflow",
+        "return r * PackUpscale;",
+      "}"
+    ].join("\n");
     const rsm_pars_fragment = [
       "#ifdef USE_SHADOWMAP",
         "#if NUM_DIR_LIGHTS > 0",
@@ -100,12 +117,9 @@ SolidML.Material = class extends THREE.ShaderMaterial {
           "uniform sampler2D pointShadowMap[ NUM_POINT_LIGHTS ];",
           "varying vec4 vPointShadowCoord[ NUM_POINT_LIGHTS ];",
         "#endif",
-        "float unpackRGBAToRSMDepth(const in vec4 v) { return v.z * 255. / 65536. + v.w; }",
-        "vec4 unpackRGBAToRSMAlbedo(const in vec4 v) {",
-          "return vec4(floor(v.x*255./16.), fract(v.x*255./16.)*16., floor(v.y*255./16.), fract(v.y*255./16.)*16.) / 15.;",
+        "float texture2DCompare( sampler2D depths, vec2 uv, float compare ) {",
+          "return step( compare, unpackRGBAToRSMDepth( texture2D( depths, uv ) ) );",
         "}",
-        "float shadowDepth;",
-        "vec4  shadowAlbedo;",
         "float getShadow( sampler2D shadowMap, vec2 shadowMapSize, float shadowBias, float shadowRadius, vec4 shadowCoord ) {",
           "float shadow = 1.0;",
           "vec4 v;",
@@ -113,25 +127,24 @@ SolidML.Material = class extends THREE.ShaderMaterial {
           "shadowCoord.z += shadowBias;",
           "bool inFrustum = all(bvec4(shadowCoord.x >= 0.0, shadowCoord.x <= 1.0, shadowCoord.y >= 0.0, shadowCoord.y <= 1.0));",
           "if (all(bvec2(inFrustum, shadowCoord.z <= 1.0))) {",
-            "v = texture2D(shadowMap, shadowCoord.xy);",
-            "shadowDepth = unpackRGBAToRSMDepth(v);",
-            "shadowAlbedo = unpackRGBAToRSMAlbedo(v);",
-            "shadow = step(shadowCoord.z, shadowDepth);",
+            "#if defined( SHADOWMAP_TYPE_PCF ) || defined( SHADOWMAP_TYPE_PCF_SOFT )",
+              "float texelSize = 1. / shadowMapSize.x;",
+              "vec3 d = vec3(-texelSize, texelSize, 0)*shadowRadius;",
+              "shadow = (",
+                "texture2DCompare( shadowMap, shadowCoord.xy + d.xz, shadowCoord.z ) +",
+                "texture2DCompare( shadowMap, shadowCoord.xy + d.zx, shadowCoord.z ) +",
+                "texture2DCompare( shadowMap, shadowCoord.xy, shadowCoord.z ) +",
+                "texture2DCompare( shadowMap, shadowCoord.xy + d.yz, shadowCoord.z ) +",
+                "texture2DCompare( shadowMap, shadowCoord.xy + d.zy, shadowCoord.z )",
+              ") * ( 1.0 / 5.0 );",
+            "#else // no percentage-closer filtering:",
+              "shadow = texture2DCompare( shadowMap, shadowCoord.xy, shadowCoord.z );",
+            "#endif",
           "}",
           "return shadow;",
         "}",
         "vec2 cubeToUV( vec3 v, float texelSizeY ) { return vec2(0); }",
       "#endif"
-    ].join("\n");
-    const rsmdepth_pars_fragment = [
-      "vec4 packRSMtoRGBA(const in float depth, const in vec4 albedo, const in float glow){",
-        "vec4 r = vec4(",
-          "(floor(albedo.x * 15.) * 16. + floor(albedo.y * 15.)) / 256.,",
-          "(floor(albedo.z * 15.) * 16. + floor(albedo.w * 15.)) / 256.,",
-          "fract(depth*256.), depth);",
-        "r.w -= r.z * ShiftRight8; // tidy overflow",
-        "return r * PackUpscale;",
-      "}"
     ].join("\n");
     return {
       vert: [
@@ -225,6 +238,7 @@ SolidML.Material = class extends THREE.ShaderMaterial {
           "logdepthbuf_pars_fragment",
           "clipping_planes_pars_fragment"
         ]),
+        rsm_packing,
         rsm_pars_fragment,
         "void main() {",
           include(["clipping_planes_fragment"]),
@@ -317,7 +331,7 @@ SolidML.Material = class extends THREE.ShaderMaterial {
           "logdepthbuf_pars_fragment",
           "clipping_planes_pars_fragment"
         ]),
-        rsmdepth_pars_fragment,
+        rsm_packing,
         "void main() {",
           include([
             "clipping_planes_fragment"

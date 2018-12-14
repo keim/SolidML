@@ -62,7 +62,7 @@ class SolidML {
 /** current version number 
  *  @type {String}
  */
-SolidML.VERSION = "0.2.9";
+SolidML.VERSION = "0.3.0";
 /** Represents a criteria of the structure, specified as "set [key] [value]" in script. Keep any user-defined criteria for your own purpose. {@link SolidML.Criteria#getValue} method refers them. */
 SolidML.Criteria = class {
   /** SolidML.Criteria is created in the constructor of {@link SolidML}.  */
@@ -134,7 +134,7 @@ SolidML.Criteria = class {
       case "seed": case "s":
         this.seed = this._getNumber(value, null);
         break;
-      case "background": case "bg":
+      case "background": 
         this.background = this._getColor(value);
         break;
       case "colorpool": case "cp":
@@ -666,17 +666,24 @@ SolidML.Operator = class {
   constructor(rule, prev, repeat, opeString) {
     this.parentRule = rule;
     this.repeat = Number(repeat) || 1;
+    prev.next = this;
+    this.next = null;
+    this.opeString = null;
+    this._parse(opeString);
+  }
+  clear() {
     this.matrix = new SolidML.Matrix4();
     this.color = null;
     this.dcolor = null;
     this.blend = new SolidML.ColorHSBA(0,1,1,0);
     this.ratio = new SolidML.ColorHSBA(0,0,0,0);
-    this.varname = null;
-    prev.next = this;
-    this.next = null;
-    this._parse(opeString);
+  }
+  _hasVariable() {
+    return Boolean(this.opeString);
   }
   _build(stat) {
+    if (this._hasVariable()) 
+      this._parse(this.opeString);
     let reference_next = null;
     stat._push();
     for (let i=this.repeat; i>0; i--) {
@@ -703,8 +710,8 @@ SolidML.Operator = class {
         if (m[2]) 
           return Number(m[2]);
         if (m[5]) {
-          this.varname = m[5];
-          return this.parentRule.rootInstance.variables[this.varname] || 0;
+          this.opeString = opeString;
+          return this.parentRule.rootInstance.variables[m[5]] || 0;
         } 
       }
       if (!failThrough) 
@@ -721,14 +728,16 @@ SolidML.Operator = class {
       if (m[3])
         return m[3];
       if (m[5]) {
-        this.varname = m[5];
-        return this.parentRule.rootInstance.variables[this.varname] || "#000";
+        this.opeString = opeString;
+        return this.parentRule.rootInstance.variables[m[5]] || "#000";
       } 
       if (!failThrough)
         throw Error("color not defined : "+opeString);
       rex.lastIndex = li;
       return null;
     };
+    this.clear();
+    
     while (m = rex.exec(opeString)) {
       // direct color name
       if (m[1] in SolidML.ColorTable)
@@ -987,7 +996,8 @@ SolidML.ScriptParser = class {
         SolidML.ScriptParser.ruleDefineRexString, 
         SolidML.ScriptParser.matRexString, 
         SolidML.ScriptParser.nameRexString+SolidML.ScriptParser.referenceParamRexString, 
-        "(})"].join("|");
+        "(})"
+      ].join("|");
       SolidML.ScriptParser.ruleOptionRex = new RegExp("([a-z@]+)\\s*([\\-\\d.]+)|>\\s*" + SolidML.ScriptParser.nameRexString, "gm");
       SolidML.ScriptParser.operatorRex   = new RegExp("([a-z]+|#\\?)|([\\-\\d.]+)|(#[0-9a-fA-F]+)|(\\*)|\\$" + SolidML.ScriptParser.nameRexString, "gm");
       SolidML.REX_DEFINE = 1;
@@ -1009,15 +1019,67 @@ SolidML.ScriptParser = class {
   }
   // defined key reference change into "$key" and comment out
   static _normalizeScript(script) {
-    const rex = /#define\s+([a-zA-Z_]+)/gm;
-    let $;
-    while ($ = rex.exec(script)) {
+    let $, $$, ruleIndices=null;
+    // remove all comments
+    script = script.replace(/\/\/.*?$|\/\*[\s\S]*?\*\//gm, ' ');
+    // insert "$" before defined variables
+    const rexDefine = /#define\s+([a-zA-Z_]+)/gm;
+    while ($ = rexDefine.exec(script)) {
       const rexReplace = new RegExp($[1], "gm");
       script = script.replace(rexReplace, (match, offset, string)=>{
-        return (offset < rex.lastIndex || string[offset-1] == "$") ? match : "$"+ match;
+        return (offset < rexDefine.lastIndex || string[offset-1] == "$") ? match : "$"+ match;
       });
     }
-    return script.replace(/\/\/.*?$|\/\*[\s\S]*?\*\//gm, ' ');
+    // split rule includes "(A|B)" command
+    const rexRuleSplit = /\(([\s\S]*?)\)/gm, 
+          rexWeight = /(@w|w|weight)([\d.]+)/,
+          mapWeight = s=>{
+            const wmatch = s.match(rexWeight), 
+                  w = (wmatch) ? parseFloat(wmatch[2]) : 1;
+            return {s:" "+s.replace(rexWeight, "")+" ", w};
+          };
+    // seek "(A|B)"
+    while ($ = rexRuleSplit.exec(script)) {
+      // list of rule definitions indices sorted from end
+      ruleIndices = [];
+      const rex = new RegExp(SolidML.ScriptParser.ruleDefineRexString, "gm");
+      while ($$ = rex.exec(script))
+        ruleIndices.unshift($$);
+      // split "A|B" into ["A","B"]
+      const branch = $[1].split("|").map(mapWeight);
+      // seek rule includes "(A|B)"
+      const $ruleStart = ruleIndices.find((e,i,a)=>(e.index < $.index));
+      if ($ruleStart) {
+        const ruleDefine = $ruleStart[1] + $ruleStart[2],
+              ruleOption = mapWeight($ruleStart[3]);
+        // seek sequence start "{"
+        const rex = /[{}]/gm;
+        rex.lastIndex = $ruleStart.index;
+        $$ = rex.exec(script);
+        if ($$ && $$[0] == "{") {
+          const sequenceStart = $$.index;
+          // seek sequence end "}"
+          let depth = 1;
+          while ($$ = rex.exec(script)) 
+            if ((depth += ($$[0] == "{") ? 1 : -1) == 0) break;
+          if ($$) {
+            // construct new rules
+            const scriptBefore   = script.substring(0, $ruleStart.index),
+                  scriptSequence = script.substring(sequenceStart, $$.index+1),
+                  scriptAfter    = script.substring($$.index+1);
+            const newRules = branch.map(b=>{
+              const newSequence = scriptSequence.replace($[0], b.s),
+                    newRuleOption = ruleOption.s + "@w" + String(ruleOption.w * b.w);
+              return ruleDefine + newRuleOption + newSequence;
+            }).join("\n");
+            script = scriptBefore + newRules + scriptAfter;
+            rexRuleSplit.lastIndex = $ruleStart.index;
+          }
+        }
+      }
+    }
+    console.log("final rules : \n"+script);
+    return script;
   }
   constructor(rule) {
     this._rule = rule;
@@ -1069,8 +1131,9 @@ SolidML.ScriptParser = class {
     if (!this.$[SolidML.REX_DEFINE])
       return false;
     const key = this.$[SolidML.REX_DEFINE_KEY],
-          value = this.$[SolidML.REX_DEFINE_VALUE];
-    this._rule.rootInstance.variables[key] = value;
+          value = this.$[SolidML.REX_DEFINE_VALUE],
+          numv  = Number(value);
+    this._rule.rootInstance.variables[key] = isNaN(numv) ? value : numv;
     return true;
   }
   _criteria() {
