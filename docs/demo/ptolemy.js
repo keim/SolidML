@@ -19,7 +19,7 @@ class Ptolemy {
     this.deltaTime = 0;
     
     // create basic instance
-    this.camera   = new THREE.PerspectiveCamera(30, 1, 0.1, 10000);
+    this.camera   = new THREE.PerspectiveCamera(30, 1, 0.1, 1000);
     this.scene    = new THREE.Scene();
     this.renderer = new THREE.WebGLRenderer();
     

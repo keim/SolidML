@@ -3,27 +3,49 @@ function build(gl) {
     const code = gl.editor.getValue();
     if (/^\s*$/.test(code)) return;
     window.localStorage.setItem('backup', code);
-    gl.mainGeometry = new SolidML.BufferGeometry().build(code, {bg:"#679,#fff", mat:"10,90,30,20", ao:"2,0"}, true);
+    gl.mainGeometry = new SolidML.BufferGeometry().build(code, {mat:"10,90,30,20", ao:"2,0"}, true, 0, 0);
     gl.solidML = gl.mainGeometry.solidML;
     message("vertex:"+gl.mainGeometry.vertexCount+"/face:"+gl.mainGeometry.indexCount/3+"/object:"+gl.mainGeometry.objectCount);
 
     if (gl.mainMesh) 
       gl.scene.remove(gl.mainMesh);
 
+    if (gl.mainGeometry.objectCount == 0) 
+      return;
+
     if (gl.mainGeometry.isCompiled()) {
       // read criteria
-      const ao = gl.solidML.criteria.getValue("ao", "array");
-      if (ao.length > 0) updateAOSharpness(gl, parseFloat(ao[0]));
-      if (ao.length > 1) gl.AOoffset = parseFloat(ao[1]);
       const mat = gl.solidML.criteria.getValue("mat", "array");
       if (mat.length > 0) gl.mainMaterial.metalness = parseFloat(mat[0]) / 100;
       if (mat.length > 1) gl.mainMaterial.roughness = parseFloat(mat[1]) / 100;
       if (mat.length > 2) gl.mainMaterial.clearCoat = parseFloat(mat[2]) / 100;
       if (mat.length > 3) gl.mainMaterial.clearCoatRoughness = parseFloat(mat[3]) / 100;
+      const ao = gl.solidML.criteria.getValue("ao", "array");
+      if (ao.length > 0) updateAOSharpness(gl, parseFloat(ao[0]));
+      if (ao.length > 1) gl.AOoffset = parseFloat(ao[1]);
       const bg = gl.solidML.criteria.getValue("bg", "array");
-      gl.backScreen.skyColor   = new THREE.Color(gl.solidML.criteria.background || bg[0]);
-      gl.backScreen.floorColor = new THREE.Color(gl.solidML.criteria.background || bg[1] || bg[0]);
-      gl.backScreen.checkColor = new THREE.Color(gl.solidML.criteria.background || bg[2] || bg[1] || bg[0]);
+      if (bg) {
+        gl.skyColor   = gl.solidML.criteria.background || bg[0];
+        gl.floorColor = gl.solidML.criteria.background || bg[1] || bg[0];
+        gl.checkColor = gl.solidML.criteria.background || bg[2] || bg[1] || bg[0];
+      }
+      updateBackScreen(gl);
+
+      gl.defineControls.forEach(c=>c.remove());
+      gl.defineControls = [];
+      for (let key in gl.solidML.variables) {
+        const val = gl.solidML.variables[key];
+        const ctrl = gl.defineGUI.add(gl.solidML.variables, key);
+        ctrl.onChange(v=>{
+          gl.shadowAccumlator.stop();
+          updateGeometry(gl);
+        });
+        ctrl.onFinishChange(v=>{
+          gl.shadowAccumlator.start();
+          updateGeometry(gl);
+        });
+        gl.defineControls.push(ctrl);
+      }
 
       // compute boudings
       gl.mainGeometry.computeBoundingBox();
@@ -34,8 +56,9 @@ function build(gl) {
       sphere.center.z += zMargin;
 
       gl.controls.target = sphere.center;
-      gl.camera.position.sub(sphere.center).normalize().multiplyScalar(sphere.radius*4).add(sphere.center);
-      //gl.camera.far = 
+      if (gl.autoCameraPosition)
+        gl.camera.position.sub(sphere.center).normalize().multiplyScalar(sphere.radius*4).add(sphere.center);
+      gl.camera.far = sphere.radius * 10;
 
       gl.topLight.position.set(sphere.center.x, sphere.center.y, sphere.center.z+sphere.radius+1);
       gl.topLight.target.position.copy(sphere.center);
@@ -96,7 +119,25 @@ function updateAOSharpness(gl, sharpness) {
   gl.AOenable = (sharpness > 0);
   gl.AOsharpness = sharpness;
   gl._AOsharpnessFactor = Math.pow(2, gl.AOsharpness);
-};
+}
+
+function updateBackScreen(gl) {
+  if (gl.visibleFloor) {
+    gl.backScreen.skyColor   = new THREE.Color(gl.skyColor);
+    gl.backScreen.floorColor = new THREE.Color(gl.floorColor);
+    gl.backScreen.checkColor = new THREE.Color(gl.checkColor);
+  } else {
+    gl.backScreen.skyColor   = new THREE.Color(gl.skyColor);
+    gl.backScreen.floorColor = gl.backScreen.skyColor;
+    gl.backScreen.checkColor = gl.backScreen.skyColor;
+  }
+}
+
+function updateGeometry(gl) {
+  const camdir = gl.controls.target.clone().sub(gl.camera.position).normalize();
+  console.log(gl.solidML.variables);
+  gl.mainGeometry.update(camdir);
+}
 
 
 function setup(gl) {
@@ -131,22 +172,33 @@ function setup(gl) {
   updateAOSharpness(gl, 2);
   gl.AOoffset = 0;
   gl.autoZPosition = true;
+  gl.autoCameraPosition = true;
   gl.visibleFloor = true;
   gl.visibleRoom = false;
+  gl.skyColor = "#679";
+  gl.floorColor = "#eee";
+  gl.checkColor = "#eee";
 
   gl.gui = new dat.GUI({autoPlace: false, closed: false});
+  gl.gui.useLocalStorage = true;
   document.getElementById("paramgui").appendChild(gl.gui.domElement);
   const ao = gl.gui.addFolder("Ambient Occlusion");
   ao.closed = false;
   ao.add(gl, 'AOenable');
-  ao.add(gl, 'AOsharpness', 0, 5).step(0.1).onChange(v=>updateAOSharpness(gl, v));
-  ao.add(gl, 'AOoffset',   -1, 1).step(0.1).onChange(v=>gl.AOoffset=v);
+  ao.add(gl, 'AOsharpness', 0, 5, 0.1).onChange(v=>updateAOSharpness(gl, v));
+  ao.add(gl, 'AOoffset',   -1, 1, 0.1);
   const bg = gl.gui.addFolder("Background");
-  bg.closed = false;
-  bg.add(gl, 'autoZPosition').onChange(v=>{gl.autoZPosition=v;build(gl);});
-  bg.add(gl, 'visibleFloor').onChange(v=>{gl.visibleFloor=v;build(gl);});
+  bg.closed = true;
+  bg.add(gl, 'autoZPosition').onChange(v=>build(gl));
+  bg.add(gl, 'autoCameraPosition').onChange(v=>build(gl));
+  bg.add(gl, 'visibleFloor').onChange(v=>build(gl));
+  bg.addColor(gl, 'skyColor').onChange(v=>updateBackScreen(gl));
+  bg.addColor(gl, 'floorColor').onChange(v=>updateBackScreen(gl));
+  bg.addColor(gl, 'checkColor').onChange(v=>updateBackScreen(gl));
   //bg.add(gl, 'visibleRoom').onChange(v=>{gl.visibleRoom=v;build(gl);});
-  
+  gl.defineGUI = gl.gui.addFolder("Definitions");
+  gl.defineGUI.closed = false;
+  gl.defineControls = [];
 
   gl.mainMaterial = new SolidML.Material();
   gl.mainGeometry = null;
@@ -218,10 +270,8 @@ function setup(gl) {
 
 function draw(gl) {
   gl.controls.update();
-  if (gl.updateFrame) {
-    const camdir = gl.controls.target.clone().sub(gl.camera.position).normalize();
-    gl.mainGeometry.update(camdir);
-  }
+  if (gl.updateFrame) 
+    updateGeometry(gl);
 }
 
 new Ptolemy({
@@ -266,7 +316,7 @@ class BackScreen extends THREE.Mesh {
             "float len = length(fuv - cameraPosition);",
             "vec2 ipx = vec2(0.001*len, -0.001*len);",
             "vec3 chk = fcol(fuv.xy+ipx.xx) + fcol(fuv.xy+ipx.xy) + fcol(fuv.xy+ipx.yx) + fcol(fuv.xy+ipx.yy);",
-            "gl_FragColor = mix(vec4(chk/5.,1), vec4(skyColor,1), smoothstep(0.98,1.0,dir.z+1.));",
+            "gl_FragColor = mix(vec4(chk/4.,1), vec4(skyColor,1), smoothstep(0.98,1.0,dir.z+1.));",
           "} else {",
             "gl_FragColor = vec4(skyColor,1);",
           "}",
@@ -275,15 +325,12 @@ class BackScreen extends THREE.Mesh {
     });
     this.frustumCulled = false;
   }
-  set skyColor(c) {
-    this.material.uniforms.skyColor.value = c;
-  }
-  set floorColor(c) {
-    this.material.uniforms.floorColor.value = c;
-  }
-  set checkColor(c) {
-    this.material.uniforms.checkColor.value = c;
-  }
+  get skyColor() { return this.material.uniforms.skyColor.value; }
+  set skyColor(c) { this.material.uniforms.skyColor.value = c; }
+  get floorColor() { return this.material.uniforms.floorColor.value; }
+  set floorColor(c) { this.material.uniforms.floorColor.value = c; }
+  get checkColor() { return this.material.uniforms.checkColor.value; }
+  set checkColor(c) { this.material.uniforms.checkColor.value = c; }
   set shader(fragShader) {
     this.material.fragmentShader = fragShader;
   }
