@@ -1,4 +1,4 @@
-function build(gl) {
+function build(gl, stateUpdating) {
   try{
     const code = gl.editor.getValue();
     if (/^\s*$/.test(code)) return;
@@ -10,8 +10,13 @@ function build(gl) {
     if (gl.mainMesh) 
       gl.scene.remove(gl.mainMesh);
 
-    if (gl.mainGeometry.objectCount == 0) 
+    if (gl.mainGeometry.objectCount == 0) {
+      gl.shadowAccumlator.setMeshes(null);
       return;
+    }
+
+    if (stateUpdating)
+      updateState(code);
 
     if (gl.mainGeometry.isCompiled()) {
       // read criteria
@@ -24,7 +29,7 @@ function build(gl) {
       if (ao.length > 0) updateAOSharpness(gl, parseFloat(ao[0]));
       if (ao.length > 1) gl.AOoffset = parseFloat(ao[1]);
       const bg = gl.solidML.criteria.getValue("bg", "array");
-      if (bg) {
+      if (bg || gl.solidML.criteria.background) {
         gl.skyColor   = gl.solidML.criteria.background || bg[0];
         gl.floorColor = gl.solidML.criteria.background || bg[1] || bg[0];
         gl.checkColor = gl.solidML.criteria.background || bg[2] || bg[1] || bg[0];
@@ -87,9 +92,9 @@ function build(gl) {
       gl.mainMesh.customDepthMaterial = gl.mainMaterial.customDepthMaterial;
       gl.mainMesh.position.z = zMargin;
 
-      gl.shadowAccumlator.setMeshes([gl.mainMesh, gl.floor, gl.room], sphere);
-
       gl.scene.add(gl.mainMesh);
+
+      gl.shadowAccumlator.setMeshes([gl.mainMesh, gl.floor, gl.room], sphere);
     }
   } catch(e){
     message(e.message);
@@ -112,6 +117,24 @@ function capture(gl) {
   } catch (e) {
     message(e.message);
     console.error(e);
+  }
+}
+
+function updateState(code) {
+  const query = (/^\s*$/.test(code)) ? "" : "?s=" + encodeURIComponent(code);
+  history.pushState(null, null, location.href.replace(/\?.*$/, "") + query);
+}
+
+function updateCodeByURI(gl) {
+  if (location.search) {
+    location.search.substring(1).split("&").map(s=>s.split("=")).forEach(query=>{
+      switch(query[0]) {
+        case "s":
+          gl.editor.setValue(decodeURIComponent(query[1]));
+          build(gl, false);
+          break;
+      }
+    });
   }
 }
 
@@ -147,7 +170,7 @@ function setup(gl) {
   gl.editor.commands.addCommand({
     name : "play",
     bindKey: {win:"Ctrl-Enter", mac:"Command-Enter"},
-    exec: ()=>build(gl)
+    exec: ()=>build(gl, true)
   });
   gl.editor.commands.addCommand({ // Restore last draft from localStorage
     name : "restore",
@@ -161,13 +184,9 @@ function setup(gl) {
   });
   gl.editor.setValue(initialScript);
   document.getElementById("version").textContent = SolidML.VERSION;
-  document.getElementById("runscript").addEventListener("click", ()=>build(gl));
+  document.getElementById("runscript").addEventListener("click", ()=>build(gl, true));
   document.getElementById("capture").addEventListener("click", ()=>capture(gl));
-  document.getElementById("scripturl").addEventListener("click", ()=>{
-    const code = gl.editor.getValue();
-    const query = (/^\s*$/.test(code)) ? "" : "?s=" + encodeURIComponent(code);
-    history.pushState(null, null, location.href.replace(/\?.*$/, "") + query);
-  });
+  window.addEventListener("popstate", ()=>updateCodeByURI(gl));
 
   updateAOSharpness(gl, 2);
   gl.AOoffset = 0;
@@ -189,13 +208,13 @@ function setup(gl) {
   ao.add(gl, 'AOoffset',   -1, 1, 0.1);
   const bg = gl.gui.addFolder("Background");
   bg.closed = true;
-  bg.add(gl, 'autoZPosition').onChange(v=>build(gl));
-  bg.add(gl, 'autoCameraPosition').onChange(v=>build(gl));
-  bg.add(gl, 'visibleFloor').onChange(v=>build(gl));
+  bg.add(gl, 'autoZPosition').onChange(v=>build(gl, false));
+  bg.add(gl, 'autoCameraPosition').onChange(v=>build(gl, false));
+  bg.add(gl, 'visibleFloor').onChange(v=>build(gl, false));
   bg.addColor(gl, 'skyColor').onChange(v=>updateBackScreen(gl));
   bg.addColor(gl, 'floorColor').onChange(v=>updateBackScreen(gl));
   bg.addColor(gl, 'checkColor').onChange(v=>updateBackScreen(gl));
-  //bg.add(gl, 'visibleRoom').onChange(v=>{gl.visibleRoom=v;build(gl);});
+  //bg.add(gl, 'visibleRoom').onChange(v=>{gl.visibleRoom=v;build(gl, false);});
   gl.defineGUI = gl.gui.addFolder("Definitions");
   gl.defineGUI.closed = false;
   gl.defineControls = [];
@@ -244,16 +263,7 @@ function setup(gl) {
 
   gl.shadowAccumlator = new ShadowAccumlator(gl);
 
-  if (location.search) {
-    location.search.substring(1).split("&").map(s=>s.split("=")).forEach(query=>{
-      switch(query[0]) {
-        case "s":
-          gl.editor.setValue(decodeURIComponent(query[1]));
-          build(gl);
-          break;
-      }
-    });
-  }
+  updateCodeByURI(gl);
 
   gl.render = ()=>{
     if (gl.shadowAccumlator.pause || !gl.AOenable) {

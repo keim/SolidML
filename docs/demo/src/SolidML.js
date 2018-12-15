@@ -67,18 +67,18 @@ SolidML.VERSION = "0.3.0";
 SolidML.Criteria = class {
   /** SolidML.Criteria is created in the constructor of {@link SolidML}.  */
   constructor(randMT, hash) {
-    /** the maximum limit of {@link SolidML.Criteria.maxdepth}. default is 10000 
+    /** the maximum limit of {@link SolidML.Criteria.maxdepth}. default is 5000 
      *  @type {int}
      */
-    this.systemMaxDepth = 10000;
+    this.systemMaxDepth = 5000;
     /** the maximum limit of {@link SolidML.Criteria.maxobjects}. default is 5000000
      *  @type {int}
      */
     this.systemMaxObjects = 5000000;
-    /** maximum depth to terminate recursive rule calls. default is 5000 
+    /** maximum depth to terminate recursive rule calls. default is 2000 
      *  @type {int}
      */
-    this.maxdepth = 5000;
+    this.maxdepth = 2000;
     /** maximum object count to terminate constuction. default is 1000000
      *  @type {int}
      */
@@ -167,6 +167,8 @@ SolidML.Criteria = class {
           return this._getColor(this[key], "#000");
         case "array":
           return this._getArray(this[key]);
+        case "hash":
+          return this._getHash(key);
         default:
           return this[key] || "";
       }
@@ -187,6 +189,13 @@ SolidML.Criteria = class {
   }
   _getArray(value) {
     return value.replace(/\[|\]/g, "").split(",");
+  }
+  _getHash(key) {
+    return Object.keys(this).filter(name=>(name.indexOf(key)==0)).reduce((accum,name)=>{
+      const k = name.substring(key.length+2);
+      accum[k] = this[name];
+      return accum;
+    }, {});
   }
 }
 /** Represents 4dim-matrix inside, compatible for THREE.Matrix4.copy() method. */
@@ -795,6 +804,7 @@ SolidML.Operator = class {
           case "blend":
             this.blend.setHex(getColor());
             this.blend.a = getNumber();
+            this.ratio.set(1,1,1,1);
             break;
           case "color":
             const nextColor = getColor(true);

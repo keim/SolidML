@@ -59,21 +59,23 @@ class ShadowAccumlator {
     if (this.group)
       this.scene.remove(this.group);
     this.group = new THREE.Group();
-    meshList.forEach(mesh=>{
-      const newMesh = mesh.clone(); 
-      newMesh.material = this.material;
-      this.group.add(newMesh);
-    });
-    this.boundingSphere = boundingSphere;
-    this.light.shadow.camera.bottom = - this.boundingSphere.radius;
-    this.light.shadow.camera.top    = + this.boundingSphere.radius;
-    this.light.shadow.camera.left   = - this.boundingSphere.radius;
-    this.light.shadow.camera.right  = + this.boundingSphere.radius;
-    this.light.shadow.camera.near = 0.01;
-    this.light.shadow.camera.far = this.boundingSphere.radius*2;
-    this.light.shadow.camera.updateProjectionMatrix();
+    if (meshList) {
+      meshList.forEach(mesh=>{
+        const newMesh = mesh.clone(); 
+        newMesh.material = this.material;
+        this.group.add(newMesh);
+      });
+      this.boundingSphere = boundingSphere;
+      this.light.shadow.camera.bottom = - this.boundingSphere.radius;
+      this.light.shadow.camera.top    = + this.boundingSphere.radius;
+      this.light.shadow.camera.left   = - this.boundingSphere.radius;
+      this.light.shadow.camera.right  = + this.boundingSphere.radius;
+      this.light.shadow.camera.near = 0.01;
+      this.light.shadow.camera.far = this.boundingSphere.radius*2;
+      this.light.shadow.camera.updateProjectionMatrix();
+      this.scene.add(this.group);
+    }
     this.accumlator.clear();
-    this.scene.add(this.group);
   }
   render(camera, times) {
     if (!this.group || this.pause) return;
