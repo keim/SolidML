@@ -1,4 +1,32 @@
-/** @file Core module. SolidML.js does not depend on any other libraries. */
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: SolidML.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: SolidML.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/** @file Core module. SolidML.js does not depend on any other libraries. */
 /**
  * Construct fractal-like 3D models by cryptic script based on [Structure Synth]{@link http://structuresynth.sourceforge.net/}'s' Eisen Script.
  * SolidML.js does not depend on any other libraries. If you want to import model into three.js, see {@link SolidML.BufferGeometry}.
@@ -67,23 +95,23 @@ SolidML.VERSION = "0.3.0";
 SolidML.Criteria = class {
   /** SolidML.Criteria is created in the constructor of {@link SolidML}.  */
   constructor(randMT, hash) {
-    /** the maximum limit of {@link SolidML.Criteria.maxdepth}. default is 5000 
+    /** the maximum limit of {@link SolidML.Criteria.maxdepth}. default is 10000 
      *  @type {int}
      */
-    this.systemMaxDepth = 5000;
+    this.systemMaxDepth = 10000;
     /** the maximum limit of {@link SolidML.Criteria.maxobjects}. default is 5000000
      *  @type {int}
      */
     this.systemMaxObjects = 5000000;
-    /** maximum depth to terminate recursive rule calls. default is 2000 
+    /** maximum depth to terminate recursive rule calls. default is 5000 
      *  @type {int}
      */
-    this.maxdepth = 2000;
+    this.maxdepth = 5000;
     /** maximum object count to terminate constuction. default is 1000000
      *  @type {int}
      */
     this.maxobjects = 1000000;
-    /** minimun size to create object, check [the 3dim-determinant of matrix] < [minsize] ^ 3. default is 0
+    /** minimun size to create object, check [the 3dim-determinant of matrix] &lt; [minsize] ^ 3. default is 0
      *  @type {number}
      */
     this.minsize = 0;
@@ -100,8 +128,8 @@ SolidML.Criteria = class {
      */
     this.background = null;
     // private color pool instance
-    this._colorpoolInstance = new SolidML.ColorPool((hash&&hash["colorpool"]) || "randomrgb", randMT);
-    if (hash && ("colorpool" in hash))
+    this._colorpoolInstance = new SolidML.ColorPool((hash&amp;&amp;hash["colorpool"]) || "randomrgb", randMT);
+    if (hash &amp;&amp; ("colorpool" in hash))
       delete hash["colorpool"];
     // copy hash to this
     Object.assign(this, hash);
@@ -167,8 +195,6 @@ SolidML.Criteria = class {
           return this._getColor(this[key], "#000");
         case "array":
           return this._getArray(this[key]);
-        case "hash":
-          return this._getHash(key);
         default:
           return this[key] || "";
       }
@@ -190,13 +216,6 @@ SolidML.Criteria = class {
   _getArray(value) {
     return value.replace(/\[|\]/g, "").split(",");
   }
-  _getHash(key) {
-    return Object.keys(this).filter(name=>(name.indexOf(key)==0)).reduce((accum,name)=>{
-      const k = name.substring(key.length+2);
-      accum[k] = this[name];
-      return accum;
-    }, {});
-  }
 }
 /** Represents 4dim-matrix inside, compatible for THREE.Matrix4.copy() method. */
 SolidML.Matrix4 = class {
@@ -215,11 +234,8 @@ SolidML.Matrix4 = class {
   premultiply(m) { return this.multiplyMatrices(m, this); }
   /** @return {number} 3dim-determinant calclate for size checking. */
   det3() {
-    return Math.abs(this.signed_det3());
-  }
-  signed_det3() {
     const te = this.elements;
-    return (te[0]*te[5]*te[10] - te[0]* te[6]*te[9] - te[1]*te[4]*te[10] + te[1]* te[6]*te[8] + te[2]*te[4]* te[9] - te[2]*te[5]*te[8]);
+    return Math.abs(te[0]*te[5]*te[10] - te[0]* te[6]*te[9] - te[1]*te[4]*te[10] + te[1]* te[6]*te[8] + te[2]*te[4]* te[9] - te[2]*te[5]*te[8]);
   }
   multiplyMatrices(a, b) {
     const ae = a.elements, be = b.elements;
@@ -251,7 +267,7 @@ SolidML.Matrix4 = class {
   }
   _applyToSrc_copyToDst(src, srcLength, dst, dstIndex, itemSize) {
     const te = this.elements;
-    for (let i=0,j=dstIndex; i<srcLength; i++, j++) {
+    for (let i=0,j=dstIndex; i&lt;srcLength; i++, j++) {
       const x = src[i*itemSize], y = src[i*itemSize+1], z = src[i*itemSize+2];
       const dx = te[0] * x + te[4] * y + te[8]  * z + te[12];
       const dy = te[1] * x + te[5] * y + te[9]  * z + te[13];
@@ -347,7 +363,7 @@ SolidML.ColorHSBA = class {
     this.cp = null; 
   	if (this.s > 0) {
 	    let hdif = (dst.s == 0) ? 0 : dst.h - this.h;
-	    hdif += (hdif<-180) ? 360 : ((hdif>180) ? -360 : 0);
+	    hdif += (hdif&lt;-180) ? 360 : ((hdif>180) ? -360 : 0);
 	    this.h += hdif * ratio.h * dst.a;
   	} else 
   	  this.h = dst.h;
@@ -360,7 +376,7 @@ SolidML.ColorHSBA = class {
    *  @return {SolidML.ColorHSBA} this instance
    */
   setRGB(col) {
-    const min = (col.g<=col.r)?((col.b<=col.g)?col.b:col.g):((col.b<=col.r)?col.b:col.r),
+    const min = (col.g&lt;=col.r)?((col.b&lt;=col.g)?col.b:col.g):((col.b&lt;=col.r)?col.b:col.r),
           max = (col.g>=col.r)?((col.b>=col.g)?col.b:col.g):((col.b>=col.r)?col.b:col.r);
     this.h = max-min;
     this.s = max?(this.h/max):0;
@@ -404,8 +420,8 @@ SolidML.ColorHSBA = class {
           x  = c * (1 - Math.abs(hp%2-1)), 
           m  = this.b - c, 
           a  = this.a;
-    return (hp<1) ? {r:c+m,g:x+m,b:m,a} : (hp<2) ? {r:x+m,g:c+m,b:m,a} : (hp<3) ? {r:m,g:c+m,b:x+m,a} : 
-           (hp<4) ? {r:m,g:x+m,b:c+m,a} : (hp<5) ? {r:x+m,g:m,b:c+m,a} : {r:c+m,g:m,b:x+m,a};
+    return (hp&lt;1) ? {r:c+m,g:x+m,b:m,a} : (hp&lt;2) ? {r:x+m,g:c+m,b:m,a} : (hp&lt;3) ? {r:m,g:c+m,b:x+m,a} : 
+           (hp&lt;4) ? {r:m,g:x+m,b:c+m,a} : (hp&lt;5) ? {r:x+m,g:m,b:c+m,a} : {r:c+m,g:m,b:x+m,a};
   }
   _incrementRandMT() {
   	if (this.cp) 
@@ -413,7 +429,7 @@ SolidML.ColorHSBA = class {
   }
   _fillArray(dst, startat, count) {
     const col = this.getRGBA();
-    for (let index=startat*4, c=0; c<count; c++) {
+    for (let index=startat*4, c=0; c&lt;count; c++) {
       dst[index++] = col.r;
       dst[index++] = col.g;
       dst[index++] = col.b;
@@ -518,7 +534,7 @@ SolidML.BuildStatus = class {
         imax = this.rule.maxsize;
     this._rule_min3 = imin * imin * imin;
     this._rule_max3 = imax * imax * imax;
-    return (++this._ruleDepth[rule.name] <= rule.maxdepth);
+    return (++this._ruleDepth[rule.name] &lt;= rule.maxdepth);
   }
   _popRule() {
     this._ruleDepth[this.rule.name]--;
@@ -542,7 +558,7 @@ SolidML.BuildStatus = class {
   }
   _checkCriteria() {
     const det3 = this.matrix.det3();
-    return (this.objectCount < this.rule.rootInstance.criteria.maxobjects && this._rule_min3 < det3 && det3 < this._rule_max3);
+    return (this.objectCount &lt; this.rule.rootInstance.criteria.maxobjects &amp;&amp; this._rule_min3 &lt; det3 &amp;&amp; det3 &lt; this._rule_max3);
   }
 }
 /** Represents rules in Eisen Script.  */
@@ -610,14 +626,14 @@ SolidML.Rule = class {
       const list = this.childRules[label],
             total = list.reduce((acm, rule)=>acm+rule.weight, 0),
             randnum = this.rootInstance.randMT.next() * total;
-      for (let i=0, acm=0; i<list.length; i++) {
+      for (let i=0, acm=0; i&lt;list.length; i++) {
         acm += list[i].weight;
-        if (randnum < acm) 
+        if (randnum &lt; acm) 
           return list[i];
       }
       return list[list.length-1];
     }
-    return this.parent && this.parent.find(label);
+    return this.parent &amp;&amp; this.parent.find(label);
   }
   _appendChild(rule) {
     if (!(rule.name in this.childRules)) this.childRules[rule.name] = [];
@@ -664,7 +680,7 @@ SolidML.Reference = class {
   _build(stat) {
     const rule = stat.rule.find(this.label);
     if (rule) {
-      if (++stat._ruleDepth[rule.parent.name] <= rule.parent.maxdepth) 
+      if (++stat._ruleDepth[rule.parent.name] &lt;= rule.parent.maxdepth) 
         rule._build(stat);
       stat._ruleDepth[rule.parent.name]--;
     } else 
@@ -807,7 +823,6 @@ SolidML.Operator = class {
           case "blend":
             this.blend.setHex(getColor());
             this.blend.a = getNumber();
-            this.ratio.set(1,1,1,1);
             break;
           case "color":
             const nextColor = getColor(true);
@@ -841,15 +856,6 @@ SolidML.Operator = class {
             break;
           case "rz":
             this.matrix.multiply(mat.makeRotationZ(getNumber()/180*Math.PI));
-            break;
-          case "fx":
-            this.matrix.multiply(mat.makeScale(-1,1,1));
-            break;
-          case "fy":
-            this.matrix.multiply(mat.makeScale(1,-1,1));
-            break;
-          case "fz":
-            this.matrix.multiply(mat.makeScale(1,1,-1));
             break;
           case "s":
             const sx = getNumber();
@@ -908,14 +914,14 @@ SolidML.ColorPool = class {
       case "randomhue":
         if (step > 0) {
           this.colorList = [];
-          for (let i=0; i<step; i++)
+          for (let i=0; i&lt;step; i++)
             this.colorList.push(this._dice.set(i/step*360, 1, 1, 1).getRGBA());
         }
         break;
       case "grayscale":
         if (step > 0) {
           this.colorList = [];
-          for (let i=0; i<step; i++) {
+          for (let i=0; i&lt;step; i++) {
             const v = i/(step-1);
             this.colorList.push({r:v, g:v, b:v, a:1});
           }
@@ -942,7 +948,7 @@ SolidML.ColorPool = class {
   }
   _incrementRandMT() {
     this._randMT.next();
-    if (!this.colorList && this._scheme != "randomhue" && this._scheme != "grayscale") {
+    if (!this.colorList &amp;&amp; this._scheme != "randomhue" &amp;&amp; this._scheme != "grayscale") {
       this._randMT.next();
       this._randMT.next();
     }
@@ -968,7 +974,7 @@ SolidML.randMT = class {
       s = new Date().getTime();
     this._seed = s;
     this._mt[0] = s>>>0;
-    for (let i=1; i<this._mt.length; i++) 
+    for (let i=1; i&lt;this._mt.length; i++) 
       this._mt[i] = 1812433253 * (this._mt[i-1] ^ (this._mt[i-1] >>> 30)) + i;
     this._index = this._mt.length;
   }
@@ -978,21 +984,21 @@ SolidML.randMT = class {
     if (this._index >= mt.length) {
       let k = 0, N = mt.length, M = 397;
       do {
-        v = (mt[k] & 0x80000000) | (mt[k+1] & 0x7fffffff);
-        mt[k] = mt[k+M] ^ (v >>> 1) ^ ((v & 1) ? 0x9908b0df : 0);
-      } while (++k < N-M);
+        v = (mt[k] &amp; 0x80000000) | (mt[k+1] &amp; 0x7fffffff);
+        mt[k] = mt[k+M] ^ (v >>> 1) ^ ((v &amp; 1) ? 0x9908b0df : 0);
+      } while (++k &lt; N-M);
       do {
-        v = (mt[k] & 0x80000000) | (mt[k+1] & 0x7fffffff);
-        mt[k] = mt[k+M-N] ^ (v >>> 1) ^ ((v & 1) ? 0x9908b0df : 0);
-      } while (++k < N-1);
-      v = (mt[N-1] & 0x80000000) | (mt[0] & 0x7fffffff);
-      mt[N-1] = mt[M-1] ^ (v >>> 1) ^ ((v & 1) ? 0x9908b0df : 0);
+        v = (mt[k] &amp; 0x80000000) | (mt[k+1] &amp; 0x7fffffff);
+        mt[k] = mt[k+M-N] ^ (v >>> 1) ^ ((v &amp; 1) ? 0x9908b0df : 0);
+      } while (++k &lt; N-1);
+      v = (mt[N-1] &amp; 0x80000000) | (mt[0] &amp; 0x7fffffff);
+      mt[N-1] = mt[M-1] ^ (v >>> 1) ^ ((v &amp; 1) ? 0x9908b0df : 0);
       this._index = 0;
     }
     v = mt[this._index++];
     v ^= v >>> 11;
-    v ^= (v << 7) & 0x9d2c5680;
-    v ^= (v << 15) & 0xefc60000;
+    v ^= (v &lt;&lt; 7) &amp; 0x9d2c5680;
+    v ^= (v &lt;&lt; 15) &amp; 0xefc60000;
     v ^= v >>> 18;
     return v >>> 0;
   }
@@ -1049,7 +1055,7 @@ SolidML.ScriptParser = class {
     while ($ = rexDefine.exec(script)) {
       const rexReplace = new RegExp($[1], "gm");
       script = script.replace(rexReplace, (match, offset, string)=>{
-        return (offset < rexDefine.lastIndex || string[offset-1] == "$") ? match : "$"+ match;
+        return (offset &lt; rexDefine.lastIndex || string[offset-1] == "$") ? match : "$"+ match;
       });
     }
     // split rule includes "(A|B)" command
@@ -1070,7 +1076,7 @@ SolidML.ScriptParser = class {
       // split "A|B" into ["A","B"]
       const branch = $[1].split("|").map(mapWeight);
       // seek rule includes "(A|B)"
-      const $ruleStart = ruleIndices.find((e,i,a)=>(e.index < $.index));
+      const $ruleStart = ruleIndices.find((e,i,a)=>(e.index &lt; $.index));
       if ($ruleStart) {
         const ruleDefine = $ruleStart[1] + $ruleStart[2],
               ruleOption = mapWeight($ruleStart[3]);
@@ -1078,7 +1084,7 @@ SolidML.ScriptParser = class {
         const rex = /[{}]/gm;
         rex.lastIndex = $ruleStart.index;
         $$ = rex.exec(script);
-        if ($$ && $$[0] == "{") {
+        if ($$ &amp;&amp; $$[0] == "{") {
           const sequenceStart = $$.index;
           // seek sequence end "}"
           let depth = 1;
@@ -1348,3 +1354,26 @@ SolidML.ColorTable = {
   "ivory": "#fffff0",
   "white": "#ffffff"
 };
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="SolidML.html">SolidML</a></li><li><a href="SolidML.BufferGeometry.html">BufferGeometry</a></li><li><a href="SolidML.BuildStatus.html">BuildStatus</a></li><li><a href="SolidML.ColorHSBA.html">ColorHSBA</a></li><li><a href="SolidML.ColorPool.html">ColorPool</a></li><li><a href="SolidML.Criteria.html">Criteria</a></li><li><a href="SolidML.Material.html">Material</a></li><li><a href="SolidML.Matrix4.html">Matrix4</a></li><li><a href="SolidML.randMT.html">randMT</a></li><li><a href="SolidML.Rule.html">Rule</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a> on Mon Dec 17 2018 17:13:23 GMT+0900 (東京 (標準時))
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

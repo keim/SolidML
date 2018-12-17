@@ -163,17 +163,27 @@ SolidML.BufferGeometry = class extends THREE.BufferGeometry {
     if (!geom) return;
     const vcount = geom.attributes.position.count,
           icount = geom.index.array.length;
+    let invertFace = false;
     if (stat) {
       stat.matrix._applyToSrc_copyToDst(
         geom.attributes.position.array, vcount, 
         this.attributes.position.array, this._vertexIndex, 3);
       stat.color._fillArray(this.attributes.color.array, this._vertexIndex, vcount);
+      invertFace = (stat.matrix.signed_det3() < 0);
     } else {
       this.attributes.position.array.set(geom.attributes.position.array, this._vertexIndex*3);
       this.attributes.color   .array.set(geom.attributes.color   .array, this._vertexIndex*4);
     }
-    for (let i=0; i<icount; i++, this._indexIndex++) 
-      this.index.array[this._indexIndex] = geom.index.array[i] + this._vertexIndex;
+    if (invertFace) {
+      for (let i=0; i<icount; i+=3, this._indexIndex+=3) {
+        this.index.array[this._indexIndex]   = geom.index.array[i]   + this._vertexIndex;
+        this.index.array[this._indexIndex+1] = geom.index.array[i+2] + this._vertexIndex;
+        this.index.array[this._indexIndex+2] = geom.index.array[i+1] + this._vertexIndex;
+      }
+    } else {
+      for (let i=0; i<icount; i++, this._indexIndex++) 
+        this.index.array[this._indexIndex] = geom.index.array[i] + this._vertexIndex;
+    }
     this._vertexIndex += vcount;
   }
 }
@@ -203,6 +213,7 @@ SolidML.GeometryCreator = class {
       "icosa":    indexing(new THREE.IcosahedronBufferGeometry(0.5)), 
       "grid":     new SolidML.GridBufferGeometry(1, 0.1), 
       "line":     new THREE.BoxBufferGeometry(1, 0.1, 0.1),
+      "triangle": this.__triangleGeom([1,0,0,0,1,0,0,0,1]),
       "point":    null, 
     }, geometryHash);
     // cahce area
@@ -273,7 +284,7 @@ SolidML.GeometryCreator = class {
     if (stat.param in this._cache.torus) 
       return this._cache.torus[stat.param];
     const p = stat.param.split(/[\s,;:]/).map(s=>Number(s)||0);
-    const tube = p[0] || 0.1;
+    const tube = p[0]/100 || 0.1;
     const radseg = (!p[1] || p[1]<3) ? 4 : p[1];
     const tubseg = (!p[2] || p[2]<3) ? 8 : p[2];
     const geom = new THREE.TorusBufferGeometry(0.5, tube, radseg, tubseg).applyMatrix(this.roty);
@@ -285,11 +296,7 @@ SolidML.GeometryCreator = class {
       return this._cache.triangle[stat.param];
     const p = stat.param.split(/[\s,;:]/).map(s=>Number(s)||0);
     if (p.length > 9) p.length = 9;
-    const vertex = new Float32Array(9);
-    vertex.set(p);
-    const geom = new THREE.BufferGeometry();
-    geom.setIndex(new THREE.Uint16BufferAttribute([0,1,2], 1));
-    geom.addAttribute('position', new THREE.BufferAttribute(vertex, 3));
+    const geom = this.__triangleGeom(p);
     this._cache.triangle[stat.param] = geom;
     return geom;
   }
@@ -330,6 +337,14 @@ SolidML.GeometryCreator = class {
     }
     this._composers[stat.referenceID].compose(stat, this._isEstimationOnly);
     return null;
+  }
+  __triangleGeom(p) {
+    const vertex = new Float32Array(9);
+    vertex.set(p);
+    const geom = new THREE.BufferGeometry();
+    geom.setIndex(new THREE.Uint16BufferAttribute([0,1,2], 1));
+    geom.addAttribute('position', new THREE.BufferAttribute(vertex, 3));
+    return geom;
   }
 }
 SolidML.MeshComposer = class {

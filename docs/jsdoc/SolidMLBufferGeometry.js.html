@@ -1,4 +1,32 @@
-/**
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: SolidMLBufferGeometry.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: SolidMLBufferGeometry.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/**
  * @file Extention for three.js. SolidMLBufferGeometry.js depends on three.js and SolidML.js. Import after these dependent files.
  */
 /**
@@ -9,7 +37,7 @@ SolidML.BufferGeometry = class extends THREE.BufferGeometry {
   /** THREE.BufferGeometry constructed by {@link SolidML} script.
    *  @param {string} [script] script to construct object. call {@link SolidML.BufferGeometry#build} inside.
    *  @param {object} [criteria] default criteria of this structure, specified by "set *" commands in script.
-   *  @param {Object.<BufferGeometry>} [geometryHash] hash map of source geometries and keys like {"box":new THREE.BoxBufferGeometry(1, 1, 1)}. The source geometory should be indexed.
+   *  @param {Object.&lt;BufferGeometry>} [geometryHash] hash map of source geometries and keys like {"box":new THREE.BoxBufferGeometry(1, 1, 1)}. The source geometory should be indexed.
    */
   constructor(script=null, criteria=null, geometryHash=null) {
     super();
@@ -89,7 +117,7 @@ SolidML.BufferGeometry = class extends THREE.BufferGeometry {
     this.objectCount = 0;
     this._geometryCreator.setup(true);
     this.solidML.build(stat=>{
-      if (this.geometryFilter && !this.geometryFilter(stat)) return;
+      if (this.geometryFilter &amp;&amp; !this.geometryFilter(stat)) return;
       const geomCreated = this._geometryCreator.create(stat);
       if (geomCreated) {
         stat.color._incrementRandMT();
@@ -135,7 +163,7 @@ SolidML.BufferGeometry = class extends THREE.BufferGeometry {
     if (sortingDotProduct) {
       const statList = [], vec = sortingDotProduct;
       this.solidML.build(stat=>{
-        if (this.geometryFilter && !this.geometryFilter(stat)) return;
+        if (this.geometryFilter &amp;&amp; !this.geometryFilter(stat)) return;
         statList.push(stat.reference());
       });
       statList.sort((statA, statB)=>{
@@ -148,7 +176,7 @@ SolidML.BufferGeometry = class extends THREE.BufferGeometry {
       });
     } else {
       this.solidML.build(stat=>{
-        if (this.geometryFilter && !this.geometryFilter(stat)) return;
+        if (this.geometryFilter &amp;&amp; !this.geometryFilter(stat)) return;
         this._copyGeometory(stat, this._geometryCreator.create(stat));
       });
     }
@@ -163,27 +191,17 @@ SolidML.BufferGeometry = class extends THREE.BufferGeometry {
     if (!geom) return;
     const vcount = geom.attributes.position.count,
           icount = geom.index.array.length;
-    let invertFace = false;
     if (stat) {
       stat.matrix._applyToSrc_copyToDst(
         geom.attributes.position.array, vcount, 
         this.attributes.position.array, this._vertexIndex, 3);
       stat.color._fillArray(this.attributes.color.array, this._vertexIndex, vcount);
-      invertFace = (stat.matrix.signed_det3() < 0);
     } else {
       this.attributes.position.array.set(geom.attributes.position.array, this._vertexIndex*3);
       this.attributes.color   .array.set(geom.attributes.color   .array, this._vertexIndex*4);
     }
-    if (invertFace) {
-      for (let i=0; i<icount; i+=3, this._indexIndex+=3) {
-        this.index.array[this._indexIndex]   = geom.index.array[i]   + this._vertexIndex;
-        this.index.array[this._indexIndex+1] = geom.index.array[i+2] + this._vertexIndex;
-        this.index.array[this._indexIndex+2] = geom.index.array[i+1] + this._vertexIndex;
-      }
-    } else {
-      for (let i=0; i<icount; i++, this._indexIndex++) 
-        this.index.array[this._indexIndex] = geom.index.array[i] + this._vertexIndex;
-    }
+    for (let i=0; i&lt;icount; i++, this._indexIndex++) 
+      this.index.array[this._indexIndex] = geom.index.array[i] + this._vertexIndex;
     this._vertexIndex += vcount;
   }
 }
@@ -193,7 +211,7 @@ SolidML.GeometryCreator = class {
     // generate hash map
     const indexing = geom=>{
       const indices = new Uint16Array(geom.attributes.position.count);
-      for (let i=0; i<indices.length; i++)
+      for (let i=0; i&lt;indices.length; i++)
         indices[i] = i;
       geom.setIndex(new THREE.BufferAttribute(indices, 1));
       return geom;
@@ -213,7 +231,6 @@ SolidML.GeometryCreator = class {
       "icosa":    indexing(new THREE.IcosahedronBufferGeometry(0.5)), 
       "grid":     new SolidML.GridBufferGeometry(1, 0.1), 
       "line":     new THREE.BoxBufferGeometry(1, 0.1, 0.1),
-      "triangle": this.__triangleGeom([1,0,0,0,1,0,0,0,1]),
       "point":    null, 
     }, geometryHash);
     // cahce area
@@ -247,7 +264,7 @@ SolidML.GeometryCreator = class {
     this._isEstimationOnly = isEstimationOnly;
   }
   create(stat) {
-    return (stat.label in this._creatorFunctions && (!(stat.label in this._geometryHash) || stat.param || stat.option)) ?
+    return (stat.label in this._creatorFunctions &amp;&amp; (!(stat.label in this._geometryHash) || stat.param || stat.option)) ?
            this._creatorFunctions[stat.label](stat) : this._geometryHash[stat.label];
   }
   composeMeshes(isEstimationOnly) {
@@ -257,17 +274,17 @@ SolidML.GeometryCreator = class {
   }
   _sphereCreator(stat) {
     let segment = Number(stat.option)>>0;
-    if (!segment || segment<3) segment = 8;
+    if (!segment || segment&lt;3) segment = 8;
     return this._cache.sphere[segment] || (this._cache.sphere[segment] = new THREE.SphereBufferGeometry(0.5, segment, segment));
   }
   _cylinderCreator(stat) {
     let segment = Number(stat.option)>>0;
-    if (!segment || segment<3) segment = 8;
+    if (!segment || segment&lt;3) segment = 8;
     return this._cache.cylinder[segment] || (this._cache.cylinder[segment] = new THREE.CylinderBufferGeometry(0.5, 0.5, 1, segment).applyMatrix(this.rotz));
   }
   _coneCreator(stat) {
     let segment = Number(stat.option)>>0;
-    if (!segment || segment<3) segment = 8;
+    if (!segment || segment&lt;3) segment = 8;
     return this._cache.cone[segment] || (this._cache.cone[segment] = new THREE.ConeBufferGeometry(0.5, 1, segment).applyMatrix(this.rotz));
   }
   _gridCreator(stat) {
@@ -284,9 +301,9 @@ SolidML.GeometryCreator = class {
     if (stat.param in this._cache.torus) 
       return this._cache.torus[stat.param];
     const p = stat.param.split(/[\s,;:]/).map(s=>Number(s)||0);
-    const tube = p[0]/100 || 0.1;
-    const radseg = (!p[1] || p[1]<3) ? 4 : p[1];
-    const tubseg = (!p[2] || p[2]<3) ? 8 : p[2];
+    const tube = p[0] || 0.1;
+    const radseg = (!p[1] || p[1]&lt;3) ? 4 : p[1];
+    const tubseg = (!p[2] || p[2]&lt;3) ? 8 : p[2];
     const geom = new THREE.TorusBufferGeometry(0.5, tube, radseg, tubseg).applyMatrix(this.roty);
     this._cache.torus[stat.param] = geom;
     return geom;
@@ -296,7 +313,11 @@ SolidML.GeometryCreator = class {
       return this._cache.triangle[stat.param];
     const p = stat.param.split(/[\s,;:]/).map(s=>Number(s)||0);
     if (p.length > 9) p.length = 9;
-    const geom = this.__triangleGeom(p);
+    const vertex = new Float32Array(9);
+    vertex.set(p);
+    const geom = new THREE.BufferGeometry();
+    geom.setIndex(new THREE.Uint16BufferAttribute([0,1,2], 1));
+    geom.addAttribute('position', new THREE.BufferAttribute(vertex, 3));
     this._cache.triangle[stat.param] = geom;
     return geom;
   }
@@ -338,14 +359,6 @@ SolidML.GeometryCreator = class {
     this._composers[stat.referenceID].compose(stat, this._isEstimationOnly);
     return null;
   }
-  __triangleGeom(p) {
-    const vertex = new Float32Array(9);
-    vertex.set(p);
-    const geom = new THREE.BufferGeometry();
-    geom.setIndex(new THREE.Uint16BufferAttribute([0,1,2], 1));
-    geom.addAttribute('position', new THREE.BufferAttribute(vertex, 3));
-    return geom;
-  }
 }
 SolidML.MeshComposer = class {
   constructor(stat, isFlat, tubeWidth) {
@@ -363,11 +376,11 @@ SolidML.MeshComposer = class {
     this._vx = new THREE.Vector3();
     this._vy = new THREE.Vector3();
     this._vz = new THREE.Vector3();
-    // cross section points Array.<THREE.Vector2>
+    // cross section points Array.&lt;THREE.Vector2>
     let segment = Number(stat.option) || 0;
-    if (segment < 3) segment = (this._isFlat) ? 4 : 6;
+    if (segment &lt; 3) segment = (this._isFlat) ? 4 : 6;
     this._crossSection = [];
-    for (let i=0; i<segment; i++) {
+    for (let i=0; i&lt;segment; i++) {
       const rad = (i+0.5)/segment * Math.PI * 2;
       this._crossSection.push(new THREE.Vector2(Math.cos(rad)*0.707, Math.sin(rad)*0.707));
     }
@@ -420,12 +433,12 @@ SolidML.MeshComposer = class {
     };
     if (this._isFlat) {
       // flat shadeing requires vertices twice 
-      for (i=0; i<sidefaceCount; i+=seg)
-        for (j=0; j<seg; j++)
-          createSideface(i+j, i+(j&1)*vmax, j);
+      for (i=0; i&lt;sidefaceCount; i+=seg)
+        for (j=0; j&lt;seg; j++)
+          createSideface(i+j, i+(j&amp;1)*vmax, j);
       // color buffer
-      for (i=0; i<this._colorStac.length; i++) 
-        for (j=0; j<seg; j++) {
+      for (i=0; i&lt;this._colorStac.length; i++) 
+        for (j=0; j&lt;seg; j++) {
           let col = this._colorStac[i];
           colorBuffer[(i*seg+j+vmax)*4]   = colorBuffer[(i*seg+j)*4]   = col.r;
           colorBuffer[(i*seg+j+vmax)*4+1] = colorBuffer[(i*seg+j)*4+1] = col.g;
@@ -436,12 +449,12 @@ SolidML.MeshComposer = class {
       vmax = this._vertexStac.length;
     } else {
       // smooth shading
-      for (i=0; i<sidefaceCount; i+=seg)
-        for (j=0; j<seg; j++)
+      for (i=0; i&lt;sidefaceCount; i+=seg)
+        for (j=0; j&lt;seg; j++)
           createSideface(i+j, i, j);
       // color buffer
-      for (i=0; i<this._colorStac.length; i++) 
-        for (j=0; j<seg; j++) {
+      for (i=0; i&lt;this._colorStac.length; i++) 
+        for (j=0; j&lt;seg; j++) {
           let col = this._colorStac[i];
           colorBuffer[(i*seg+j)*4]   = col.r;
           colorBuffer[(i*seg+j)*4+1] = col.g;
@@ -450,21 +463,21 @@ SolidML.MeshComposer = class {
         }
     }
     // cap face
-    for (i=0; i<seg; i++) {
+    for (i=0; i&lt;seg; i++) {
       this._vertexStac.push(this._vertexStac[i]);
       colorBuffer[(vmax+i)*4] = colorBuffer[i*4];
       colorBuffer[(vmax+i)*4+1] = colorBuffer[i*4+1];
       colorBuffer[(vmax+i)*4+2] = colorBuffer[i*4+2];
       colorBuffer[(vmax+i)*4+3] = colorBuffer[i*4+3];
     }
-    for (i=0; i<seg; i++) {
+    for (i=0; i&lt;seg; i++) {
       this._vertexStac.push(this._vertexStac[vmax-seg+i]);
       colorBuffer[(vmax+seg+i)*4] = colorBuffer[(vmax-seg+i)*4];
       colorBuffer[(vmax+seg+i)*4+1] = colorBuffer[(vmax-seg+i)*4+1];
       colorBuffer[(vmax+seg+i)*4+2] = colorBuffer[(vmax-seg+i)*4+2];
       colorBuffer[(vmax+seg+i)*4+3] = colorBuffer[(vmax-seg+i)*4+3];
     }
-    for (i=0; i<capfaceCount; i++) {
+    for (i=0; i&lt;capfaceCount; i++) {
       indexBuffer[(sidefaceCount * 2 + i) * 3] = vmax;
       indexBuffer[(sidefaceCount * 2 + i) * 3 + 1] = vmax + i + 2;
       indexBuffer[(sidefaceCount * 2 + i) * 3 + 2] = vmax + i + 1;
@@ -498,7 +511,7 @@ SolidML.MeshComposer = class {
       this._vy.set(pme[4], pme[5], pme[6]).applyQuaternion(this._qrt);
       this._vz.set(pme[8], pme[9], pme[10]).applyQuaternion(this._qrt);
     }
-    for (let i=0; i<this._crossSection.length; i++) {
+    for (let i=0; i&lt;this._crossSection.length; i++) {
       const v2 = this._crossSection[i];
       this._vertexStac.push(this._vy.clone().multiplyScalar(v2.x).addScaledVector(this._vz, v2.y).add(this._v0));
     }
@@ -518,12 +531,12 @@ SolidML.GridBufferGeometry = class extends THREE.BufferGeometry {
     const srci = [0,1,4,4,1,5, 1,2,5,5,2,6, 2,3,6,6,3,7, 3,0,7,7,0,4, 8,9,12,12,9,13, 17,18,21,21,18,22, 10,11,14,14,11,15, 19,16,23,23,16,20];
     let vidx = 0, iidx = 0;
     const face = (fidx,xx,xy,xz,yx,yy,yz,zx,zy,zz)=>{
-      for (let i=0; i<24; i++, vidx+=3) {
+      for (let i=0; i&lt;24; i++, vidx+=3) {
         positions[vidx]   = srcv[i].x * xx + srcv[i].y * yx + srcv[i].z * zx;
         positions[vidx+1] = srcv[i].x * xy + srcv[i].y * yy + srcv[i].z * zy;
         positions[vidx+2] = srcv[i].x * xz + srcv[i].y * yz + srcv[i].z * zz;
       }
-      for (let j=0; j<48; j++)
+      for (let j=0; j&lt;48; j++)
         indices[iidx++] = srci[j]+fidx*24;
     };
     face(0,  1, 0, 0,  0, 1, 0,  0, 0, 1);
@@ -537,3 +550,26 @@ SolidML.GridBufferGeometry = class extends THREE.BufferGeometry {
     this.computeVertexNormals();
   }
 }
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="SolidML.html">SolidML</a></li><li><a href="SolidML.BufferGeometry.html">BufferGeometry</a></li><li><a href="SolidML.BuildStatus.html">BuildStatus</a></li><li><a href="SolidML.ColorHSBA.html">ColorHSBA</a></li><li><a href="SolidML.ColorPool.html">ColorPool</a></li><li><a href="SolidML.Criteria.html">Criteria</a></li><li><a href="SolidML.Material.html">Material</a></li><li><a href="SolidML.Matrix4.html">Matrix4</a></li><li><a href="SolidML.randMT.html">randMT</a></li><li><a href="SolidML.Rule.html">Rule</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a> on Mon Dec 17 2018 17:13:23 GMT+0900 (東京 (標準時))
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

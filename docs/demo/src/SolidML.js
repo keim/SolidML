@@ -215,8 +215,11 @@ SolidML.Matrix4 = class {
   premultiply(m) { return this.multiplyMatrices(m, this); }
   /** @return {number} 3dim-determinant calclate for size checking. */
   det3() {
+    return Math.abs(this.signed_det3());
+  }
+  signed_det3() {
     const te = this.elements;
-    return Math.abs(te[0]*te[5]*te[10] - te[0]* te[6]*te[9] - te[1]*te[4]*te[10] + te[1]* te[6]*te[8] + te[2]*te[4]* te[9] - te[2]*te[5]*te[8]);
+    return (te[0]*te[5]*te[10] - te[0]* te[6]*te[9] - te[1]*te[4]*te[10] + te[1]* te[6]*te[8] + te[2]*te[4]* te[9] - te[2]*te[5]*te[8]);
   }
   multiplyMatrices(a, b) {
     const ae = a.elements, be = b.elements;
@@ -838,6 +841,15 @@ SolidML.Operator = class {
             break;
           case "rz":
             this.matrix.multiply(mat.makeRotationZ(getNumber()/180*Math.PI));
+            break;
+          case "fx":
+            this.matrix.multiply(mat.makeScale(-1,1,1));
+            break;
+          case "fy":
+            this.matrix.multiply(mat.makeScale(1,-1,1));
+            break;
+          case "fz":
+            this.matrix.multiply(mat.makeScale(1,1,-1));
             break;
           case "s":
             const sx = getNumber();
