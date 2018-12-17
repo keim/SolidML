@@ -651,9 +651,9 @@ SolidML.Reference = class {
   constructor(prev, label, param) {
     if (prev) prev.next = this;
     if (label) {
-      const s = label.split(":");
+      const s = label.split(/\s*:\s*/);
       this.label = s.shift();
-      this.option = (s.length>0) ? s[0] : null;
+      this.option = (s.length>0) ? s.join(":") : null;
     } else {
       this.label = null;
       this.option = null;

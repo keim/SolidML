@@ -190,14 +190,6 @@ SolidML.BufferGeometry = class extends THREE.BufferGeometry {
 // 
 SolidML.GeometryCreator = class {
   constructor(geometryHash) {
-    // generate hash map
-    const indexing = geom=>{
-      const indices = new Uint16Array(geom.attributes.position.count);
-      for (let i=0; i<indices.length; i++)
-        indices[i] = i;
-      geom.setIndex(new THREE.BufferAttribute(indices, 1));
-      return geom;
-    };
     this.rotz = new THREE.Matrix4().makeRotationZ(-Math.PI/2),
     this.roty = new THREE.Matrix4().makeRotationY(Math.PI/2);
     // geometry hash
@@ -207,10 +199,10 @@ SolidML.GeometryCreator = class {
       "cylinder": new THREE.CylinderBufferGeometry(0.5, 0.5, 1, 8).applyMatrix(this.rotz), 
       "cone":     new THREE.ConeBufferGeometry(0.5, 1, 8).applyMatrix(this.rotz), 
       "torus":    new THREE.TorusBufferGeometry(0.5, 0.1, 4, 8).applyMatrix(this.roty), 
-      "tetra":    indexing(new THREE.TetrahedronBufferGeometry(0.5)), 
-      "octa":     indexing(new THREE.OctahedronBufferGeometry(0.5)), 
-      "dodeca":   indexing(new THREE.DodecahedronBufferGeometry(0.5)), 
-      "icosa":    indexing(new THREE.IcosahedronBufferGeometry(0.5)), 
+      "tetra":    this._indexing(new THREE.TetrahedronBufferGeometry(0.5)), 
+      "octa":     this._indexing(new THREE.OctahedronBufferGeometry(0.5)), 
+      "dodeca":   this._indexing(new THREE.DodecahedronBufferGeometry(0.5)), 
+      "icosa":    this._indexing(new THREE.IcosahedronBufferGeometry(0.5)), 
       "grid":     new SolidML.GridBufferGeometry(1, 0.1), 
       "line":     new THREE.BoxBufferGeometry(1, 0.1, 0.1),
       "triangle": this.__triangleGeom([1,0,0,0,1,0,0,0,1]),
@@ -224,7 +216,8 @@ SolidML.GeometryCreator = class {
       "grid":     [],
       "line":     [],
       "torus":    {},
-      "triangle": {}
+      "triangle": {},
+      "path"    : {}
     };
     // creator functions
     this._creatorFunctions = {
@@ -235,6 +228,7 @@ SolidML.GeometryCreator = class {
       "line":     this._lineCreator.bind(this),
       "torus":    this._torusCreator.bind(this),
       "triangle": this._triangleCreator.bind(this),
+      "path":     this._pathCreator.bind(this),
       "mesh":     this._meshCreator.bind(this),
       "cmesh":    this._cmeshCreator.bind(this),
       "tube":     this._tubeCreator.bind(this),
@@ -296,9 +290,23 @@ SolidML.GeometryCreator = class {
       return this._cache.triangle[stat.param];
     const p = stat.param.split(/[\s,;:]/).map(s=>Number(s)||0);
     if (p.length > 9) p.length = 9;
-    const geom = this.__triangleGeom(p);
-    this._cache.triangle[stat.param] = geom;
+    return this._cache.triangle[stat.param] = this.__triangleGeom(p);
+  }
+    // generate hash map
+  _indexing(geom) {
+    const indices = new Uint16Array(geom.attributes.position.count);
+    for (let i=0; i<indices.length; i++)
+      indices[i] = i;
+    geom.setIndex(new THREE.BufferAttribute(indices, 1));
     return geom;
+  }
+  _pathCreator(stat) {
+    if (stat.param in this._cache.path) 
+      return this._cache.path[stat.param];
+    const opt = (stat.option && stat.option.split(/[\s:]/).map(s=>Number(s)||0)) || [];
+    console.log(stat.option);
+    const p = stat.param.split(/[\s,;:]/).map(s=>Number(s)||0);
+    return this._cache.path[stat.param] = this.__pathGeom(p, ((opt[0]||5)/100), ((opt[1]||0)/100), ((opt[2]||1)/100));
   }
   _meshCreator(stat) {
     if (!(stat.referenceID in this._composers)) {
@@ -345,6 +353,23 @@ SolidML.GeometryCreator = class {
     geom.setIndex(new THREE.Uint16BufferAttribute([0,1,2], 1));
     geom.addAttribute('position', new THREE.BufferAttribute(vertex, 3));
     return geom;
+  }
+  __pathGeom(p, depth, bevelThickness, bevelSize) {
+    if (p.length < 6)
+      return null;
+    const path = new THREE.Shape();
+    path.moveTo(p[0], p[1]);
+    for (let i=2; i<p.length; i+=2) 
+      path.lineTo(p[i], p[i+1]);
+    path.lineTo(p[0], p[1]);
+    return this._indexing(new THREE.ExtrudeBufferGeometry( path, {
+      steps: 1,
+      bevelSegments: 1,
+      bevelEnabled: (bevelThickness>0),
+      bevelThickness,
+      bevelSize,
+      depth
+    }));
   }
 }
 SolidML.MeshComposer = class {
