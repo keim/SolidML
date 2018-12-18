@@ -9,6 +9,11 @@ class Ptolemy {
    * @param option.paused flag to paused start
    */
   constructor(option) {
+    if ( !WEBGL.isWebGL2Available() ) {
+      document.body.appendChild( WEBGL.getWebGL2ErrorMessage() );
+      return;
+    }
+
     option = option || {};
 
     // member valiables
@@ -19,9 +24,11 @@ class Ptolemy {
     this.deltaTime = 0;
     
     // create basic instance
+    const canvas  = document.createElement( 'canvas' ),
+          context = canvas.getContext( 'webgl2' );
+    this.renderer = new THREE.WebGLRenderer({ canvas, context });
     this.camera   = new THREE.PerspectiveCamera(30, 1, 0.1, 1000);
     this.scene    = new THREE.Scene();
-    this.renderer = new THREE.WebGLRenderer();
     
     // other
     this.screenCenter = new THREE.Vector3(0,0,0);

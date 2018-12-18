@@ -304,7 +304,6 @@ SolidML.GeometryCreator = class {
     if (stat.param in this._cache.path) 
       return this._cache.path[stat.param];
     const opt = (stat.option && stat.option.split(/[\s:]/).map(s=>Number(s)||0)) || [];
-    console.log(stat.option);
     const p = stat.param.split(/[\s,;:]/).map(s=>Number(s)||0);
     return this._cache.path[stat.param] = this.__pathGeom(p, ((opt[0]||5)/100), ((opt[1]||0)/100), ((opt[2]||1)/100));
   }

@@ -302,7 +302,7 @@ class BackScreen extends THREE.Mesh {
       },
       vertexShader: [
         BackScreen.inverseMatrix,
-        "varying vec3 vScreenPos;",
+        "out vec3 vScreenPos;",
         "void main() {",
           "vec4 screenPos = vec4(position.xy, 1, 1);",
           "mat4 unproject = inverse(projectionMatrix * viewMatrix);",
@@ -312,7 +312,9 @@ class BackScreen extends THREE.Mesh {
         "}"
       ].join("\n"),
       fragmentShader: [
-        "varying vec3 vScreenPos;",
+        "#version 300 es",
+        "in vec3 vScreenPos;",
+        "out vec4 vFlagColor;",
         "uniform vec3 skyColor;",
         "uniform vec3 floorColor;",
         "uniform vec3 checkColor;",
@@ -326,9 +328,9 @@ class BackScreen extends THREE.Mesh {
             "float len = length(fuv - cameraPosition);",
             "vec2 ipx = vec2(0.001*len, -0.001*len);",
             "vec3 chk = fcol(fuv.xy+ipx.xx) + fcol(fuv.xy+ipx.xy) + fcol(fuv.xy+ipx.yx) + fcol(fuv.xy+ipx.yy);",
-            "gl_FragColor = mix(vec4(chk/4.,1), vec4(skyColor,1), smoothstep(0.98,1.0,dir.z+1.));",
+            "vFlagColor = mix(vec4(chk/4.,1), vec4(skyColor,1), smoothstep(0.98,1.0,dir.z+1.));",
           "} else {",
-            "gl_FragColor = vec4(skyColor,1);",
+            "vFlagColor = vec4(skyColor,1);",
           "}",
         "}"
       ].join("\n")
@@ -346,7 +348,9 @@ class BackScreen extends THREE.Mesh {
   }
 }
 
-BackScreen.inverseMatrix = [
+BackScreen.inverseMatrix = "#version 300 es"; 
+/* below code is for WebGL1 (inverse is not supported)
+[
 "mat4 inverse(mat4 m) {",
   "float",
       "a00 = m[0][0], a01 = m[0][1], a02 = m[0][2], a03 = m[0][3],",
@@ -385,4 +389,5 @@ BackScreen.inverseMatrix = [
       "a20 * b03 - a21 * b01 + a22 * b00) / det;",
 "}"
 ].join("\n")
+*/
 
