@@ -5,6 +5,7 @@ You can prepare complex 3D models easily and quickly.
 https://keim.github.io/SolidML/demo/index.html
 ## Based on and respect for
 Structure Synth: http://structuresynth.sourceforge.net/
+
 Eisen Script: http://structuresynth.sourceforge.net/reference.php
 ## Many Lazy Syntax Sugers
 - "set" => "@"
@@ -24,7 +25,7 @@ Eisen Script: http://structuresynth.sourceforge.net/reference.php
 - "set background" => "@bg"
 - "rule R1 weight 2 maxdepth 10 > R2" => "#R1@w2@10>R2"
 - "36 * {" => "36{"
-- "#R{A(B|C)D}" => "#R{ABD} #R{ACD}" (this rule extention is executed before parsing as a simple text conversion. The extended script is shown in console)
+- "#R{A(B|C)D}" => "#R{ABD} #R{ACD}" (this rule expantion is executed before parsing as a simple text conversion. The extended script is shown in console)
 - "#R{A(w2B|C)D}" => "#R@w2{ABD} #R@w1{ACD}"
 - "#R{(w4A|B)(w2C|D)}" => "#R@w8{AC} #R@w4{AD} #R@w2{BC} #R@w1{BD}"
 - space between number and command can be omitted

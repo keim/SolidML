@@ -1,17 +1,6 @@
-/**
- * @file Extention for three.js. SolidMLMaterial.js depends on three.js and SolidML.js. Import after these dependent files.
- */
-/** 
- *  Physical Model Material with vertex alpha
- */
-SolidML.Material = class extends THREE.ShaderMaterial {
-  /**
-   * Physical Model Material with vertex alpha
-   * @param  {object} parameters initial Material paramaters
-   */
-  constructor(parameters) {
+class SSAOMaterial extends THREE.ShaderMaterial {
+  constructor() {
     super();
-    // initialize parameters
     SolidML.Material._initializeParameters(this);
     // set uniforms
     this.uniforms = THREE.UniformsUtils.merge([
@@ -22,81 +11,21 @@ SolidML.Material = class extends THREE.ShaderMaterial {
       }
     ]);
     // set original shader
-    const shaders = SolidML.Material._shaders();
+    const shaders = SSAOMaterial._shaders();
     this.vertexShader = shaders.vert;
     this.fragmentShader = shaders.frag;
-    // custom depth map for shadowmap
-    /*
-    this.customDepthMaterial = new THREE.ShaderMaterial({
-      defines: {
-        'INSTANCED': "",
-        'DEPTH_PACKING': THREE.RGBADepthPacking
-      },
-      vertexShader: shaders.depthVert,
-      fragmentShader: shaders.depthFrag,
-    });
-    this.shadowSide = THREE.FrontSide;
-    */
     // transparent
     this.lights = true;
     this.opacity = 1;
     this.transparent = true;
-    // set values by hash
-    this.setValues( parameters );
   }
-  copy(source) {
-    THREE.MeshPhysicalMaterial.prototype.copy.call(this, source);
-    return this;
-  }
-  static _initializeParameters(material) {
-    // behaives as MeshPhysicalMaterial
-    material.isMeshStandardMaterial = true;
-    material.isMeshPhysicalMaterial = true;
-    material.defines = { 'PHYSICAL': '' };
-    // copy from THREE.MeshStandardMaterial
-    material.color = new THREE.Color( 0xffffff ); // diffuse
-    material.roughness = 0.5;
-    material.metalness = 0.5;
-    material.map = null;
-    material.lightMap = null;
-    material.lightMapIntensity = 1.0;
-    material.aoMap = null;
-    material.aoMapIntensity = 1.0;
-    material.emissive = new THREE.Color( 0x000000 );
-    material.emissiveIntensity = 0.0;
-    material.emissiveMap = null;
-    material.bumpMap = null;
-    material.bumpScale = 1;
-    material.normalMap = null;
-    material.normalMapType = THREE.TangentSpaceNormalMap;
-    material.normalScale = new THREE.Vector2( 1, 1 );
-    material.displacementMap = null;
-    material.displacementScale = 1;
-    material.displacementBias = 0;
-    material.roughnessMap = null;
-    material.metalnessMap = null;
-    material.alphaMap = null;
-    material.envMap = null;
-    material.envMapIntensity = 1.0;
-    material.refractionRatio = 0.98;
-    material.wireframe = false;
-    material.wireframeLinewidth = 1;
-    material.wireframeLinecap = 'round';
-    material.wireframeLinejoin = 'round';
-    material.skinning = false;
-    material.morphTargets = false;
-    material.morphNormals = false;
-    // copy from THREE.MeshPhysicalMaterial
-    material.reflectivity = 0.25; // maps to F0 = 0.04
-    material.clearCoat = 0.3;
-    material.clearCoatRoughness = 0.2;
-    return material;
-  }
+
   static _shaders() {
     const include = libs=>libs.map(lib=>"#include <"+lib+">").join("\n");
     const uniform = unis=>unis.map(uni=>"uniform "+uni+";").join("\n");
     return {
       vert: [
+        "#version 300 es",
         include([
           "common",
           "uv_pars_vertex",
@@ -109,10 +38,10 @@ SolidML.Material = class extends THREE.ShaderMaterial {
           "logdepthbuf_pars_vertex",
           "clipping_planes_pars_vertex"
         ]),
-        "attribute vec4 color;",
-        "varying vec3 vViewPosition;", 
-        "varying vec3 vNormal;", 
-        "varying vec4 vColor;",
+        "in vec4 color;",
+        "out vec3 vViewPosition;", 
+        "out vec3 vNormal;", 
+        "out vec4 vColor;",
         "void main() {",
           include([
             "uv_vertex", 
@@ -145,6 +74,8 @@ SolidML.Material = class extends THREE.ShaderMaterial {
         "}"
       ].join("\n"),
       frag: [
+        "#version 300 es",
+        "#define gl_FragColor vFragColor",
         uniform([
           "vec3 diffuse", 
           "vec3 emissive", 
@@ -154,9 +85,11 @@ SolidML.Material = class extends THREE.ShaderMaterial {
           "float clearCoat", 
           "float clearCoatRoughness"
         ]),
-        "varying vec3 vViewPosition;", 
-        "varying vec3 vNormal;", 
-        "varying vec4 vColor;",
+        "in vec3 vViewPosition;", 
+        "in vec3 vNormal;", 
+        "in vec4 vColor;",
+        "layout (location = 0) out vec4 vFragColor;", 
+        "layout (location = 1) out vec4 vDepthBuffer;", 
         include([
           "common",
           "packing",
@@ -216,7 +149,8 @@ SolidML.Material = class extends THREE.ShaderMaterial {
           " + reflectedLight.directSpecular",
           " + reflectedLight.indirectSpecular",
           " + totalEmissiveRadiance;",
-          "gl_FragColor = vec4(outgoingLight, diffuseColor.a);",
+          "vFragColor = vec4(outgoingLight, diffuseColor.a);",
+          "vDepthBuffer = vec4(outgoingLight, diffuseColor.a);",
           include([
             "tonemapping_fragment", 
             "encodings_fragment", 

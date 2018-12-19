@@ -219,7 +219,9 @@ function setup(gl) {
   gl.defineGUI.closed = false;
   gl.defineControls = [];
 
-  gl.mainMaterial = new SolidML.Material();
+  console.log(gl.renderer.textures);
+  
+  gl.mainMaterial = new SSAOMaterial();
   gl.mainGeometry = null;
   gl.mainMesh = null;
   gl.floorMaterial = new THREE.ShadowMaterial({color:0x000000, opacity:0.4, depthWrite:true});
