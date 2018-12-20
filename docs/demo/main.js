@@ -218,8 +218,6 @@ function setup(gl) {
   gl.defineGUI = gl.gui.addFolder("Definitions");
   gl.defineGUI.closed = false;
   gl.defineControls = [];
-
-  console.log(gl.renderer.textures);
   
   gl.mainMaterial = new SSAOMaterial();
   gl.mainGeometry = null;
@@ -240,7 +238,9 @@ function setup(gl) {
   gl.scene.add(gl.room);
   gl.scene.add(gl.backScreen);
 
-  gl.renderTarget = gl.newRenderTarget();
+  //gl.renderTarget = gl.newRenderTarget();
+  const size = this.renderer.getSize();
+  gl.renderTarget = new WebGL2RenderTarget(gl.renderer, size.width, size.height);
 
   gl.cubeCamera = new THREE.CubeCamera( 0.001, 10000, 256 );
   gl.cubeCamera.renderTarget.texture.generateMipmaps = true;

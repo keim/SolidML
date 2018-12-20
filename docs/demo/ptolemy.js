@@ -24,9 +24,7 @@ class Ptolemy {
     this.deltaTime = 0;
     
     // create basic instance
-    const canvas  = document.createElement( 'canvas' ),
-          context = canvas.getContext( 'webgl2' );
-    this.renderer = new THREE.WebGLRenderer({ canvas, context });
+    this.renderer = new WebGL2Renderer();
     this.camera   = new THREE.PerspectiveCamera(30, 1, 0.1, 1000);
     this.scene    = new THREE.Scene();
     
