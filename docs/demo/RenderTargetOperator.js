@@ -56,6 +56,9 @@ RenderTargetOperator.blendShader = {
     "sampler2D tSrc2",
     "float blend"
   ],
+  "default" : {
+    "blend" : 0.5,
+  },
   "frag": "gl_FragColor = mix(texture2D(tSrc1, vUv), texture2D(tSrc2, vUv), blend);"
 };
 RenderTargetOperator.multShader = {
@@ -65,5 +68,9 @@ RenderTargetOperator.multShader = {
     "float scale",
     "float add",
   ],
+  "default" : {
+    "scale" : 1,
+    "add" : 0
+  },
   "frag": "gl_FragColor = texture2D(tSrc1, vUv) * clamp(texture2D(tSrc2, vUv) * scale + add, vec4(0), vec4(1));"
 };

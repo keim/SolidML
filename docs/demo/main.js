@@ -63,7 +63,7 @@ function build(gl, stateUpdating) {
       gl.controls.target = sphere.center;
       if (gl.autoCameraPosition)
         gl.camera.position.sub(sphere.center).normalize().multiplyScalar(sphere.radius*4).add(sphere.center);
-      gl.camera.far = sphere.radius * 10;
+      gl.camera.far = sphere.radius * 5;
 
       gl.topLight.position.set(sphere.center.x, sphere.center.y, sphere.center.z+sphere.radius+1);
       gl.topLight.target.position.copy(sphere.center);
@@ -240,7 +240,7 @@ function setup(gl) {
 
   //gl.renderTarget = gl.newRenderTarget();
   const size = this.renderer.getSize();
-  gl.renderTarget = new WebGL2RenderTarget(gl.renderer, size.width, size.height);
+  gl.renderTarget = new WebGL2RenderTarget(gl.renderer, size.width, size.height, { multipleRenderTargets:true, renderTargetCount:2 } );
 
   gl.cubeCamera = new THREE.CubeCamera( 0.001, 10000, 256 );
   gl.cubeCamera.renderTarget.texture.generateMipmaps = true;
@@ -267,10 +267,15 @@ function setup(gl) {
 
   updateCodeByURI(gl);
 
+  const copyShader = new RenderTargetOperator(gl.renderer, RenderTargetOperator.copyShader);
+
+  gl.renderer.gammaFactor = 2.1;
+
   gl.render = ()=>{
     if (gl.shadowAccumlator.pause || !gl.AOenable) {
       gl.renderer.setClearColor(new THREE.Color(0xff0000));
-      gl.renderer.render(gl.scene, gl.camera);
+      gl.renderer.render(gl.scene, gl.camera, gl.renderTarget);
+      copyShader.calc({tSrc:gl.renderTarget.textures[0]});
     } else {
       gl.renderer.setClearColor(new THREE.Color(0xff0000));
       gl.renderer.render(gl.scene, gl.camera, gl.renderTarget);
@@ -310,7 +315,7 @@ class BackScreen extends THREE.Mesh {
           "mat4 unproject = inverse(projectionMatrix * viewMatrix);",
           "vec4 worldPos = unproject * screenPos;",
           "vScreenPos = worldPos.xyz / worldPos.w;",
-          "gl_Position = screenPos;",
+          "gl_Position = screenPos.xyww;",
         "}"
       ].join("\n"),
       fragmentShader: [

@@ -85,6 +85,7 @@ class SSAOMaterial extends THREE.ShaderMaterial {
           "float clearCoat", 
           "float clearCoatRoughness"
         ]),
+        "uniform float logDepthBufFC;",
         "in vec3 vViewPosition;", 
         "in vec3 vNormal;", 
         "in vec4 vColor;",
@@ -150,7 +151,7 @@ class SSAOMaterial extends THREE.ShaderMaterial {
           " + reflectedLight.indirectSpecular",
           " + totalEmissiveRadiance;",
           "vFragColor = vec4(outgoingLight, diffuseColor.a);",
-          "vDepthBuffer = vec4(outgoingLight, diffuseColor.a);",
+          "vDepthBuffer = vec4( vec3( 1.0 - gl_FragCoord.z ), diffuseColor.a );",
           include([
             "tonemapping_fragment", 
             "encodings_fragment", 
