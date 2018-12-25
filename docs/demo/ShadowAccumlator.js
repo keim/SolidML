@@ -78,7 +78,7 @@ class ShadowAccumlator {
     this.accumlator.clear();
   }
   render(camera, times) {
-    if (!this.group || this.pause) return;
+    if (!this.group || this.group.children.length == 0 || this.pause) return;
     const tempCamera = camera.clone(), 
           dir = new THREE.Vector3(),
           currentShadowMapType = this.renderer.shadowMap.type;

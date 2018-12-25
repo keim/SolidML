@@ -25,7 +25,7 @@ class Ptolemy {
     
     // create basic instance
     this.renderer = new WebGL2Renderer();
-    this.camera   = new THREE.PerspectiveCamera(30, 1, 0.1, 1000);
+    this.camera   = new THREE.PerspectiveCamera(30, 1, 1, 1000);
     this.scene    = new THREE.Scene();
     
     // other

@@ -63,7 +63,7 @@ function build(gl, stateUpdating) {
       gl.controls.target = sphere.center;
       if (gl.autoCameraPosition)
         gl.camera.position.sub(sphere.center).normalize().multiplyScalar(sphere.radius*4).add(sphere.center);
-      gl.camera.far = sphere.radius * 5;
+      //gl.camera.far = sphere.radius * 5;
 
       gl.topLight.position.set(sphere.center.x, sphere.center.y, sphere.center.z+sphere.radius+1);
       gl.topLight.target.position.copy(sphere.center);
@@ -74,7 +74,7 @@ function build(gl, stateUpdating) {
       gl.room.scale.setScalar(sphere.radius*4);
 
       gl.floor.position.set(sphere.center.x, sphere.center.y, 0);
-      gl.floor.scale.set(sphere.radius*4, sphere.radius*4, 1);
+      gl.floor.scale.set(sphere.radius*10, sphere.radius*10, 1);
 
       gl.floor.visible = gl.visibleFloor;
       gl.room.visible = gl.visibleRoom;
@@ -198,6 +198,11 @@ function setup(gl) {
   gl.floorColor = "#eee";
   gl.checkColor = "#eee";
 
+  gl.stats = new Stats();
+  document.getElementById("stats").appendChild(gl.stats.dom);
+  gl.stats.dom.style.left = "480px";
+  gl.stats.dom.style.top = "50px";
+
   gl.gui = new dat.GUI({autoPlace: false, closed: false});
   gl.gui.useLocalStorage = true;
   document.getElementById("paramgui").appendChild(gl.gui.domElement);
@@ -240,7 +245,7 @@ function setup(gl) {
 
   //gl.renderTarget = gl.newRenderTarget();
   const size = this.renderer.getSize();
-  gl.renderTarget = new WebGL2RenderTarget(gl.renderer, size.width, size.height, { multipleRenderTargets:true, renderTargetCount:2 } );
+  gl.renderTarget = new WebGL2RenderTarget( size.width, size.height, { multipleRenderTargets:true, renderTargetCount:2 } );
 
   gl.cubeCamera = new THREE.CubeCamera( 0.001, 10000, 256 );
   gl.cubeCamera.renderTarget.texture.generateMipmaps = true;
@@ -272,16 +277,18 @@ function setup(gl) {
   gl.renderer.gammaFactor = 2.1;
 
   gl.render = ()=>{
+    gl.stats.begin();
     if (gl.shadowAccumlator.pause || !gl.AOenable) {
-      gl.renderer.setClearColor(new THREE.Color(0xff0000));
+      gl.renderer.setClearColor(new THREE.Color(0x000000));
       gl.renderer.render(gl.scene, gl.camera, gl.renderTarget);
-      copyShader.calc({tSrc:gl.renderTarget.textures[0]});
+      copyShader.calc({tSrc:gl.renderTarget.textures[1]});
     } else {
-      gl.renderer.setClearColor(new THREE.Color(0xff0000));
+      gl.renderer.setClearColor(new THREE.Color(0x000000));
       gl.renderer.render(gl.scene, gl.camera, gl.renderTarget);
       gl.shadowAccumlator.render(gl.camera, 16);
       gl.shadowAccumlator.accumlator.render(gl.renderTarget, gl._AOsharpnessFactor, gl.AOoffset-(gl._AOsharpnessFactor*0.125));
     }
+    gl.stats.end();
   };
 }
 

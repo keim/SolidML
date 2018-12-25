@@ -1,51 +1,84 @@
 /** extention of THREE.WebGLRenderTarget with MRT */
 class WebGL2RenderTarget extends THREE.WebGLRenderTarget {
-  get isWebGL2RenderTarget() { return true; }
+  /** returns true if this is instance of WebGL2RenderTarget */
+  get isWebGL2RenderTarget() {
+    return true;
+  }
 
 
-  /** almost same with THREE.WebGLRenderTarget, except for the 1st argument
-   *  @param {THREE.WebGLRenderer} renderer WebGLRenderer to allocate frame buffer
+  /** same as THREE.WebGLRenderTarget, supports option.multipleRenderTargets
    *  @param {number} same as THREE.WebGLRenderTarget
    *  @param {number} same as THREE.WebGLRenderTarget
    *  @param {object} same as THREE.WebGLRenderTarget. set { multipleRenderTargets:true, renderTargetCount:4 } to use MRT with specifyed texture number.
    */
-  constructor( renderer, width, height, options ) {
+  constructor( width, height, options ) {
     super( width, height, options );
 
-    const gl = renderer.context;
-    const renderTargetProperties = renderer.properties.get( this );
-
     // check support
-    if (this.isWebGLRenderTargetCube)
+    if ( this.isWebGLRenderTargetCube )
       throw new Error("WebGL2RenderTarget: Cube render target not supported");
-
-    // use threejs utility
-    if (!WebGL2RenderTarget.utils) 
-      WebGL2RenderTarget.utils = new THREE.WebGLUtils();
 
     // listen dispose event
     this.addEventListener( 'dispose', this._onDispose.bind(this) );
 
-    // try to create frame buffer here (created at WebGLRenderer in three.js's default implement)
+    // MRT settings
     options = options || {};
+    /** 
+     * flag to use multiple render targets
+     * @type {boolean}
+     */
+    this.multipleRenderTargets = options.multipleRenderTargets || false;
+    /** 
+     * render target count to use
+     * @type {int}
+     */
+    this.renderTargetCount = options.renderTargetCount || 1;
+    /** 
+     * array of THREE.Texture used for MRT, the length is WebGL2RenderTarget.renderTargetCount. the first element is WebGL2RenderTarget.texture
+     * @type {Array.<THREE.Texture>}
+     */
+    this.textures = [this.texture];
+
+    // create textures
+    if (this.multipleRenderTargets) 
+      for ( let i = 1; i < this.renderTargetCount; i++ ) 
+        this.textures.push(new THREE.Texture().copy(this.texture));
+  }
+
+
+  isPowerOfTwo() {
+    return ( THREE.Math.isPowerOfTwo( this.width ) && THREE.Math.isPowerOfTwo( this.height ) );
+  }
+
+
+  _onDispose( event ) {
+    console.warn("WebGL2RenderTarget: dispose not impelented.");
+  }
+
+
+  _setupIfNeeded( renderer ) {
+    const gl = renderer.context;
+    const renderTargetProperties = renderer.properties.get( this );
+
+    // 
+    if (renderTargetProperties.__webglFramebuffer)
+      return;
+
+    // check render target capacity 
+    if ( this.renderTargetCount > gl.getParameter(gl.MAX_DRAW_BUFFERS) )  
+      throw new Error("WebGL2RenderTarget: renderTargetCount is over system capacity. " + gl.getParameter(gl.MAX_DRAW_BUFFERS) + " buffers @ max.");
+
+    // use threejs utility inside
+    if ( !WebGL2RenderTarget._utils ) 
+      WebGL2RenderTarget._utils = new THREE.WebGLUtils();
 
     // create new framebuffer
     renderTargetProperties.__webglFramebuffer = gl.createFramebuffer();
 
-
-    this.multipleRenderTargets = options.multipleRenderTargets || false;
-    this.renderTargetCount = options.renderTargetCount || 1;
-    this.textures = [this.texture];
-
-    if (this.multipleRenderTargets) {
-      if (this.renderTargetCount > gl.getParameter(gl.MAX_DRAW_BUFFERS)) 
-        throw new Error("WebGL2RenderTarget: renderTargetCount is over system capacity. " + gl.getParameter(gl.MAX_DRAW_BUFFERS) + " buffers @ max.");
-      let i;
-      // create textures
-      for ( i = 1; i < this.renderTargetCount; i++) 
-        this.textures.push(new THREE.Texture().copy(this.texture));
+    // setup color buffer
+    if ( this.multipleRenderTargets ) {
       // create webgl textures
-      for ( i = 0; i < this.renderTargetCount; i++) 
+      for ( let i = 0; i < this.renderTargetCount; i++ ) 
         this._setupColorBuffer( renderer, this.textures[i], i, renderTargetProperties.__webglFramebuffer );
       // draw buffers
       gl.bindFramebuffer(gl.FRAMEBUFFER, renderTargetProperties.__webglFramebuffer);
@@ -60,16 +93,6 @@ class WebGL2RenderTarget extends THREE.WebGLRenderTarget {
     // Setup depth and stencil buffers
     if ( this.depthBuffer ) 
       this._setupDepthRenderbuffer(renderer);
-  }
-
-
-  isPowerOfTwo() {
-    return ( THREE.Math.isPowerOfTwo( this.width ) && THREE.Math.isPowerOfTwo( this.height ) );
-  }
-
-
-  _onDispose( event ) {
-    console.warn("WebGL2RenderTarget: dispose not impelented.");
   }
 
 
@@ -92,7 +115,7 @@ class WebGL2RenderTarget extends THREE.WebGLRenderTarget {
 
 
   _setTextureParameters( gl, textureType, texture ) {
-    const utils = WebGL2RenderTarget.utils;
+    const utils = WebGL2RenderTarget._utils;
     if (this.isPowerOfTwo()) {
       _gl.texParameteri( textureType, _gl.TEXTURE_WRAP_S, _gl.CLAMP_TO_EDGE );
       _gl.texParameteri( textureType, _gl.TEXTURE_WRAP_T, _gl.CLAMP_TO_EDGE );
@@ -111,7 +134,7 @@ class WebGL2RenderTarget extends THREE.WebGLRenderTarget {
 
   _setupFrameBufferTexture( renderer, framebuffer, attachment, textureTarget, texture ) {
     const gl = renderer.context,
-          utils = WebGL2RenderTarget.utils,
+          utils = WebGL2RenderTarget._utils,
           glFormat = utils.convert( this.texture.format ),
           glType = utils.convert( this.texture.type ),
           glInternalFormat = this._getInternalFormat( renderer, glFormat, glType );

@@ -8,6 +8,8 @@ class SSAOMaterial extends THREE.ShaderMaterial {
       {
         clearCoat: { value: 0.3 },
         clearCoatRoughness: { value: 0.2 },
+        cameraNear: { value: 1},
+        cameraFar: { value: 1000}
       }
     ]);
     // set original shader
@@ -85,7 +87,8 @@ class SSAOMaterial extends THREE.ShaderMaterial {
           "float clearCoat", 
           "float clearCoatRoughness"
         ]),
-        "uniform float logDepthBufFC;",
+        "uniform float cameraNear;",
+        "uniform float cameraFar;",
         "in vec3 vViewPosition;", 
         "in vec3 vNormal;", 
         "in vec4 vColor;",
@@ -151,7 +154,9 @@ class SSAOMaterial extends THREE.ShaderMaterial {
           " + reflectedLight.indirectSpecular",
           " + totalEmissiveRadiance;",
           "vFragColor = vec4(outgoingLight, diffuseColor.a);",
-          "vDepthBuffer = vec4( vec3( 1.0 - gl_FragCoord.z ), diffuseColor.a );",
+          "float viewZ = perspectiveDepthToViewZ(gl_FragCoord.z, cameraNear, cameraFar);",
+          "float depth = viewZToOrthographicDepth(viewZ, cameraNear, cameraFar);",
+          "vDepthBuffer = vec4( vec3( 1.0 - depth ), diffuseColor.a );",
           include([
             "tonemapping_fragment", 
             "encodings_fragment", 
