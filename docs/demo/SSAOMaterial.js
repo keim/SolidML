@@ -25,6 +25,19 @@ class SSAOMaterial extends THREE.ShaderMaterial {
   static _shaders() {
     const include = libs=>libs.map(lib=>"#include <"+lib+">").join("\n");
     const uniform = unis=>unis.map(uni=>"uniform "+uni+";").join("\n");
+    const depthnormal_packing = [
+      "float unpackDepth16(const in vec4 v) {",
+        "return v.z * 255. / 65536. + v.w;",
+      "}",
+      "vec3 unpackNormal16(const in vec4 v) {",
+        "return vec3( v.xy, sqrt(1. - (v.x * v.x + v.y * v.y)) );",
+      "}",
+      "vec4 packDepth16Normal16(const in float depth, const in vec3 normal) {",
+        "vec4 r = vec4(normal.xy, fract(depth*256.), depth);",
+        "r.w -= r.z * ShiftRight8; // tidy overflow",
+        "return r * PackUpscale;",
+      "}"
+    ].join("\n");
     return {
       vert: [
         "#version 300 es",
@@ -93,7 +106,7 @@ class SSAOMaterial extends THREE.ShaderMaterial {
         "in vec3 vNormal;", 
         "in vec4 vColor;",
         "layout (location = 0) out vec4 vFragColor;", 
-        "layout (location = 1) out vec4 vDepthBuffer;", 
+        "layout (location = 1) out vec4 vDepthNormal;", 
         include([
           "common",
           "packing",
@@ -120,6 +133,7 @@ class SSAOMaterial extends THREE.ShaderMaterial {
           "logdepthbuf_pars_fragment",
           "clipping_planes_pars_fragment"
         ]),
+        depthnormal_packing,
         "void main() {",
           include(["clipping_planes_fragment"]),
           "vec4 diffuseColor = vec4(diffuse, opacity);",
@@ -154,9 +168,8 @@ class SSAOMaterial extends THREE.ShaderMaterial {
           " + reflectedLight.indirectSpecular",
           " + totalEmissiveRadiance;",
           "vFragColor = vec4(outgoingLight, diffuseColor.a);",
-          "float viewZ = perspectiveDepthToViewZ(gl_FragCoord.z, cameraNear, cameraFar);",
-          "float depth = viewZToOrthographicDepth(viewZ, cameraNear, cameraFar);",
-          "vDepthBuffer = vec4( vec3( 1.0 - depth ), diffuseColor.a );",
+          "float depth = viewZToOrthographicDepth(-vViewPosition.z, cameraNear, cameraFar);",
+          "vDepthNormal = packDepth16Normal16(depth, vNormal);",
           include([
             "tonemapping_fragment", 
             "encodings_fragment", 
@@ -165,7 +178,12 @@ class SSAOMaterial extends THREE.ShaderMaterial {
             "dithering_fragment"
           ]),
         "}"
-      ].join("\n")
-    };
+      ].join("\n"),
+      ssao: {
+        vert : "varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4( position, 1.0 ); }",
+        frag : [
+        ].join("\n")
+      }
+    }
   }
 }

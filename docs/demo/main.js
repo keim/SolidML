@@ -64,6 +64,8 @@ function build(gl, stateUpdating) {
       if (gl.autoCameraPosition)
         gl.camera.position.sub(sphere.center).normalize().multiplyScalar(sphere.radius*4).add(sphere.center);
       //gl.camera.far = sphere.radius * 5;
+      gl.mainMaterial.uniforms.cameraNear.value = gl.camera.near;
+      gl.mainMaterial.uniforms.cameraFar.value  = gl.camera.far;
 
       gl.topLight.position.set(sphere.center.x, sphere.center.y, sphere.center.z+sphere.radius+1);
       gl.topLight.target.position.copy(sphere.center);
@@ -89,7 +91,7 @@ function build(gl, stateUpdating) {
       gl.mainMesh = new THREE.Mesh(gl.mainGeometry, gl.mainMaterial);
       gl.mainMesh.castShadow = true;
       gl.mainMesh.receiveShadow = true;
-      gl.mainMesh.customDepthMaterial = gl.mainMaterial.customDepthMaterial;
+      //gl.mainMesh.customDepthMaterial = gl.mainMaterial.customDepthMaterial;
       gl.mainMesh.position.z = zMargin;
 
       gl.scene.add(gl.mainMesh);
@@ -363,7 +365,7 @@ class BackScreen extends THREE.Mesh {
 }
 
 BackScreen.inverseMatrix = "#version 300 es"; 
-/* below code is for WebGL1 (inverse is not supported)
+/* code for WebGL1 (inverse is not supported)
 [
 "mat4 inverse(mat4 m) {",
   "float",
