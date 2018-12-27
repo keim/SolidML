@@ -6,7 +6,7 @@ class RenderTargetOperator {
       uniforms[str.split(/\s+/)[1]] = {"value": null};
       frag.push("uniform " + str + ";");
     });
-    frag.push("void main() { " + shader.frag + " }");
+    frag.push(shader.frag);
     this.defaultUniforms = shader.default || {};
     this.material = new THREE.ShaderMaterial({
       uniforms,
@@ -48,7 +48,7 @@ RenderTargetOperator.copyShader = {
     "scale" : 1,
     "add" : 0
   },
-  "frag": "gl_FragColor = texture2D(tSrc, vUv) * scale + add;"
+  "frag": "void main() { gl_FragColor = texture2D(tSrc, vUv) * scale + add; }"
 };
 RenderTargetOperator.blendShader = {
   "uniforms" : [
@@ -59,7 +59,7 @@ RenderTargetOperator.blendShader = {
   "default" : {
     "blend" : 0.5,
   },
-  "frag": "gl_FragColor = mix(texture2D(tSrc1, vUv), texture2D(tSrc2, vUv), blend);"
+  "frag": "void main() { gl_FragColor = mix(texture2D(tSrc1, vUv), texture2D(tSrc2, vUv), blend); }"
 };
 RenderTargetOperator.multShader = {
   "uniforms" : [
@@ -72,17 +72,29 @@ RenderTargetOperator.multShader = {
     "scale" : 1,
     "add" : 0
   },
-  "frag": "gl_FragColor = texture2D(tSrc1, vUv) * clamp(texture2D(tSrc2, vUv) * scale + add, vec4(0), vec4(1));"
+  "frag": "void main() { gl_FragColor = texture2D(tSrc1, vUv) * clamp(texture2D(tSrc2, vUv) * scale + add, vec4(0), vec4(1)); }"
 };
-RenderTargetOperator.gaussShader = {
+RenderTargetOperator.gaussBlurShader = {
   "uniforms" : [
     "sampler2D tSrc",
-    "float scale",
-    "float add",
+    "float ustep",
+    "float vstep"
   ],
   "default" : {
-    "scale" : 1,
-    "add" : 0
+    "ustep" : 1,
+    "vstep" : 0
   },
-  "frag": "gl_FragColor = texture2D(tSrc1, vUv) * clamp(texture2D(tSrc2, vUv) * scale + add, vec4(0), vec4(1));"
+  "frag": [
+    "void main() { ",
+      "gl_FragColor = texture2D(tSrc, vUv) * 0.204",
+      "+ texture2D(tSrc, vUv - uvStep * 4.0) * 0.028",
+      "+ texture2D(tSrc, vUv - uvStep * 3.0) * 0.066",
+      "+ texture2D(tSrc, vUv - uvStep * 2.0) * 0.124",
+      "+ texture2D(tSrc, vUv - uvStep * 1.0) * 0.180",
+      "+ texture2D(tSrc, vUv + uvStep * 1.0) * 0.180",
+      "+ texture2D(tSrc, vUv + uvStep * 2.0) * 0.124",
+      "+ texture2D(tSrc, vUv + uvStep * 3.0) * 0.066",
+      "+ texture2D(tSrc, vUv + uvStep * 4.0) * 0.028",
+    "}"
+  ].join("\n")
 };

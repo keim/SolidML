@@ -64,8 +64,7 @@ function build(gl, stateUpdating) {
       if (gl.autoCameraPosition)
         gl.camera.position.sub(sphere.center).normalize().multiplyScalar(sphere.radius*4).add(sphere.center);
       //gl.camera.far = sphere.radius * 5;
-      gl.mainMaterial.uniforms.cameraNear.value = gl.camera.near;
-      gl.mainMaterial.uniforms.cameraFar.value  = gl.camera.far;
+      gl.mainMaterial.updateCamera(gl.camera);
 
       gl.topLight.position.set(sphere.center.x, sphere.center.y, sphere.center.z+sphere.radius+1);
       gl.topLight.target.position.copy(sphere.center);
@@ -283,7 +282,7 @@ function setup(gl) {
     if (gl.shadowAccumlator.pause || !gl.AOenable) {
       gl.renderer.setClearColor(new THREE.Color(0x000000));
       gl.renderer.render(gl.scene, gl.camera, gl.renderTarget);
-      copyShader.calc({tSrc:gl.renderTarget.textures[1]});
+      copyShader.calc({tSrc:gl.renderTarget.textures[0]});
     } else {
       gl.renderer.setClearColor(new THREE.Color(0x000000));
       gl.renderer.render(gl.scene, gl.camera, gl.renderTarget);
