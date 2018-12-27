@@ -226,6 +226,7 @@ function setup(gl) {
   gl.defineControls = [];
   
   gl.mainMaterial = new SSAOMaterial();
+  gl.mainMaterial.initialize(gl.renderer);
   gl.mainGeometry = null;
   gl.mainMesh = null;
   gl.floorMaterial = new THREE.ShadowMaterial({color:0x000000, opacity:0.4, depthWrite:true});
@@ -282,7 +283,8 @@ function setup(gl) {
     if (gl.shadowAccumlator.pause || !gl.AOenable) {
       gl.renderer.setClearColor(new THREE.Color(0x000000));
       gl.renderer.render(gl.scene, gl.camera, gl.renderTarget);
-      copyShader.calc({tSrc:gl.renderTarget.textures[0]});
+      gl.mainMaterial.render(gl.renderTarget);
+      //copyShader.calc({tSrc:gl.renderTarget.textures[1]});
     } else {
       gl.renderer.setClearColor(new THREE.Color(0x000000));
       gl.renderer.render(gl.scene, gl.camera, gl.renderTarget);

@@ -49,15 +49,21 @@ class SSAOMaterial extends THREE.ShaderMaterial {
 
   updateCamera(camera) {
     //https://www.khronos.org/opengl/wiki/Compute_eye_space_from_window_space
-    const tanhfov = Math.tan(camera.fov/2.0);
+    const tanhfov = Math.tan(camera.fov*Math.PI/180/2);
     this.uniforms.cameraNear.value = camera.near;
-    this.uniforms.cameraFar.value = camera.near;
+    this.uniforms.cameraFar.value = camera.far;
     this.ssaoUniforms.tFragColor = null;
     this.ssaoUniforms.tDepthNormal = null;
     this.ssaoUniforms.cameraNear = camera.near;
-    this.ssaoUniforms.cameraFar = camera.near;
+    this.ssaoUniforms.cameraFar = camera.far;
     this.ssaoUniforms.projectionMatrix = camera.projectionMatrix;
     this.ssaoUniforms.halfSizeNearPlane = new THREE.Vector2(tanhfov * camera.aspect, tanhfov);
+  }
+
+  render(srcTarget, dstTarget=null) {
+    this.ssaoUniforms.tFragColor = srcTarget.textures[0];
+    this.ssaoUniforms.tDepthNormal = srcTarget.textures[1];
+    this.operator.calc(this.ssaoUniforms, dstTarget);
   }
 
   static _shaders() {
@@ -66,15 +72,16 @@ float unpackDepth16(const in vec4 v) {
   return v.z * 255. / 65536. + v.w;
 }
 vec3 unpackNormal16(const in vec4 v) {
-  return vec3( v.xy, sqrt(1. - (v.x * v.x + v.y * v.y)) );
+  vec2 xy = v.xy * UnpackDownscale * 2.0 - 1.0;
+  return vec3( xy, sqrt(1. - (xy.x * xy.x + xy.y * xy.y)) );
 }
 vec4 packDepth16Normal16(const in float depth, const in vec3 normal) {
-  vec4 r = vec4(normal.xy, fract(depth*256.), depth);
+  vec4 r = vec4(normal.xy * 0.5 + 0.5, fract(depth*256.), depth);
   r.w -= r.z * ShiftRight8; // tidy overflow
   return r * PackUpscale;
 }`;
 
-const lights_physical_pars_fragment_DirectOnly = `
+const lights_physical_pars_fragment_DirectOnly = ""; /*`
 struct PhysicalMaterial {
   vec3  diffuseColor;
   float specularRoughness;
@@ -101,13 +108,12 @@ void RE_Direct_Physical( const in IncidentLight directLight, const in GeometricC
 #define Material_ClearCoat_BlinnShininessExponent( material )   GGXRoughnessToBlinnExponent( material.clearCoatRoughness )
 float computeSpecularOcclusion( const in float dotNV, const in float ambientOcclusion, const in float roughness ) {
   return saturate( pow( dotNV + ambientOcclusion, exp2( - 16.0 * roughness - 1.0 ) ) - 1.0 + ambientOcclusion );
-}`;
+}`;*/
 
 const frag_view_conversion = `
-vec4 fragToView(in float viewZ) {
-  float ndcZ = (2.0 * viewZ - cameraNear - cameraFar) / (cameraFar - cameraNear);
-  float eyeZ = projectionMatrix[3][2] / ((projectionMatrix[2][3] * ndcZ) - projectionMatrix[2][2]);
-  return vec4(vec3((2.0 * halfSizeNearPlane * vUv) - halfSizeNearPlane , -1) * eyeZ, 1);
+vec4 depthToPosition(in float depth, in float cameraNear, in float cameraFar) {
+  float viewZ = orthographicDepthToViewZ(depth, cameraNear, cameraFar);
+  return vec4(vec3((vUv * 2.0 - 1.0) * -halfSizeNearPlane, -1) * viewZ, 1);
 }`;
 
     return {
@@ -180,7 +186,7 @@ layout (location = 1) out vec4 vDepthNormal;
 #include <envmap_physical_pars_fragment>
 #include <fog_pars_fragment>
 #include <lights_pars_begin>
-//#include <lights_physical_pars_fragment>
+#include <lights_physical_pars_fragment>
 ${lights_physical_pars_fragment_DirectOnly}
 #include <shadowmap_pars_fragment>
 #include <bumpmap_pars_fragment>
@@ -230,8 +236,7 @@ ${frag_view_conversion}
 void main() {
   vec4 dat = texture2D(tDepthNormal, vUv);
   vec3 normal = unpackNormal16(dat);
-  float viewZ = orthographicDepthToViewZ(unpackDepth16(dat), cameraNear, cameraFar);
-  vec4 position = fragToView(viewZ);
+  vec4 position = depthToPosition(unpackDepth16(dat), cameraNear, cameraFar);
   gl_FragColor = texture2D(tFragColor, vUv);
 }`
     }

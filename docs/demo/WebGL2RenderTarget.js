@@ -59,7 +59,7 @@ class WebGL2RenderTarget extends THREE.WebGLRenderTarget {
   _setupIfNeeded( renderer ) {
     const gl = renderer.context;
     const renderTargetProperties = renderer.properties.get( this );
-
+    
     // 
     if (renderTargetProperties.__webglFramebuffer)
       return;
