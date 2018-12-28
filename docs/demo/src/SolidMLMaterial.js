@@ -25,18 +25,6 @@ SolidML.Material = class extends THREE.ShaderMaterial {
     const shaders = SolidML.Material._shaders();
     this.vertexShader = shaders.vert;
     this.fragmentShader = shaders.frag;
-    // custom depth map for shadowmap
-    /*
-    this.customDepthMaterial = new THREE.ShaderMaterial({
-      defines: {
-        'INSTANCED': "",
-        'DEPTH_PACKING': THREE.RGBADepthPacking
-      },
-      vertexShader: shaders.depthVert,
-      fragmentShader: shaders.depthFrag,
-    });
-    this.shadowSide = THREE.FrontSide;
-    */
     // transparent
     this.lights = true;
     this.opacity = 1;
@@ -203,10 +191,6 @@ SolidML.Material = class extends THREE.ShaderMaterial {
             "emissivemap_fragment",
             "lights_physical_fragment",
             "lights_fragment_begin", // <= getShadow() call 
-          ]),
-          /* irradiance calcuration if want */
-          //"irradiance += globalIlluminator();",
-          include([
             "lights_fragment_maps",
             "lights_fragment_end"
           ]),
