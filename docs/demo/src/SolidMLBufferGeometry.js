@@ -207,11 +207,6 @@ SolidML.GeometryCreator = class {
       "line":     new THREE.BoxBufferGeometry(1, 0.1, 0.1),
       "triangle": this.__triangleGeom([1,0,0,0,1,0,0,0,1]),
     }, geometryHash);
-    // BufferGeometry.name = key
-    Object.keys(this._geometryHash).forEach(key=>{
-      this._geometryHash[key].name = key;
-    });
-
     // cahce area
     this._cache = {
       "sphere":   [],
@@ -253,53 +248,43 @@ SolidML.GeometryCreator = class {
       throw Error("fatal error : MeshComposer");
     return Object.keys(this._composers).map(key=>{
       const geom = this._composers[key].create(isEstimationOnly);
-      geom.name = "mesh:" + key;
+      geom.name = "mesh[" + key + "]";
       return geom;
     });
   }
   _sphereCreator(stat) {
     let segment = Number(stat.option)>>0;
     if (!segment || segment<3) segment = 8;
-    if (!this._cache.sphere[segment]) {
+    if (!this._cache.sphere[segment]) 
       this._cache.sphere[segment] = new THREE.SphereBufferGeometry(0.5, segment, segment);
-      this._cache.sphere[segment].name = "sphere:" + String(segment);
-    }
     return this._cache.sphere[segment];
   }
   _cylinderCreator(stat) {
     let segment = Number(stat.option)>>0;
     if (!segment || segment<3) segment = 8;
-    if (!this._cache.cylinder[segment]) {
+    if (!this._cache.cylinder[segment]) 
       this._cache.cylinder[segment] = new THREE.CylinderBufferGeometry(0.5, 0.5, 1, segment).applyMatrix(this.rotz);
-      this._cache.cylinder[segment].name = "cylinder:" + String(segment);
-    }
     return this._cache.cylinder[segment];
   }
   _coneCreator(stat) {
     let segment = Number(stat.option)>>0;
     if (!segment || segment<3) segment = 8;
-    if (!this._cache.cone[segment]) {
+    if (!this._cache.cone[segment]) 
       this._cache.cone[segment] = new ConeBufferGeometry(0.5, 1, segment).applyMatrix(this.rotz);
-      this._cache.cone[segment].name = "cone:" + String(segment);
-    }
     return this._cache.cone[segment];
   }
   _gridCreator(stat) {
     let edgeWidth = Number(stat.option)>>0;
     if (!edgeWidth) edgeWidth = 10;
-    if (!this._cache.grid[edgeWidth]) {
+    if (!this._cache.grid[edgeWidth]) 
       this._cache.grid[edgeWidth] = new SolidML.GridBufferGeometry(1, edgeWidth/100);
-      this._cache.grid[edgeWidth].name = "grid:" + String(edgeWidth);
-    }
     return this._cache.grid[edgeWidth];
   }
   _lineCreator(stat) {
     let lineWidth = Number(stat.option)>>0;
     if (!lineWidth) lineWidth = 10;
-    if (!this._cache.line[lineWidth]) {
+    if (!this._cache.line[lineWidth]) 
       this._cache.line[lineWidth] = new THREE.BoxBufferGeometry(1, lineWidth/100, lineWidth/100);
-      this._cache.line[lineWidth].name = "line:" + String(lineWidth);
-    }
     return this._cache.line[lineWidth];
   }
   _torusCreator(stat) {
@@ -310,7 +295,6 @@ SolidML.GeometryCreator = class {
     const radseg = (!p[1] || p[1]<3) ? 4 : p[1];
     const tubseg = (!p[2] || p[2]<3) ? 8 : p[2];
     const geom = new THREE.TorusBufferGeometry(0.5, tube, radseg, tubseg).applyMatrix(this.roty);
-    geom.name = "torus:" + stat.param;
     this._cache.torus[stat.param] = geom;
     return geom;
   }
@@ -320,7 +304,6 @@ SolidML.GeometryCreator = class {
     const p = stat.param.split(/[\s,;:]/).map(s=>Number(s)||0);
     if (p.length > 9) p.length = 9;
     const geom = this.__triangleGeom(p);
-    geom.name = "triangle" + stat.param;
     this._cache.triangle[stat.param] = geom;
     return geom;
   }

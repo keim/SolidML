@@ -476,6 +476,12 @@ SolidML.BuildStatus = class {
     this._newObjectStatus = true;
     this._funcNewObject = funcNewObject;
   }
+  /** create ruleName
+   *  @retuan {String} string as "label:option[param]"
+   */
+  getRuleName() {
+    return this.label + ((option) ? (":" + this.option) : "") + ((param) ? ("[" + this.param + "]") : "");
+  }
   /** create new Object including clones of current status
    *  @return {Object} typeof {matrix, color, label, option, param, referenceID, objectCount}. rule, lastContinuousMesh and result are not cloned. 
    */
@@ -1011,7 +1017,7 @@ SolidML.ScriptParser = class {
       SolidML.ScriptParser.criteriaRexString = "(set|@)\\s*([a-z:]*)\\s*([a-z:,]+|[\\-\\d.]+|#[0-9a-fA-F]+|\\[.+?\\])";
       SolidML.ScriptParser.ruleDefineRexString = "(rule|#)\\s*" + SolidML.ScriptParser.nameRexString + "(.*?){";
       SolidML.ScriptParser.matRexString = "(((\\d+)[\\s*]*)?\\{(.+?)\\})";
-      SolidML.ScriptParser.referenceParamRexString = "(\\[(.+?)\\])?";
+      SolidML.ScriptParser.referenceParamRexString = "(\\[\\s*(.+?)\\s*\\])?";
       SolidML.ScriptParser.ruleRexString = [
         SolidML.ScriptParser.defineRexString,
         SolidML.ScriptParser.criteriaRexString, 
