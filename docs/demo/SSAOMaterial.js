@@ -13,7 +13,7 @@ class SSAOMaterial extends THREE.ShaderMaterial {
       }
     ]);
 
-    if (parameters && parameters["useInstancedMatrix"])
+    //if (parameters && parameters["useInstancedMatrix"])
       Object.assign(this.defines, {"INSTANCED_MATRIX" : 1});
 
     // set original shader
@@ -137,7 +137,10 @@ vec4 depthToPosition(in float depth, in float cameraNear, in float cameraFar) {
 #include <clipping_planes_pars_vertex>
 in vec4 color;
 #ifdef INSTANCED_MATRIX
-  in mat4 instanced_matrix;
+  in vec4 imatx;
+  in vec4 imaty;
+  in vec4 imatz;
+  in vec4 imatw;
 #endif
 out vec3 vViewPosition;
 out vec3 vNormal;
@@ -159,7 +162,8 @@ void main() {
 
   //#include <project_vertex>
 #ifdef INSTANCED_MATRIX
-  vec4 mvPosition = modelViewMatrix * instanced_matrix * vec4( transformed, 1.0 );
+  mat4 imat = mat4(imatx, imaty, imatz, imatw);
+  vec4 mvPosition = modelViewMatrix * imat * vec4( transformed, 1.0 );
 #else
   vec4 mvPosition = modelViewMatrix * vec4( transformed, 1.0 );
 #endif

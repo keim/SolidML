@@ -4,16 +4,18 @@ function build(gl, stateUpdating) {
     if (/^\s*$/.test(code)) return;
     window.localStorage.setItem('backup', code);
 
+//*
     gl.mainGeometry = new SolidML.BufferGeometry().build(code, {mat:"10,90,30,20", ao:"2,0"}, true, 0, 0);
     gl.solidML = gl.mainGeometry.solidML;
+//*/
 /*
     const iarray = new SolidML.InstancedBufferGeometry(code, {mat:"10,90,30,20", ao:"2,0"});
     console.log(iarray);
-    gl.mainGeometry = iarray.instancedArrayHash["dodeca"].instancedGeometry;
+    gl.mainGeometry = iarray.instancedArrayHash["grid"].instancedGeometry;
     gl.mainGeometry.objectCount = 1;
     gl.mainGeometry.isCompiled = ()=>true;
     gl.solidML = iarray.solidML;
- */
+//*/
     message("vertex:"+gl.mainGeometry.vertexCount+"/face:"+gl.mainGeometry.indexCount/3+"/object:"+gl.mainGeometry.objectCount);
 
     if (gl.mainMesh) 

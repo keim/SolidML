@@ -29,16 +29,26 @@ SolidML.InstancedBufferGeometry = class extends SolidML.BufferGeometry {
         if (!(ruleName in this.instancedArrayHash)) {
           this.instancedArrayHash[ruleName] = new SolidML.InstancedArray(geomCreated, ["position","normal"], 0);
           this.instancedArrayHash[ruleName].addInstancedAttribute('color', 4);
-          this.instancedArrayHash[ruleName].addInstancedAttribute('instanced_matrix', 16);
+          this.instancedArrayHash[ruleName].addInstancedAttribute('imatx', 4);
+          this.instancedArrayHash[ruleName].addInstancedAttribute('imaty', 4);
+          this.instancedArrayHash[ruleName].addInstancedAttribute('imatz', 4);
+          this.instancedArrayHash[ruleName].addInstancedAttribute('imatw', 4);
         }
         this.instancedArrayHash[ruleName].instanceCount++;
       }
     });
     this._geometryCreator.composeMeshes(false).forEach(reference=>{
-      this.instancedArrayHash[reference.name] = new SolidML.InstancedArray(reference, ["position","normal","color"], 0);
-      this.instancedArrayHash[reference.name].addInstancedAttribute('instanced_matrix', 16);
-      this.instancedArrayHash[reference.name].allocate(1);
-      this.instancedArrayHash[reference.name].setInstanceAttribute(0, "instanced_matrix", [1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]);
+      const ruleName = reference.name;
+      this.instancedArrayHash[ruleName] = new SolidML.InstancedArray(reference, ["position","normal","color"], 0);
+      this.instancedArrayHash[ruleName].addInstancedAttribute('imatx', 4);
+      this.instancedArrayHash[ruleName].addInstancedAttribute('imaty', 4);
+      this.instancedArrayHash[ruleName].addInstancedAttribute('imatz', 4);
+      this.instancedArrayHash[ruleName].addInstancedAttribute('imatw', 4);
+      this.instancedArrayHash[ruleName].allocate(1);
+      this.instancedArrayHash[ruleName].setInstanceAttribute(0, "imatx", [1,0,0,0]);
+      this.instancedArrayHash[ruleName].setInstanceAttribute(0, "imaty", [0,1,0,0]);
+      this.instancedArrayHash[ruleName].setInstanceAttribute(0, "imatz", [0,0,1,0]);
+      this.instancedArrayHash[ruleName].setInstanceAttribute(0, "imatw", [0,0,0,1]);
     });
     // caluclate total counts
     this.indexCount = 0;
@@ -100,8 +110,12 @@ SolidML.InstancedBufferGeometry = class extends SolidML.BufferGeometry {
 
   _copyInstance(index, stat, rulaName) {
     const color = stat.color.getRGBA();
+    const me = stat.matrix.elements;
     this.instancedArrayHash[rulaName].setInstanceAttribute(index, "color", [color.r, color.g, color.b, color.a]);
-    this.instancedArrayHash[rulaName].setInstanceAttribute(index, "instanced_matrix", stat.matrix.elements);
+    this.instancedArrayHash[rulaName].setInstanceAttribute(index, "imatx", [me[0],  me[1],  me[2],  me[3]]);
+    this.instancedArrayHash[rulaName].setInstanceAttribute(index, "imaty", [me[4],  me[5],  me[6],  me[7]]);
+    this.instancedArrayHash[rulaName].setInstanceAttribute(index, "imatz", [me[8],  me[9],  me[10], me[11]]);
+    this.instancedArrayHash[rulaName].setInstanceAttribute(index, "imatw", [me[12], me[13], me[14], me[15]]);
   }
 }
 
