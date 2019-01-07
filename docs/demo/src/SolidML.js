@@ -480,7 +480,7 @@ SolidML.BuildStatus = class {
    *  @retuan {String} string as "label:option[param]"
    */
   getRuleName() {
-    return this.label + ((option) ? (":" + this.option) : "") + ((param) ? ("[" + this.param + "]") : "");
+    return this.label + ((this.option) ? (":" + this.option) : "") + ((this.param) ? ("[" + this.param + "]") : "");
   }
   /** create new Object including clones of current status
    *  @return {Object} typeof {matrix, color, label, option, param, referenceID, objectCount}. rule, lastContinuousMesh and result are not cloned. 

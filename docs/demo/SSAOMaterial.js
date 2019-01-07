@@ -1,5 +1,5 @@
 class SSAOMaterial extends THREE.ShaderMaterial {
-  constructor() {
+  constructor(parameters) {
     super();
     SolidML.Material._initializeParameters(this);
     // set uniforms
@@ -12,6 +12,10 @@ class SSAOMaterial extends THREE.ShaderMaterial {
         cameraFar: { value: 1000 }
       }
     ]);
+
+    if (parameters && parameters["useInstancedMatrix"])
+      Object.assign(this.defines, {"INSTANCED_MATRIX" : 1});
+
     // set original shader
     const shaders = SSAOMaterial._shaders();
     this.vertexShader = shaders.vert;
@@ -22,6 +26,9 @@ class SSAOMaterial extends THREE.ShaderMaterial {
     this.transparent = true;
 
     this.ssaoUniforms = {};
+
+    // set values by hash
+    this.setValues( parameters );
   }
 
   initialize(webGLRenderer) {
@@ -129,6 +136,9 @@ vec4 depthToPosition(in float depth, in float cameraNear, in float cameraFar) {
 #include <logdepthbuf_pars_vertex>
 #include <clipping_planes_pars_vertex>
 in vec4 color;
+#ifdef INSTANCED_MATRIX
+  in mat4 instanced_matrix;
+#endif
 out vec3 vViewPosition;
 out vec3 vNormal;
 out vec4 vColor;
@@ -146,7 +156,15 @@ void main() {
   #include <morphtarget_vertex>
   #include <skinning_vertex>
   #include <displacementmap_vertex>
-  #include <project_vertex>
+
+  //#include <project_vertex>
+#ifdef INSTANCED_MATRIX
+  vec4 mvPosition = modelViewMatrix * instanced_matrix * vec4( transformed, 1.0 );
+#else
+  vec4 mvPosition = modelViewMatrix * vec4( transformed, 1.0 );
+#endif
+  gl_Position = projectionMatrix * mvPosition;
+
   #include <logdepthbuf_vertex>
   #include <clipping_planes_vertex>
   vViewPosition = -mvPosition.xyz;
