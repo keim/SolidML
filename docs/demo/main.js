@@ -4,21 +4,12 @@ function build(gl, stateUpdating) {
     if (/^\s*$/.test(code)) return;
     window.localStorage.setItem('backup', code);
 
-//*
-    gl.mainGeometry = new SolidML.BufferGeometry().build(code, {mat:"10,90,30,20", ao:"2,0"}, true, 0, 0);
+    gl.mainGeometry = new SolidML.InstancedBufferGeometry().build(code, {mat:"10,90,30,20", ao:"2,0"}, true, 0, 0);
     gl.solidML = gl.mainGeometry.solidML;
-//*/
-/*
-    const iarray = new SolidML.InstancedBufferGeometry(code, {mat:"10,90,30,20", ao:"2,0"});
-    gl.mainGeometry = iarray.instancedArrayHash["grid"].instancedGeometry;
-    gl.mainGeometry.objectCount = 1;
-    gl.mainGeometry.isCompiled = ()=>true;
-    gl.solidML = iarray.solidML;
-//*/
     message("vertex:"+gl.mainGeometry.vertexCount+"/face:"+gl.mainGeometry.indexCount/3+"/object:"+gl.mainGeometry.objectCount);
 
     if (gl.mainMesh) 
-      gl.scene.remove(gl.mainMesh);
+      gl.mainGroup.remove(gl.mainMesh);
 
     if (gl.mainGeometry.objectCount == 0) {
       gl.shadowAccumlator.setMeshes(null);
@@ -103,7 +94,7 @@ function build(gl, stateUpdating) {
       //gl.mainMesh.customDepthMaterial = gl.mainMaterial.customDepthMaterial;
       gl.mainMesh.position.z = zMargin;
 
-      gl.scene.add(gl.mainMesh);
+      gl.mainGroup.add(gl.mainMesh);
 
       gl.shadowAccumlator.setMeshes([gl.mainMesh, gl.floor, gl.room], sphere);
     }
@@ -236,9 +227,10 @@ function setup(gl) {
   gl.defineGUI.closed = false;
   gl.defineControls = [];
   
-  gl.mainMaterial = new SSAOMaterial({useInstancedMatrix:false});
+  gl.mainMaterial = new SSAOMaterial( { useInstancedMatrix : false } );
   gl.mainMaterial.initialize(gl.renderer);
   gl.mainGeometry = null;
+  gl.mainGroup = null;
   gl.mainMesh = null;
   gl.floorMaterial = new THREE.ShadowMaterial({color:0x000000, opacity:0.4, depthWrite:true});
   gl.floorGeometry = new THREE.PlaneBufferGeometry(1,1);
@@ -252,9 +244,11 @@ function setup(gl) {
   gl.room = new THREE.Mesh(gl.roomGeometry, gl.roomMaterial);
   gl.room.receiveShadow = true;
   gl.backScreen = new BackScreen();
+  gl.mainGroup = new THREE.Group();
   gl.scene.add(gl.floor);
   gl.scene.add(gl.room);
   gl.scene.add(gl.backScreen);
+  gl.scene.add(gl.mainGroup);
 
   //gl.renderTarget = gl.newRenderTarget();
   const size = this.renderer.getSize();

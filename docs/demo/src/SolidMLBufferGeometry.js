@@ -29,6 +29,11 @@ SolidML.BufferGeometry = class extends THREE.BufferGeometry {
      */
     this.objectCount = 0;
     /** 
+     *  flag for transparent object (object.alpha < 1) 
+     *  @type {boolean}
+     */
+    this.isTransparent = false;
+    /** 
      *  {@link SolidML} instance to construct object.
      *  @type {SolidML}
      */
@@ -131,6 +136,7 @@ SolidML.BufferGeometry = class extends THREE.BufferGeometry {
   update(sortingDotProduct=null) {
     this._indexIndex = 0;
     this._vertexIndex = 0;
+    this.isTransparent = false;
     this._geometryCreator.setup(false);
     if (sortingDotProduct) {
       const statList = [], vec = sortingDotProduct;
@@ -169,6 +175,8 @@ SolidML.BufferGeometry = class extends THREE.BufferGeometry {
         geom.attributes.position.array, vcount, 
         this.attributes.position.array, this._vertexIndex, 3);
       stat.color._fillArray(this.attributes.color.array, this._vertexIndex, vcount);
+      if (stat.color.a < 1)
+        this.isTransparent = true;
       invertFace = (stat.matrix.signed_det3() < 0);
     } else {
       this.attributes.position.array.set(geom.attributes.position.array, this._vertexIndex*3);
