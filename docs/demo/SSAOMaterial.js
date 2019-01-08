@@ -13,7 +13,7 @@ class SSAOMaterial extends THREE.ShaderMaterial {
       }
     ]);
 
-    //if (parameters && parameters["useInstancedMatrix"])
+    if (parameters && parameters["useInstancedMatrix"])
       Object.assign(this.defines, {"INSTANCED_MATRIX" : 1});
 
     // set original shader
