@@ -10,7 +10,6 @@ function build(gl, stateUpdating) {
 //*/
 /*
     const iarray = new SolidML.InstancedBufferGeometry(code, {mat:"10,90,30,20", ao:"2,0"});
-    console.log(iarray);
     gl.mainGeometry = iarray.instancedArrayHash["grid"].instancedGeometry;
     gl.mainGeometry.objectCount = 1;
     gl.mainGeometry.isCompiled = ()=>true;
@@ -237,7 +236,7 @@ function setup(gl) {
   gl.defineGUI.closed = false;
   gl.defineControls = [];
   
-  gl.mainMaterial = new SSAOMaterial();
+  gl.mainMaterial = new SSAOMaterial({useInstancedMatrix:false});
   gl.mainMaterial.initialize(gl.renderer);
   gl.mainGeometry = null;
   gl.mainMesh = null;
