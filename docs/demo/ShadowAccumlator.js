@@ -28,11 +28,12 @@ class BufferAccumlator {
   }
 }
 class ShadowAccumlator {
-  constructor(gl) {
+  constructor(gl, customDepthMaterial) {
     this.accumlator = new BufferAccumlator(gl);
     this.renderer = gl.renderer;
     this.renderTarget = gl.newRenderTarget({generateMipmaps: false});
     this.material = new THREE.MeshLambertMaterial({color:0xffffff});//, vertexColors: THREE.VertexColors
+    this.customDepthMaterial = customDepthMaterial; 
     this.light = new THREE.DirectionalLight(0xffffff, 1);
     this.light.castShadow = true;
     this.light.shadow.radius = 2.5;
@@ -63,6 +64,7 @@ class ShadowAccumlator {
       meshList.forEach(mesh=>{
         const newMesh = mesh.clone(); 
         newMesh.material = this.material;
+        newMesh.customDepthMaterial = this.customDepthMaterial;
         this.group.add(newMesh);
       });
       this.boundingSphere = boundingSphere;

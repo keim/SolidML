@@ -7,6 +7,12 @@ SolidML.InstancedBufferGeometry = class extends SolidML.BufferGeometry {
   constructor(script=null, criteria=null, geometryHash=null) {
     super(null, criteria, geometryHash);
     /** 
+     * Array of InstancedArray.
+     * @type {Array.<InstancedArray>} 
+     */
+    this.instances = [];
+
+    /** 
      * Hash of InstancedArray, can be accessed by rule name.
      * @type {Hash.<InstancedArray>} 
      */
@@ -27,7 +33,8 @@ SolidML.InstancedBufferGeometry = class extends SolidML.BufferGeometry {
    * @override
    */
   estimateBufferCount(instanceMargin=0) {
-    let order = 0;
+    this.instances = [];
+    this.instancedArrayHash = {};
     this._geometryCreator.setup(false);
     this.solidML.build(stat=>{
       if (this.geometryFilter && !this.geometryFilter(stat)) return;
@@ -39,8 +46,9 @@ SolidML.InstancedBufferGeometry = class extends SolidML.BufferGeometry {
           const iarray = new InstancedArray(geomCreated, ["position","normal"], {"color":4, "imatx":4, "imaty":4, "imatz":4, "imatw":4});
           iarray.name = ruleName;
           iarray.userData.isTranparent = false;
-          iarray.userData.order = order++;
+          iarray.userData.order = this.instances.length;
           this.instancedArrayHash[ruleName] = iarray;
+          this.instances.push(iarray);
         }
         this.instancedArrayHash[ruleName].instanceCount++;
       }
