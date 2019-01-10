@@ -29,24 +29,34 @@ class BufferAccumlator {
 }
 
 class ShadowAccumlator {
-  constructor(gl, customDepthMaterial) {
+  constructor(gl) {
     this.accumlator = new BufferAccumlator(gl);
     this.renderer = gl.renderer;
     this.renderTarget = gl.newRenderTarget({generateMipmaps: false});
-    this.material = new ShadowAccumlator.Material();
-    this.customDepthMaterial = customDepthMaterial; 
-    this.light = new THREE.DirectionalLight(0xffffff, 1);
-    this.light.castShadow = true;
-    this.light.shadow.radius = 2.5;
-    this.light.shadow.mapSize.width = 512;
-    this.light.shadow.mapSize.height = 512;
-    this.light.shadow.camera.near = 0.01;
-    this.light.shadow.camera.far = 10000;
+    this.material = [
+      new ShadowAccumlator.Material(), 
+      new ShadowAccumlator.Material({useInstancedMatrix:true})
+    ];
+    this.depthMaterial = [
+      new ShadowAccumlator.DepthMaterial(), 
+      new ShadowAccumlator.DepthMaterial({useInstancedMatrix:true})
+    ];
+    this.scene = new THREE.Scene();
+    this.lights = [];
+    for (let i=0; i<2; i++) {
+      const light = new THREE.DirectionalLight(0xffffff, 1);
+      light.castShadow = true;
+      light.shadow.radius = 2.5;
+      light.shadow.mapSize.width = 256;
+      light.shadow.mapSize.height = 256;
+      light.shadow.camera.near = 0.01;
+      light.shadow.camera.far = 10000;
+      this.scene.add(light);
+      this.scene.add(light.target);
+      this.lights.push(light);
+    }
     this.boundingSphere = null;
     this.group = null;
-    this.scene = new THREE.Scene();
-    this.scene.add(this.light);
-    this.scene.add(this.light.target);
     this.pause = false;
   }
   stop() {
@@ -64,18 +74,20 @@ class ShadowAccumlator {
     if (meshList) {
       meshList.forEach(mesh=>{
         const newMesh = mesh.clone(); 
-        newMesh.material = this.material;
-        newMesh.customDepthMaterial = this.customDepthMaterial;
+        newMesh.material = this.material[mesh.geometry.isInstancedBufferGeometry?1:0];
+        newMesh.customDepthMaterial = this.depthMaterial[mesh.geometry.isInstancedBufferGeometry?1:0];
         this.group.add(newMesh);
       });
       this.boundingSphere = boundingSphere;
-      this.light.shadow.camera.bottom = - this.boundingSphere.radius;
-      this.light.shadow.camera.top    = + this.boundingSphere.radius;
-      this.light.shadow.camera.left   = - this.boundingSphere.radius;
-      this.light.shadow.camera.right  = + this.boundingSphere.radius;
-      this.light.shadow.camera.near = 0.01;
-      this.light.shadow.camera.far = this.boundingSphere.radius*2;
-      this.light.shadow.camera.updateProjectionMatrix();
+      for (let i=0; i<2; i++) {
+        this.lights[i].shadow.camera.bottom = - this.boundingSphere.radius;
+        this.lights[i].shadow.camera.top    = + this.boundingSphere.radius;
+        this.lights[i].shadow.camera.left   = - this.boundingSphere.radius;
+        this.lights[i].shadow.camera.right  = + this.boundingSphere.radius;
+        this.lights[i].shadow.camera.near = 0.01;
+        this.lights[i].shadow.camera.far = this.boundingSphere.radius*2;
+        this.lights[i].shadow.camera.updateProjectionMatrix();
+      }
       this.scene.add(this.group);
     }
     this.accumlator.clear();
@@ -87,12 +99,14 @@ class ShadowAccumlator {
           currentShadowMapType = this.renderer.shadowMap.type;
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.renderer.setClearColor(new THREE.Color(0xffffff));
-    this.light.target.position.copy(this.boundingSphere.center);
+    this.lights[0].target.position.copy(this.boundingSphere.center);
+    this.lights[1].target.position.copy(this.boundingSphere.center);
     this.scene.add(tempCamera);
     if (this.accumlator.accumlateCount > 512) times = 1;
     for (let i=0; i<times; i++) {
       dir.set(Math.random()-0.5, Math.random()-0.5, Math.random()-0.5).setLength(this.boundingSphere.radius);
-      this.light.position.addVectors(this.boundingSphere.center, dir);
+      this.lights[0].position.addVectors(this.boundingSphere.center, dir);
+      this.lights[1].position.addVectors(this.boundingSphere.center, dir.negate());
       this.renderer.render(this.scene, tempCamera, this.renderTarget);
       this.accumlator.accumlate(this.renderTarget);
     }
@@ -104,10 +118,46 @@ class ShadowAccumlator {
   }
 }
 
-ShadowAccumlator.Material = class extends THREE.ShaderMaterial {
-  constructor(paramaters) {
+ShadowAccumlator.DepthMaterial = class extends THREE.ShaderMaterial {
+  constructor(paramaters={}) {
     super();
-    Object.assign(this.defines, {"INSTANCED_MATRIX" : 1});
+    if (paramaters["useInstancedMatrix"]) {
+      Object.assign(this.defines, {"INSTANCED_MATRIX" : 1});
+      delete paramaters["useInstancedMatrix"];
+    }
+    this.uniforms = THREE.UniformsUtils.clone(THREE.ShaderLib.depth.uniforms);
+    this.vertexShader = ShadowAccumlator.DepthMaterial.vertexShader();
+    this.fragmentShader = ShadowAccumlator.DepthMaterial.fragmentShader();
+    this.setValues(paramaters);
+  }
+
+  static vertexShader() {
+    return `
+#ifdef INSTANCED_MATRIX
+  attribute vec4 imatx;
+  attribute vec4 imaty;
+  attribute vec4 imatz;
+  attribute vec4 imatw;
+  void main() { gl_Position = projectionMatrix * modelViewMatrix * mat4(imatx, imaty, imatz, imatw) * vec4(position.xyz, 1); }
+#else
+  void main() { gl_Position = projectionMatrix * modelViewMatrix * vec4(position.xyz, 1); }
+#endif
+`;
+  }
+
+  static fragmentShader() {
+    return "#include <packing> void main() { gl_FragColor = packDepthToRGBA( gl_FragCoord.z ); }";
+  }
+}
+
+
+ShadowAccumlator.Material = class extends THREE.ShaderMaterial {
+  constructor(paramaters={}) {
+    super();
+    if (paramaters["useInstancedMatrix"]) {
+      Object.assign(this.defines, {"INSTANCED_MATRIX" : 1});
+      delete paramaters["useInstancedMatrix"];
+    }
     this.uniforms = THREE.UniformsUtils.clone(THREE.ShaderLib.lambert.uniforms);
     this.vertexShader = ShadowAccumlator.Material.vertexShader();
     this.fragmentShader = ShadowAccumlator.Material.fragmentShader();
@@ -173,8 +223,17 @@ varying vec3 vLightBack;
 
 #include <lights_pars_begin>
 #include <shadowmap_pars_fragment>
-#include <shadowmask_pars_fragment>
 
+float getShadowMask() {
+  float shadow = 0.0;
+  DirectionalLight directionalLight;
+  #pragma unroll_loop
+  for ( int i = 0; i < NUM_DIR_LIGHTS; i ++ ) {
+    directionalLight = directionalLights[ i ];
+    shadow += bool( directionalLight.shadow ) ? getShadow( directionalShadowMap[ i ], directionalLight.shadowMapSize, directionalLight.shadowBias, directionalLight.shadowRadius, vDirectionalShadowCoord[ i ] ) : 0.0;
+  }
+  return shadow;
+}
 void main() {
   //diffuse *= vColor; vColor.a
   vec3 outgoingLight = (( gl_FrontFacing ) ? vLightFront : vLightBack) * diffuse * getShadowMask() / PI + emissive;

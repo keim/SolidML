@@ -165,7 +165,8 @@ class MainApp {
       gl.solidML = gl.mainGeometry.solidML;
       this.message("vertex:"+gl.mainGeometry.vertexCount+"/face:"+gl.mainGeometry.indexCount/3+"/object:"+gl.mainGeometry.objectCount);
 
-      gl.mainGroup.children.forEach(child=>{
+      const children = gl.mainGroup.children;
+      children.forEach(child=>{
         gl.mainGroup.remove(child);
         child.geometry.dispose();
       });
