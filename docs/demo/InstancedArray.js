@@ -113,18 +113,17 @@ class InstancedArray extends THREE.InstancedBufferGeometry {
 class InstancedArray_DepthMaterial extends THREE.ShaderMaterial {
   constructor(paramaters) {
     super(paramaters);
-    const shader = InstancedArray_DepthMaterial._shader();
-    this.vertexShader = shader.vert;
-    this.fragmentShader = shader.frag;
     Object.assign(this.defines, {
       "INSTANCED_MATRIX" : 1, 
       "DEPTH_PACKING": THREE.RGBADepthPacking
     });
+    this.uniforms = THREE.UniformsUtils.clone(THREE.ShaderLib.depth.uniforms);
+    this.vertexShader = InstancedArray_DepthMaterial.vertexShader();
+    this.fragmentShader = THREE.ShaderLib.depth.fragmentShader;
   }
 
-  static _shader() {
-    return {
-vert: `
+  static vertexShader() {
+    return `
 #include <common>
 #include <uv_pars_vertex>
 #include <displacementmap_pars_vertex>
@@ -138,21 +137,14 @@ vert: `
   attribute vec4 imatz;
   attribute vec4 imatw;
 #endif
-
 void main() {
-
   #include <uv_vertex>
-
   #include <skinbase_vertex>
-
   #ifdef USE_DISPLACEMENTMAP
-
     #include <beginnormal_vertex>
     #include <morphnormal_vertex>
     #include <skinnormal_vertex>
-
   #endif
-
   #include <begin_vertex>
   #include <morphtarget_vertex>
   #include <skinning_vertex>
@@ -165,56 +157,9 @@ void main() {
   vec4 mvPosition = modelViewMatrix * vec4( transformed, 1.0 );
 #endif
   gl_Position = projectionMatrix * mvPosition;
-
   #include <logdepthbuf_vertex>
   #include <clipping_planes_vertex>
-
-}`,
-frag: `
-#if DEPTH_PACKING == 3200
-
-  uniform float opacity;
-
-#endif
-
-#include <common>
-#include <packing>
-#include <uv_pars_fragment>
-#include <map_pars_fragment>
-#include <alphamap_pars_fragment>
-#include <logdepthbuf_pars_fragment>
-#include <clipping_planes_pars_fragment>
-
-void main() {
-
-  #include <clipping_planes_fragment>
-
-  vec4 diffuseColor = vec4( 1.0 );
-
-  #if DEPTH_PACKING == 3200
-
-    diffuseColor.a = opacity;
-
-  #endif
-
-  #include <map_fragment>
-  #include <alphamap_fragment>
-  #include <alphatest_fragment>
-
-  #include <logdepthbuf_fragment>
-
-  #if DEPTH_PACKING == 3200
-
-    gl_FragColor = vec4( vec3( 1.0 - gl_FragCoord.z ), opacity );
-
-  #elif DEPTH_PACKING == 3201
-
-    gl_FragColor = packDepthToRGBA( gl_FragCoord.z );
-
-  #endif
-
-}`
-    }
+}` 
   }
 }
 
