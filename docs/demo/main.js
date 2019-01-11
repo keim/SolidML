@@ -19,8 +19,8 @@ class MainApp {
 
   _setupProperties() {
     this.AOenable = true;
-    this.AOsharpness = 2;
-    this._AOsharpnessFactor = 4;
+    this.AOsharpness = 1;
+    this._AOsharpnessFactor = 2;
     this.AOoffset = 0;
     this.autoZPosition = true;
     this.autoCameraPosition = true;
@@ -161,12 +161,11 @@ class MainApp {
       if (/^\s*$/.test(code)) return;
       window.localStorage.setItem('backup', code);
 
-      gl.mainGeometry = new SolidML.InstancedBufferGeometry().build(code, {mat:"10,90,30,20", ao:"2,0"}, true, 0, 0);
+      gl.mainGeometry = new SolidML.InstancedBufferGeometry().build(code, {mat:"10,90,30,20", ao:"1,0"}, true, 0, 0);
       gl.solidML = gl.mainGeometry.solidML;
       this.message("vertex:"+gl.mainGeometry.vertexCount+"/face:"+gl.mainGeometry.indexCount/3+"/object:"+gl.mainGeometry.objectCount);
 
-      const children = gl.mainGroup.children;
-      children.forEach(child=>{
+      [].concat(gl.mainGroup.children).forEach(child=>{
         gl.mainGroup.remove(child);
         child.geometry.dispose();
       });
