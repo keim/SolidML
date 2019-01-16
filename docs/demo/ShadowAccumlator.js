@@ -72,9 +72,10 @@ class ShadowAccumlator {
     this.group = new THREE.Group();
     if (meshList) {
       meshList.forEach(mesh=>{
-        const newMesh = mesh.clone(); 
-        newMesh.material = this.material[mesh.geometry.isInstancedBufferGeometry?1:0];
-        newMesh.customDepthMaterial = this.depthMaterial[mesh.geometry.isInstancedBufferGeometry?1:0];
+        const newMesh = mesh.clone(),
+              isIBG = mesh.geometry.isInstancedBufferGeometry ? 1 : 0;
+        newMesh.material = this.material[isIBG];
+        newMesh.customDepthMaterial = this.depthMaterial[isIBG];
         this.group.add(newMesh);
       });
       this.boundingSphere = boundingSphere;
@@ -125,15 +126,12 @@ const float ShiftRight8 = 1. / 256.;
 float unpackRGBAToRSMDepth(const in vec4 v) {
   return v.z * 255. / 65536. + v.w;
 }
-vec4 unpackRGBAToRSMAlbedo(const in vec4 v) {
-  vec2 w = v.xy * 255. / 16.;
-  return vec4(floor(w.x), fract(w.x)*16., floor(w.y), fract(w.y)*16.) / 15.;
+vec3 unpackRGBAToRSMNormal(const in vec4 v) {
+  vec2 u = v.xy * 2.0 - 1.0;
+  return normalize(vec3(u, sqrt(1.0 - u.x * u.x - u.y * u.y)));
 }
-vec4 packRSMtoRGBA(const in float depth, const in vec4 albedo){
-  vec4 r = vec4(
-    (floor(albedo.x * 15.) * 16. + floor(albedo.y * 15.)) / 256.,
-    (floor(albedo.z * 15.) * 16. + floor(albedo.w * 15.)) / 256.,
-    fract(depth*256.), depth);
+vec4 packRSMDepthNormaltoRGBA(const in float depth, const in vec3 normal){
+  vec4 r = vec4(normal.xy * 0.5 + 0.5, fract(depth*256.), depth);
   r.w -= r.z * ShiftRight8; // tidy overflow
   return r * PackUpscale;
 }`;
@@ -147,29 +145,37 @@ ShadowAccumlator.DepthMaterial = class extends THREE.ShaderMaterial {
     }
     this.uniforms = THREE.UniformsUtils.clone(THREE.ShaderLib.depth.uniforms);
     this.setValues(paramaters);
-    this.vertexShader = `
-attribute vec4 color;
-varying vec4 vColor;
+    this.vertexShader = `#version 300 es
+in vec4 color;
+out vec4 vColor;
+out vec3 vNormal;
 #ifdef INSTANCED_MATRIX
-  attribute vec4 imatx;
-  attribute vec4 imaty;
-  attribute vec4 imatz;
-  attribute vec4 imatw;
+  in vec4 imatx;
+  in vec4 imaty;
+  in vec4 imatz;
+  in vec4 imatw;
   void main() { 
+    mat4 imat = mat4(imatx, imaty, imatz, imatw);
     vColor = color;
-    gl_Position = projectionMatrix * modelViewMatrix * mat4(imatx, imaty, imatz, imatw) * vec4(position.xyz, 1); 
+    vNormal = normalMatrix * (imat * vec4(normal.xyz, 0)).xyz;
+    gl_Position = projectionMatrix * modelViewMatrix * imat * vec4(position.xyz, 1); 
   }
 #else
   void main() {
     vColor = color;
+    vNormal = normalMatrix * normal;
     gl_Position = projectionMatrix * modelViewMatrix * vec4(position.xyz, 1);
   }
 #endif
     `;
-    this.fragmentShader = `
+    this.fragmentShader = `#version 300 es
 ${rsm_packing}
-varying vec4 vColor;
-void main() { gl_FragColor = packRSMtoRGBA( gl_FragCoord.z, vColor ); }
+in vec4 vColor;
+in vec3 vNormal;
+layout (location = 0) out vec4 outColor;
+void main() {
+  outColor = packRSMDepthNormaltoRGBA( gl_FragCoord.z, vNormal );
+}
     `;
   }
 }
@@ -204,23 +210,22 @@ struct DirectionalLight {
 uniform DirectionalLight directionalLights[ NUM_DIR_LIGHTS ];
 `;
 
-this.vertexShader = `
-#define LAMBERT
+this.vertexShader = `#version 300 es
 #include <common>
 ${directional_light}
-attribute vec4 color;
+in vec4 color;
 #ifdef INSTANCED_MATRIX
-  attribute vec4 imatx;
-  attribute vec4 imaty;
-  attribute vec4 imatz;
-  attribute vec4 imatw;
+  in vec4 imatx;
+  in vec4 imaty;
+  in vec4 imatz;
+  in vec4 imatw;
 #endif
 uniform mat4 directionalShadowMatrix[ NUM_DIR_LIGHTS ];
-varying vec4 vShadowCoord[ NUM_DIR_LIGHTS ];
-varying vec3 vViewPosition;
-varying vec4 vColor;
-varying vec3 vLightFront;
-varying vec3 vLightBack;
+out vec4 vShadowCoord[ NUM_DIR_LIGHTS ];
+out vec3 vViewPosition;
+out vec4 vColor;
+out vec3 vLightFront;
+out vec3 vLightBack;
 
 void accumDirectionalLight(vec3 nml, DirectionalLight directionalLight) {
   float dotNL = dot( nml, directionalLight.direction );
@@ -256,22 +261,23 @@ void main() {
   gl_Position = projectionMatrix * mvPosition;
 }`;
 
-this.fragmentShader = `
+this.fragmentShader = `#version 300 es
 uniform sampler2D directionalShadowMap[ NUM_DIR_LIGHTS ];
 uniform vec3 diffuse;
 uniform vec3 emissive;
 uniform float opacity;
-varying vec4 vShadowCoord[ NUM_DIR_LIGHTS ];
-varying vec3 vViewPosition;
-varying vec4 vColor;
-varying vec3 vLightFront;
-varying vec3 vLightBack;
+in vec4 vShadowCoord[ NUM_DIR_LIGHTS ];
+in vec3 vViewPosition;
+in vec4 vColor;
+in vec3 vLightFront;
+in vec3 vLightBack;
+layout (location = 0) out vec4 outColor;
 #include <common>
 ${rsm_packing}
 ${directional_light}
 vec3 texture2DCompare( sampler2D depths, vec2 uv, float compare ) {
   vec4 dmap = texture2D( depths, uv );
-  vec4 albedo = unpackRGBAToRSMAlbedo(dmap);
+  vec4 albedo = vec4(0);//unpackRGBAToRSMAlbedo(dmap);
   return mix( albedo.xyz * (1.0 - albedo.w), vec3(1), step( compare, unpackRGBAToRSMDepth(dmap) ) );
 }
 vec3 getShadow( sampler2D shadowMap, vec2 shadowMapSize, float shadowBias, float shadowRadius, vec4 shadowCoord ) {
@@ -291,7 +297,7 @@ vec3 getShadowMask() {
 }
 void main() {
   vec3 outgoingLight = (( gl_FrontFacing ) ? vLightFront : vLightBack) * diffuse * getShadowMask() / PI + emissive;
-  gl_FragColor = vec4( outgoingLight, opacity );
+  outColor = vec4( outgoingLight, opacity );
 }`;
   }
 }

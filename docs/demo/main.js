@@ -36,7 +36,7 @@ class MainApp {
     const size = this.gl.renderer.getSize();
     this.renderTarget = new WebGL2RenderTarget( size.width, size.height, { multipleRenderTargets:true, renderTargetCount:2 } );
     this.ssaoRenderer = new SSAORenderer(this.gl.renderer, { useInstancedMatrix : true } );
-    this.customDepthMaterial = new InstancedArray_DepthMaterial();
+    this.customDepthMaterial = new SolidML.InstancedBuffer_DepthMaterial();
     this.shadowAccumlator = new ShadowAccumlator(this.gl, this.customDepthMaterial);
   }
 
