@@ -20,7 +20,6 @@ class MainApp {
   _setupProperties() {
     this.AOenable = true;
     this.AOsharpness = 1;
-    this._AOsharpnessFactor = 2;
     this.AOoffset = 0;
     this.autoZPosition = true;
     this.autoCameraPosition = true;
@@ -115,7 +114,7 @@ class MainApp {
       (ao=>{
         ao.closed = false;
         ao.add(this, 'AOenable');
-        ao.add(this, 'AOsharpness', 0, 5, 0.1).onChange(v=>this.updateAOSharpness(v));
+        ao.add(this, 'AOsharpness', 0, 4, 0.1).onChange(v=>this.updateAOSharpness(v));
         ao.add(this, 'AOoffset',   -1, 1, 0.1);
       })( gui.addFolder("Ambient Occlusion") );
       (bg=>{
@@ -311,7 +310,6 @@ class MainApp {
   updateAOSharpness(sharpness) {
     this.AOenable = (sharpness > 0);
     this.AOsharpness = sharpness;
-    this._AOsharpnessFactor = Math.pow(2, this.AOsharpness);
   }
 
   updateBackScreen() {
@@ -346,8 +344,8 @@ class MainApp {
       //copyShader.calc({tSrc:this.renderTarget.textures[1]});
     } else {
       this.gl.render(this.renderTarget);
-      this.shadowAccumlator.render(this.gl.camera, 16);
-      this.shadowAccumlator.accumlator.render(this.renderTarget, this._AOsharpnessFactor, this.AOoffset-(this._AOsharpnessFactor*0.125));
+      this.shadowAccumlator.render(this.gl.camera, 1);
+      this.shadowAccumlator.accumlator.render(this.renderTarget, this.AOsharpness*2, this.AOoffset-(this.AOsharpness-1)/2);
     }
 
     this.stats.end();

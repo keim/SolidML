@@ -23,13 +23,19 @@ class BufferAccumlator {
     this.copy.calc({"tSrc":this.renderTarget}, this.accumlationBuffer);
   }
   render(renderTarget, scale, add) {
-    this.mult.calc({"tSrc1":renderTarget, "tSrc2":this.accumlationBuffer, scale, add});
-    //this.copy.calc({"tSrc":this.renderTarget, "scale":1});
+    //this.mult.calc({"tSrc1":renderTarget, "tSrc2":this.accumlationBuffer, scale, add});
+    this.copy.calc({"tSrc":this.accumlationBuffer, "scale":1});
   }
 }
 
 class ShadowAccumlator {
   constructor(gl) {
+    const renderTargetOptions = {
+      generateMipmaps: false, 
+      multipleRenderTargets: true, 
+      renderTargetCount: 2
+    };
+
     this.accumlator = new BufferAccumlator(gl);
     this.renderer = gl.renderer;
     this.renderTarget = gl.newRenderTarget({generateMipmaps: false});
@@ -45,12 +51,15 @@ class ShadowAccumlator {
       new ShadowAccumlator.DepthMaterial({useInstancedMatrix:true})
     ];
     this.shadowScene = new THREE.Scene();
-    this.shadowCamera = new THREE.OrthogonalCamera();
+    this.shadowCamera = new THREE.OrthographicCamera();
     this.shadowScene.add(this.shadowCamera);
-    this.shadowMap0 = new THREE.WebGLRenderTarget(256, 256, {generateMipmaps: false});
-    this.shadowMap1 = new THREE.WebGLRenderTarget(256, 256, {generateMipmaps: false});
+    this.shadowMap0 = new WebGL2RenderTarget(256, 256, renderTargetOptions);
+    this.shadowMap1 = new WebGL2RenderTarget(256, 256, renderTargetOptions);
     this.shadowMatrix0 = new THREE.Matrix4();
     this.shadowMatrix1 = new THREE.Matrix4();
+    this.lightColor0 = new THREE.Color(0xffffff);
+    this.lightColor1 = new THREE.Color(0xffffff);
+    this.lightDirection = new THREE.Vector3(0, 0, 1);
 
     this.boundingSphere = null;
     this.group = null;
@@ -87,8 +96,8 @@ class ShadowAccumlator {
       this.shadowCamera.top    = + this.boundingSphere.radius;
       this.shadowCamera.left   = - this.boundingSphere.radius;
       this.shadowCamera.right  = + this.boundingSphere.radius;
-      this.shadowCamera.near = 0.01;
-      this.shadowCamera.far = this.boundingSphere.radius*2;
+      this.shadowCamera.near = 1e-4;
+      this.shadowCamera.far = this.boundingSphere.radius*4;
       this.shadowCamera.updateProjectionMatrix();
       this.scene.add(this.group);
       this.shadowScene.add(this.shadowGroup);
@@ -103,9 +112,11 @@ class ShadowAccumlator {
           radius = this.boundingSphere.radius;
     this.renderer.setClearColor(new THREE.Color(0xffffff));
     this.scene.add(tempCamera);
-    if (this.accumlator.accumlateCount > 512) times = 1;
+    if (this.accumlator.accumlateCount > 0) times = 0;
     for (let i=0; i<times; i++) {
       const me = randomRotationMatrix(mat, Math.random(), Math.random(), Math.random()).elements;
+
+      // shadowmap
       this.shadowCamera.position.set(center.x + me[0]*radius, center.y + me[1]*radius, center.z + me[2]*radius);
       this.shadowCamera.up.set(me[4], me[5], me[6]);
       this.shadowCamera.lookAt( center );
@@ -115,6 +126,7 @@ class ShadowAccumlator {
       this.shadowMatrix0.multiply( this.shadowCamera.matrixWorldInverse );
       this.renderer.render(this.shadowScene, this.shadowCamera, this.shadowMap0);
 
+      // back shadowmap
       this.shadowCamera.position.set(center.x - me[0]*radius, center.y - me[1]*radius, center.z - me[2]*radius);
       this.shadowCamera.up.set(-me[4], -me[5], -me[6]);
       this.shadowCamera.lookAt( center );
@@ -124,7 +136,10 @@ class ShadowAccumlator {
       this.shadowMatrix1.multiply( this.shadowCamera.matrixWorldInverse );
       this.renderer.render(this.shadowScene, this.shadowCamera, this.shadowMap1);
 
-
+      // lighting
+      this.lightDirection.set(-me[0], -me[1], -me[2]);
+      this.material[0].setShadowMapParameters(this);
+      this.material[1].setShadowMapParameters(this);
       this.renderer.render(this.scene, tempCamera, this.renderTarget);
       this.accumlator.accumlate(this.renderTarget);
     }
@@ -187,9 +202,11 @@ out vec3 vNormal;
 ${rsm_packing}
 in vec4 vColor;
 in vec3 vNormal;
-layout (location = 0) out vec4 outColor;
+layout (location = 0) out vec4 outDepthNormal;
+layout (location = 1) out vec4 outAlbedo;
 void main() {
-  outColor = packRSMDepthNormaltoRGBA( gl_FragCoord.z, vNormal );
+  outDepthNormal = packRSMDepthNormaltoRGBA( gl_FragCoord.z, vNormal );
+  outAlbedo = vColor;
 }
     `;
   }
@@ -206,35 +223,35 @@ ShadowAccumlator.Material = class extends THREE.ShaderMaterial {
     this.uniforms = THREE.UniformsUtils.merge([
       THREE.ShaderLib.lambert.uniforms,
       {
-        lightDirection : {value: THREE.Vector3()},
-        lightColor0 : {value: THREE.Vector3()},
-        lightColor1 : {value: THREE.Vector3()},
-        shadowMatrix0 : {value: THREE.Matrix4()},
-        shadowMatrix1 : {value: THREE.Matrix4()},
+        shadowCamZRange : {value: new THREE.Vector2(0,1)},
+        lightDirection : {value: null},
+        lightColor0 : {value: null},
+        lightColor1 : {value: null},
+        shadowMatrix0 : {value: null},
+        shadowMatrix1 : {value: null},
         shadowMap0 : {value: null},
+        albedoMap0 : {value: null},
         shadowMap1 : {value: null},
-        shadowMapSize : {value: THREE.Vector2(256, 256)}
+        albedoMap1 : {value: null},
+        shadowMapSize : {value: new THREE.Vector2(256,256)}
       }
     ]);
     this._initShaders();
-    this.color = new THREE.Color( 0xffffff );
-    this.emissive = new THREE.Color( 0x000000 );
-    this.emissiveIntensity = 1.0;
-
-    this.lightDirection = THREE.Vector3();
-    this.lightColor0 = THREE.Vector3();
-    this.lightColor1 = THREE.Vector3();
-    this.shadowMatrix0 = THREE.Matrix4();
-    this.shadowMatrix1 = THREE.Matrix4();
-    this.shadowMap0 = null;
-    this.shadowMap1 = null;
-    this.shadowMapSize = THREE.Vector2(256, 256);
-
     this.setValues(paramaters);
   }
 
-  setShadowMapParameters() {
-    /**/ // TODO!
+  setShadowMapParameters(hash) {
+    this.uniforms.shadowCamZRange.value.set(hash.shadowCamera.near, hash.shadowCamera.far);
+    this.uniforms.lightDirection.value = hash.lightDirection;
+    this.uniforms.lightColor0.value = hash.lightColor0;
+    this.uniforms.lightColor1.value = hash.lightColor1;
+    this.uniforms.shadowMatrix0.value = hash.shadowMatrix0;
+    this.uniforms.shadowMatrix1.value = hash.shadowMatrix1;
+    this.uniforms.shadowMap0.value = hash.shadowMap0.textures[0];
+    this.uniforms.albedoMap0.value = hash.shadowMap0.textures[1];
+    this.uniforms.shadowMapSize.value.set(hash.shadowMap0.width, hash.shadowMap0.height);
+    this.uniforms.shadowMap1.value = hash.shadowMap1.textures[0];
+    this.uniforms.albedoMap1.value = hash.shadowMap1.textures[1];
   }
 
   _initShaders() {
@@ -256,9 +273,10 @@ uniform vec2 shadowMapSize;
 out vec4 vShadowCoord0;
 out vec4 vShadowCoord1;
 out vec3 vViewPosition;
+out vec3 vNormal;
 out vec4 vColor;
-out vec3 vLightFront;
-out vec3 vLightBack;
+out float vLightFront;
+out float vLightBack;
 
 void main() {
   #ifdef INSTANCED_MATRIX
@@ -277,58 +295,81 @@ void main() {
   #endif
   vViewPosition = -mvPosition.xyz;
   vColor = color;
-
-  vec3 nml = normalize( transformedNormal );
-  float dotNL0 = dot( nml, lightDirection );
-  float dotNL1 = dot( nml, -lightDirection );
-  vLightFront = (saturate(  dotNL0 ) * lightColor0 + saturate(  dotNL1 ) * lightColor1) * PI;
-  vLightBack  = (saturate( -dotNL0 ) * lightColor0 + saturate( -dotNL1 ) * lightColor1) * PI;
+  vNormal = normalize( transformedNormal );
+  float dotNL = dot( vNormal, lightDirection );
+  vLightFront = saturate( -dotNL ) * PI;
+  vLightBack = saturate(  dotNL ) * PI;
   vShadowCoord0 = shadowMatrix0 * worldPosition;
   vShadowCoord1 = shadowMatrix1 * worldPosition;
+  vShadowCoord0.xyz /= vShadowCoord0.w;
+  vShadowCoord1.xyz /= vShadowCoord1.w;
   gl_Position = projectionMatrix * mvPosition;
 }`;
 
 this.fragmentShader = `#version 300 es
+struct ReflectiveShadowMap {
+  float depth;
+  vec3 normal;
+  vec4 albedo;
+};
+uniform vec2 shadowCamZRange;
 uniform vec3 lightDirection;
 uniform vec3 lightColor0;
 uniform vec3 lightColor1;
 uniform sampler2D shadowMap0;
+uniform sampler2D albedoMap0;
 uniform sampler2D shadowMap1;
+uniform sampler2D albedoMap1;
 uniform vec2 shadowMapSize;
-uniform vec3 diffuse;
-uniform vec3 emissive;
-uniform float opacity;
-in vec4 vShadowCoord[ NUM_DIR_LIGHTS ];
+in vec4 vShadowCoord0;
+in vec4 vShadowCoord1;
 in vec3 vViewPosition;
+in vec3 vNormal;
 in vec4 vColor;
-in vec3 vLightFront;
-in vec3 vLightBack;
+in float vLightFront;
+in float vLightBack;
 layout (location = 0) out vec4 outColor;
 #include <common>
 ${rsm_packing}
-vec3 texture2DCompare( sampler2D depths, vec2 uv, float compare ) {
-  vec4 dmap = texture2D( depths, uv );
-  vec4 albedo = vec4(0);//unpackRGBAToRSMAlbedo(dmap);
-  return mix( albedo.xyz * (1.0 - albedo.w), vec3(1), step( compare, unpackRGBAToRSMDepth(dmap) ) );
+float viewZToOrthographicDepth( const in float viewZ ) {
+  return ( viewZ + shadowCamZRange.x ) / ( shadowCamZRange.x - shadowCamZRange.y );
 }
-vec3 getShadow( sampler2D shadowMap, float shadowBias, vec4 shadowCoord ) {
-  vec3 shadow = vec3(1);
-  shadowCoord.xyz /= shadowCoord.w;
-  shadowCoord.z += shadowBias;
-  if (shadowCoord.x >= 0.0 && shadowCoord.x <= 1.0 && shadowCoord.y >= 0.0 && shadowCoord.y <= 1.0 && shadowCoord.z <= 1.0) {
-    shadow = texture2DCompare( shadowMap, shadowCoord.xy, shadowCoord.z );
-  }
-  return shadow;
+float orthographicDepthToViewZ( const in float linearClipZ ) {
+  return linearClipZ * ( shadowCamZRange.x - shadowCamZRange.y ) - shadowCamZRange.x;
 }
-vec3 getShadowMask() {
-  vec3 shadow = vec3(0);
-    shadow += getShadow( shadowMap0, 0.0, vShadowCoord0 );
-    shadow += getShadow( shadowMap1, 0.0, vShadowCoord1 );
-  return shadow;
+ReflectiveShadowMap getRSM(sampler2D shadowMap, sampler2D albedoMap, vec2 uv) {
+  vec4 dmap = texture2D( shadowMap, uv );
+  return ReflectiveShadowMap(unpackRGBAToRSMDepth(dmap), unpackRGBAToRSMNormal(dmap), texture2D( albedoMap, uv ));
+}
+vec3 getIrradiance( sampler2D shadowMap, sampler2D albedoMap, vec2 uv, vec3 center ) {
+  ReflectiveShadowMap rsm = getRSM(shadowMap, albedoMap, uv);
+  vec3 dir = normalize( vec3(uv, orthographicDepthToViewZ(rsm.depth)) - center );
+  return rsm.albedo.xyz * rsm.normal.z * step(EPSILON, dot(-dir, rsm.normal)) * saturate(dot(dir, vNormal));
+}
+vec3 getIrradianceMap() {
+  vec3 center0 = vec3(vShadowCoord0.xy, orthographicDepthToViewZ(vShadowCoord0.z)),
+       center1 = vec3(vShadowCoord1.xy, orthographicDepthToViewZ(vShadowCoord1.z));
+  vec3 irradiance = vec3(0);
+  irradiance += getIrradiance( shadowMap0, albedoMap0, vShadowCoord0.xy+vec2( 8, 0 ), center0);
+  irradiance += getIrradiance( shadowMap1, albedoMap1, vShadowCoord1.xy+vec2( 8, 0 ), center1);
+  irradiance += getIrradiance( shadowMap0, albedoMap0, vShadowCoord0.xy-vec2( 8, 0 ), center0);
+  irradiance += getIrradiance( shadowMap1, albedoMap1, vShadowCoord1.xy-vec2( 8, 0 ), center1);
+  irradiance += getIrradiance( shadowMap0, albedoMap0, vShadowCoord0.xy+vec2( 0, 8 ), center0);
+  irradiance += getIrradiance( shadowMap1, albedoMap1, vShadowCoord1.xy+vec2( 0, 8 ), center1);
+  irradiance += getIrradiance( shadowMap0, albedoMap0, vShadowCoord0.xy-vec2( 0, 8 ), center0);
+  irradiance += getIrradiance( shadowMap1, albedoMap1, vShadowCoord1.xy-vec2( 0, 8 ), center1);
+  return irradiance;
+}
+vec3 getShadow( sampler2D shadowMap, sampler2D albedoMap, vec4 shadowCoord, float shadowBias ) {
+  ReflectiveShadowMap rsm = getRSM(shadowMap, albedoMap, shadowCoord.xy);
+  return mix( rsm.albedo.xyz * (1.0 - rsm.albedo.w), vec3(1), step( shadowCoord.z - shadowBias, rsm.depth ) );
 }
 void main() {
-  vec3 outgoingLight = (( gl_FrontFacing ) ? vLightFront : vLightBack) * diffuse * getShadowMask() / PI + emissive;
-  outColor = vec4( outgoingLight, opacity );
+  vec3 outgoingLight = vec3(0);
+  outgoingLight += (( gl_FrontFacing ) ? vLightFront : vLightBack) * getShadow( shadowMap0, albedoMap0, vShadowCoord0, 1e-5 ) / PI;
+  outgoingLight += (( gl_FrontFacing ) ? vLightBack : vLightFront) * getShadow( shadowMap1, albedoMap1, vShadowCoord1, 1e-5 ) / PI;
+  //outgoingLight = getIrradianceMap();
+  outColor = vec4(outgoingLight , 1.0 );
 }`;
   }
 }
