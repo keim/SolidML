@@ -21,6 +21,7 @@ class MainApp {
     this.AOenable = true;
     this.AOsharpness = 1;
     this.AOoffset = 0;
+    this.GIstrength = 1;
     this.autoZPosition = true;
     this.autoCameraPosition = true;
     this.visibleFloor = true;
@@ -36,7 +37,7 @@ class MainApp {
     this.renderTarget = new WebGL2RenderTarget( size.width, size.height, { multipleRenderTargets:true, renderTargetCount:2 } );
     this.ssaoRenderer = new SSAORenderer(this.gl.renderer, { useInstancedMatrix : true } );
     this.customDepthMaterial = new SolidML.InstancedBuffer_DepthMaterial();
-    this.shadowAccumlator = new ShadowAccumlator(this.gl, this.customDepthMaterial);
+    this.accumlator = new GIAccumlator(this.gl, 256);
   }
 
   _setupWorld() {
@@ -116,6 +117,7 @@ class MainApp {
         ao.add(this, 'AOenable');
         ao.add(this, 'AOsharpness', 0, 4, 0.1).onChange(v=>this.updateAOSharpness(v));
         ao.add(this, 'AOoffset',   -1, 1, 0.1);
+        ao.add(this, 'GIstrength', 0, 4, 0.1);
       })( gui.addFolder("Ambient Occlusion") );
       (bg=>{
         bg.closed = true;
@@ -141,11 +143,11 @@ class MainApp {
       controls.noPan = false;
       controls.staticMoving = true;
       controls.addEventListener("start", ()=>{
-        this.shadowAccumlator.stop();
+        this.accumlator.stop();
         return true;
       });
       controls.addEventListener("end", ()=>{
-        this.shadowAccumlator.start();
+        this.accumlator.start();
         return true;
       });
       return controls;
@@ -170,7 +172,7 @@ class MainApp {
       });
 
       if (gl.mainGeometry.objectCount == 0) {
-        this.shadowAccumlator.setMeshes(null);
+        this.accumlator.setMeshes(null);
         return;
       }
 
@@ -201,11 +203,11 @@ class MainApp {
           const val = gl.solidML.variables[key];
           const ctrl = this.defineGUI.add(gl.solidML.variables, key);
           ctrl.onChange(v=>{
-            this.shadowAccumlator.stop();
+            this.accumlator.stop();
             this.updateGeometry();
           });
           ctrl.onFinishChange(v=>{
-            this.shadowAccumlator.start();
+            this.accumlator.start();
             this.updateGeometry();
           });
           this.defineControls.push(ctrl);
@@ -250,7 +252,7 @@ class MainApp {
           mesh.castShadow = true;
           mesh.receiveShadow = true;
           gl.mainGroup.add(mesh);
-          this.shadowAccumlator.setMeshes([mesh, gl.floor, gl.room], sphere);
+          this.accumlator.setMeshes([mesh, gl.floor, gl.room], sphere);
         */
         
         const aoMesh = [gl.floor, gl.room];
@@ -264,7 +266,7 @@ class MainApp {
           aoMesh.push(mesh);
           gl.mainGroup.add(mesh);
         });
-        this.shadowAccumlator.setMeshes(aoMesh, sphere);
+        this.accumlator.setMeshes(aoMesh, sphere);
       }
     } catch(e) {
       this.message(e.message, true);
@@ -338,14 +340,15 @@ class MainApp {
     if (this.updateGeometryByFrame) 
       this.updateGeometry();
 
-    if (this.shadowAccumlator.pause || !this.AOenable) {
+    if (this.accumlator.pause || !this.AOenable) {
       this.gl.render(this.renderTarget);
       this.ssaoRenderer.render(this.renderTarget);
       //copyShader.calc({tSrc:this.renderTarget.textures[1]});
     } else {
       this.gl.render(this.renderTarget);
-      this.shadowAccumlator.render(this.gl.camera, 1);
-      this.shadowAccumlator.accumlator.render(this.renderTarget, this.AOsharpness*2, this.AOoffset-(this.AOsharpness-1)/2);
+      this.accumlator.render(this.gl.camera, 1);
+      //this.accumlator.shadowAccumlator.mult(this.renderTarget, this.AOsharpness*2, this.AOoffset-(this.AOsharpness-1)/2, this.accumlator.shadowAccumlator.renderTarget);
+      this.accumlator.lightAccumlator.add(this.renderTarget, this.GIstrength);
     }
 
     this.stats.end();
