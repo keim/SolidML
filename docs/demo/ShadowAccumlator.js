@@ -48,7 +48,7 @@ class GIAccumlator {
     this.renderTarget = new WebGL2RenderTarget(size.width, size.height, mrtOptions);
 
     this.material = [
-      new GIAccumlator.Material(), 
+      new GIAccumlator.Material({}), 
       new GIAccumlator.Material({useInstancedMatrix:true})
     ];
     this.scene = new THREE.Scene();
@@ -188,23 +188,22 @@ GIAccumlator.DepthMaterial = class extends THREE.ShaderMaterial {
     this.uniforms = THREE.UniformsUtils.clone(THREE.ShaderLib.depth.uniforms);
     this.setValues(paramaters);
     this.vertexShader = `#version 300 es
-in vec4 color;
-out vec4 vColor;
 out vec3 vNormal;
 #ifdef INSTANCED_MATRIX
+  in vec4 color;
   in vec4 imatx;
   in vec4 imaty;
   in vec4 imatz;
   in vec4 imatw;
+  out vec4 vColor;
   void main() { 
-    mat4 imat = mat4(imatx, imaty, imatz, imatw);
     vColor = color;
+    mat4 imat = mat4(imatx, imaty, imatz, imatw);
     vNormal = normalMatrix * (imat * vec4(normal.xyz, 0)).xyz;
     gl_Position = projectionMatrix * modelViewMatrix * imat * vec4(position.xyz, 1); 
   }
 #else
   void main() {
-    vColor = color;
     vNormal = normalMatrix * normal;
     gl_Position = projectionMatrix * modelViewMatrix * vec4(position.xyz, 1);
   }
@@ -212,13 +211,21 @@ out vec3 vNormal;
     `;
     this.fragmentShader = `#version 300 es
 ${rsm_packing}
-in vec4 vColor;
+#ifdef INSTANCED_MATRIX
+  in vec4 vColor;
+#else
+	uniform vec3 diffuse;
+#endif
 in vec3 vNormal;
 layout (location = 0) out vec4 outDepthNormal;
 layout (location = 1) out vec4 outAlbedo;
 void main() {
   outDepthNormal = packRSMDepthNormaltoRGBA( gl_FragCoord.z, vNormal );
+#ifdef INSTANCED_MATRIX
   outAlbedo = vColor;
+#else
+  outAlbedo = vec4(diffuse, 1);
+#endif
 }
     `;
   }
@@ -236,6 +243,7 @@ GIAccumlator.Material = class extends THREE.ShaderMaterial {
       THREE.ShaderLib.lambert.uniforms,
       {
         shadowCamZRange : {value: new THREE.Vector2(0,1)},
+        shadowCamSize : {value: new THREE.Vector2(0,0)},
         lightDirection : {value: null},
         lightColor0 : {value: null},
         lightColor1 : {value: null},
@@ -255,6 +263,7 @@ GIAccumlator.Material = class extends THREE.ShaderMaterial {
 
   setShadowMapParameters(hash) {
     this.uniforms.shadowCamZRange.value.set(hash.shadowCamera.near, hash.shadowCamera.far);
+    this.uniforms.shadowCamSize.value.set(hash.shadowCamera.right - hash.shadowCamera.left, hash.shadowCamera.top - hash.shadowCamera.bottom);
     this.uniforms.lightDirection.value = hash.lightDirection;
     this.uniforms.lightColor0.value = hash.lightColor0;
     this.uniforms.lightColor1.value = hash.lightColor1;
@@ -326,6 +335,7 @@ struct ReflectiveShadowMap {
   vec3 normal;
   vec4 albedo;
 };
+uniform vec2 shadowCamSize;
 uniform vec2 shadowCamZRange;
 uniform vec3 lightDirection;
 uniform vec3 lightColor0;
@@ -359,15 +369,15 @@ ReflectiveShadowMap getRSM(sampler2D shadowMap, sampler2D albedoMap, vec2 uv) {
 }
 vec3 getIrradiance( sampler2D shadowMap, sampler2D albedoMap, vec2 uv, vec3 center ) {
   ReflectiveShadowMap rsm = getRSM(shadowMap, albedoMap, uv);
-  vec3 dir = normalize( vec3(uv, orthographicDepthToViewZ(rsm.depth)) - center );
-  return rsm.albedo.xyz * -rsm.normal.z * step(EPSILON, dot(-dir, rsm.normal)) * saturate(dot(dir, vNormal));
-  //return rsm.albedo.xyz * -rsm.normal.z;
+  vec3 dir = normalize( vec3(uv*shadowCamSize, orthographicDepthToViewZ(rsm.depth)) - center );
+  //return rsm.albedo.xyz * -rsm.normal.z * step(EPSILON, dot(-dir, rsm.normal)) * saturate(dot(dir, vNormal));
+  return vec3(step(EPSILON, dot(-dir, rsm.normal)));
 }
 vec3 getIrradianceMap() {
-  vec3 center0 = vec3(vShadowCoord0.xy, orthographicDepthToViewZ(vShadowCoord0.z)),
-       center1 = vec3(vShadowCoord1.xy, orthographicDepthToViewZ(vShadowCoord1.z));
+  vec3 center0 = vec3(vShadowCoord0.xy*shadowCamSize, orthographicDepthToViewZ(vShadowCoord0.z)),
+       center1 = vec3(vShadowCoord1.xy*shadowCamSize, orthographicDepthToViewZ(vShadowCoord1.z));
   vec3 irradiance = vec3(0);
-  float r = rand(vShadowCoord0.xy) * irrRadius + 1./shadowMapSize.x;
+  float r = 2./shadowMapSize.x;//rand(vShadowCoord0.xy) * irrRadius + 1./shadowMapSize.x;
   float t = rand(vShadowCoord0.xy + .1) * PI2;
   vec2 d = r * vec2(cos(t),sin(t));
   vec2 id = vec2(d.y, -d.x);
@@ -379,8 +389,8 @@ vec3 getIrradianceMap() {
   irradiance += getIrradiance( shadowMap1, albedoMap1, vShadowCoord1.xy - d, center1);
   irradiance += getIrradiance( shadowMap1, albedoMap1, vShadowCoord1.xy + id, center1);
   irradiance += getIrradiance( shadowMap1, albedoMap1, vShadowCoord1.xy - id, center1);
-  return irradiance;
-  //return getIrradiance( shadowMap0, albedoMap0, vShadowCoord0.xy, center0);
+  //return irradiance;
+  return getIrradiance( shadowMap0, albedoMap0, vShadowCoord0.xy+d, center0 );
 } 
 vec3 getShadow( sampler2D shadowMap, sampler2D albedoMap, vec4 coord, float shadowBias ) {
   if (coord.x < 0.0 || coord.x > 1.0 || coord.y < 0.0 || coord.y > 1.0 || coord.z > 1.0) return vec3(1);
