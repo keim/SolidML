@@ -108,7 +108,7 @@ class GIAccumlator {
       this.shadowCamera.left   = - this.boundingSphere.radius;
       this.shadowCamera.right  = + this.boundingSphere.radius;
       this.shadowCamera.near = 1e-4;
-      this.shadowCamera.far = this.boundingSphere.radius*4;
+      this.shadowCamera.far = this.boundingSphere.radius*8;
       this.shadowCamera.updateProjectionMatrix();
       this.scene.add(this.group);
       this.shadowScene.add(this.shadowGroup);
@@ -130,8 +130,10 @@ class GIAccumlator {
       const me = randomRotationMatrix(mat, Math.random(), Math.random(), Math.random()).elements;
 
       // shadowmap
-      this.shadowCamera.position.set(center.x + me[0]*radius, center.y + me[1]*radius, center.z + me[2]*radius);
-      this.shadowCamera.up.set(me[4], me[5], me[6]);
+      //this.shadowCamera.position.set(center.x + me[0]*radius, center.y + me[1]*radius, center.z + me[2]*radius);
+      this.shadowCamera.position.set(center.x + Math.cos(this.shadowAccumlator.accumlateCount*0.01)*radius, center.y + Math.sin(this.shadowAccumlator.accumlateCount*0.01)*radius, center.z + 2*radius);
+      //this.shadowCamera.up.set(me[4], me[5], me[6]);
+      this.shadowCamera.up.set(0,0,1);
       this.shadowCamera.lookAt( center );
       this.shadowCamera.updateMatrixWorld();
       this.shadowMatrix0.set( 0.5, 0, 0, 0.5,  0, 0.5, 0, 0.5,  0, 0, 0.5, 0.5,  0, 0, 0, 1 );
@@ -170,7 +172,7 @@ float unpackRGBAToRSMDepth(const in vec4 v) {
 }
 vec3 unpackRGBAToRSMNormal(const in vec4 v) {
   vec2 u = v.xy * 2.0 - 1.0;
-  return normalize(vec3(u, -sqrt(1.0 - u.x * u.x - u.y * u.y)));
+  return normalize(vec3(u, sqrt(1.0 - u.x * u.x - u.y * u.y)));
 }
 vec4 packRSMDepthNormaltoRGBA(const in float depth, const in vec3 normal){
   vec4 r = vec4(normal.xy * 0.5 + 0.5, fract(depth*256.), depth);
@@ -318,7 +320,7 @@ void main() {
   #endif
   vViewPosition = -mvPosition.xyz;
   vColor = color;
-  vNormal = normalize((shadowMatrix0 * vec4(transformedNormal, 0)).xyz);
+  vNormal = normalize((shadowMatrix0 * vec4(objectNormal, 0)).xyz);
   float dotNL = dot( transformedNormal, lightDirection );
   vLightFront = saturate( -dotNL ) * PI;
   vLightBack = saturate(  dotNL ) * PI;
@@ -370,14 +372,14 @@ ReflectiveShadowMap getRSM(sampler2D shadowMap, sampler2D albedoMap, vec2 uv) {
 vec3 getIrradiance( sampler2D shadowMap, sampler2D albedoMap, vec2 uv, vec3 center ) {
   ReflectiveShadowMap rsm = getRSM(shadowMap, albedoMap, uv);
   vec3 dir = normalize( vec3(uv*shadowCamSize, orthographicDepthToViewZ(rsm.depth)) - center );
-  //return rsm.albedo.xyz * -rsm.normal.z * step(EPSILON, dot(-dir, rsm.normal)) * saturate(dot(dir, vNormal));
-  return vec3(step(EPSILON, dot(-dir, rsm.normal)));
+  return rsm.albedo.xyz * rsm.normal.z * step(0.1, dot(dir, rsm.normal)) * saturate(dot(-dir, vNormal))*8.;
+  //return vec3( saturate(dot(-dir, vNormal)));
 }
 vec3 getIrradianceMap() {
   vec3 center0 = vec3(vShadowCoord0.xy*shadowCamSize, orthographicDepthToViewZ(vShadowCoord0.z)),
        center1 = vec3(vShadowCoord1.xy*shadowCamSize, orthographicDepthToViewZ(vShadowCoord1.z));
   vec3 irradiance = vec3(0);
-  float r = 2./shadowMapSize.x;//rand(vShadowCoord0.xy) * irrRadius + 1./shadowMapSize.x;
+  float r = 4./shadowMapSize.x;//rand(vShadowCoord0.xy) * irrRadius + 1./shadowMapSize.x;
   float t = rand(vShadowCoord0.xy + .1) * PI2;
   vec2 d = r * vec2(cos(t),sin(t));
   vec2 id = vec2(d.y, -d.x);
