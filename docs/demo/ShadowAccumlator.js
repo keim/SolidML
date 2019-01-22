@@ -28,8 +28,8 @@ class BufferAccumlator {
     //this.copyOperator.calc({"tSrc":this.accumlationBuffer, "scale":1});
   }
   add(renderTarget, scale, resultTarget) {
-    //this.addOperator.calc({"tSrc1":renderTarget, "tSrc2":this.accumlationBuffer, scale}, resultTarget);
-    this.copyOperator.calc({"tSrc":this.accumlationBuffer, scale});
+    this.addOperator.calc({"tSrc1":renderTarget, "tSrc2":this.accumlationBuffer, scale}, resultTarget);
+    //this.copyOperator.calc({"tSrc":this.accumlationBuffer, scale});
   }
 }
 
@@ -47,29 +47,24 @@ class GIAccumlator {
     const size = gl.renderer.getSize();
     this.renderTarget = new WebGL2RenderTarget(size.width, size.height, mrtOptions);
 
-    this.material = [
-      new GIAccumlator.Material({}), 
-      new GIAccumlator.Material({useInstancedMatrix:true})
-    ];
     this.scene = new THREE.Scene();
+    this.scene.add(new GIAccumlator.MRTBufferClearer(new THREE.Vector4(1,1,1,1), new THREE.Vector4(0,0,0,1)));
 
-    this.shadowMaterial = [
-      new GIAccumlator.DepthMaterial(), 
-      new GIAccumlator.DepthMaterial({useInstancedMatrix:true})
-    ];
     this.shadowScene = new THREE.Scene();
     this.shadowCamera = new THREE.OrthographicCamera();
     this.shadowScene.add(this.shadowCamera);
+    //this.shadowScene.add(new GIAccumlator.MRTBufferClearer(new THREE.Vector4(0,0,0,0), new THREE.Vector4(0,0,0,0)));
     this.shadowMap0 = new WebGL2RenderTarget(mapsize, mapsize, mrtOptions);
     this.shadowMap1 = new WebGL2RenderTarget(mapsize, mapsize, mrtOptions);
     this.shadowMatrix0 = new THREE.Matrix4();
     this.shadowMatrix1 = new THREE.Matrix4();
-    this.irradianceDistance = 0.8;
+    this.irradianceDistance = 0.1;
     this.lightColor0 = new THREE.Color(0xffffff);
     this.lightColor1 = new THREE.Color(0xffffff);
     this.lightDirection = new THREE.Vector3(0, 0, 1);
 
     this.clearColor = new THREE.Color(0);
+
     this.boundingSphere = null;
     this.group = null;
     this.shadowGroup = null;
@@ -94,19 +89,20 @@ class GIAccumlator {
     this.shadowGroup = new THREE.Group();
     if (meshList) {
       meshList.forEach(mesh=>{
-        const isIBG = mesh.geometry.isInstancedBufferGeometry ? 1 : 0,
-              newMesh = mesh.clone(),
-              shadowMesh = mesh.clone();              
-        newMesh.material = this.material[isIBG];
+        const newMesh = mesh.clone(),
+              shadowMesh = mesh.clone();
+        newMesh.material = new GIAccumlator.Material((mesh.geometry.isInstancedBufferGeometry) ? { "useInstancedMatrix": true } : {});
         this.group.add(newMesh);
-        shadowMesh.material = this.shadowMaterial[isIBG];
+        shadowMesh.material = new GIAccumlator.DepthMaterial((mesh.geometry.isInstancedBufferGeometry) ? { "useInstancedMatrix": true } : {});
+        shadowMesh.material.uniforms.diffuse.value.copy(mesh.material.color);
         this.shadowGroup.add(shadowMesh);
       });
       this.boundingSphere = boundingSphere;
-      this.shadowCamera.bottom = - this.boundingSphere.radius;
-      this.shadowCamera.top    = + this.boundingSphere.radius;
-      this.shadowCamera.left   = - this.boundingSphere.radius;
-      this.shadowCamera.right  = + this.boundingSphere.radius;
+      const r = this.boundingSphere.radius * 1.5;
+      this.shadowCamera.bottom = - r;
+      this.shadowCamera.top    = + r;
+      this.shadowCamera.left   = - r;
+      this.shadowCamera.right  = + r;
       this.shadowCamera.near = 1e-4;
       this.shadowCamera.far = this.boundingSphere.radius*8;
       this.shadowCamera.updateProjectionMatrix();
@@ -123,17 +119,16 @@ class GIAccumlator {
           center = this.boundingSphere.center,
           radius = this.boundingSphere.radius;
     this.renderer.setClearColor(this.clearColor);
+
     this.scene.add(tempCamera);
-    //if (this.shadowAccumlator.accumlateCount > 512) times = 1;
-    if (this.shadowAccumlator.accumlateCount > 0) times = 1;
+
+    if (this.shadowAccumlator.accumlateCount > 512) times = 1;
     for (let i=0; i<times; i++) {
       const me = randomRotationMatrix(mat, Math.random(), Math.random(), Math.random()).elements;
 
       // shadowmap
-      //this.shadowCamera.position.set(center.x + me[0]*radius, center.y + me[1]*radius, center.z + me[2]*radius);
-      this.shadowCamera.position.set(center.x + Math.cos(this.shadowAccumlator.accumlateCount*0.01)*radius, center.y + Math.sin(this.shadowAccumlator.accumlateCount*0.01)*radius, center.z + 2*radius);
-      //this.shadowCamera.up.set(me[4], me[5], me[6]);
-      this.shadowCamera.up.set(0,0,1);
+      this.shadowCamera.position.set(center.x + me[0]*radius, center.y + me[1]*radius, center.z + me[2]*radius);
+      this.shadowCamera.up.set(me[4], me[5], me[6]);
       this.shadowCamera.lookAt( center );
       this.shadowCamera.updateMatrixWorld();
       this.shadowMatrix0.set( 0.5, 0, 0, 0.5,  0, 0.5, 0, 0.5,  0, 0, 0.5, 0.5,  0, 0, 0, 1 );
@@ -153,8 +148,7 @@ class GIAccumlator {
 
       // lighting
       this.lightDirection.set(-me[0], -me[1], -me[2]);
-      this.material[0].setShadowMapParameters(this);
-      this.material[1].setShadowMapParameters(this);
+      this.group.children.forEach(mesh=>mesh.material.setShadowMapParameters(this));
       this.renderer.render(this.scene, tempCamera, this.renderTarget);
 
       this.shadowAccumlator.accumlate(this.renderTarget.textures[0]);
@@ -163,6 +157,32 @@ class GIAccumlator {
     this.scene.remove(tempCamera);
   }
 }
+
+GIAccumlator.MRTBufferClearer = class extends THREE.Mesh {
+  constructor(clearVector0, clearVector1) {
+    super(new THREE.PlaneBufferGeometry(2, 2), null);
+    this.material = new THREE.ShaderMaterial({
+      depthWrite:false,
+      uniforms: {
+        color0: { value: new THREE.Vector4().copy(clearVector0) },
+        color1: { value: new THREE.Vector4().copy(clearVector1) }
+      },
+      vertexShader: `#version 300 es 
+void main() { gl_Position = vec4(position.xy, 1, 1); }`,
+      fragmentShader: `#version 300 es 
+layout (location = 0) out vec4 out0;
+layout (location = 1) out vec4 out1;
+uniform vec4 color0;
+uniform vec4 color1;
+void main() {
+  out0 = color0;
+  out1 = color1;
+}`
+    });
+    this.frustumCulled = false;
+  }
+}
+
 
 const rsm_packing = `
 const float PackUpscale = 256. / 255.;
@@ -187,7 +207,12 @@ GIAccumlator.DepthMaterial = class extends THREE.ShaderMaterial {
       Object.assign(this.defines, {"INSTANCED_MATRIX" : 1});
       delete paramaters["useInstancedMatrix"];
     }
-    this.uniforms = THREE.UniformsUtils.clone(THREE.ShaderLib.depth.uniforms);
+    this.uniforms = THREE.UniformsUtils.merge([
+      THREE.ShaderLib.depth.uniforms,
+      {
+        diffuse: {value: new THREE.Color()}
+      }
+    ]);
     this.setValues(paramaters);
     this.vertexShader = `#version 300 es
 out vec3 vNormal;
@@ -255,7 +280,7 @@ GIAccumlator.Material = class extends THREE.ShaderMaterial {
         albedoMap0 : {value: null},
         shadowMap1 : {value: null},
         albedoMap1 : {value: null},
-        irrRadius : {value: 1},
+        irrRadius : {value: 0.8},
         shadowMapSize : {value: new THREE.Vector2(256,256)}
       }
     ]);
@@ -276,7 +301,7 @@ GIAccumlator.Material = class extends THREE.ShaderMaterial {
     this.uniforms.shadowMapSize.value.set(hash.shadowMap0.width, hash.shadowMap0.height);
     this.uniforms.shadowMap1.value = hash.shadowMap1.textures[0];
     this.uniforms.albedoMap1.value = hash.shadowMap1.textures[1];
-    this.uniforms.irrRadius.value = hash.irradianceDistance / (hash.shadowCamera.top - hash.shadowCamera.bottom);
+    this.uniforms.irrRadius.value = hash.irradianceDistance;
   }
 
   _initShaders() {
@@ -372,14 +397,13 @@ ReflectiveShadowMap getRSM(sampler2D shadowMap, sampler2D albedoMap, vec2 uv) {
 vec3 getIrradiance( sampler2D shadowMap, sampler2D albedoMap, vec2 uv, vec3 center ) {
   ReflectiveShadowMap rsm = getRSM(shadowMap, albedoMap, uv);
   vec3 dir = normalize( vec3(uv*shadowCamSize, orthographicDepthToViewZ(rsm.depth)) - center );
-  return rsm.albedo.xyz * rsm.normal.z * step(0.1, dot(dir, rsm.normal)) * saturate(dot(-dir, vNormal))*8.;
-  //return vec3( saturate(dot(-dir, vNormal)));
+  return rsm.albedo.xyz * rsm.normal.z * step(0.5, dot(-dir, rsm.normal)) * saturate(dot(-dir, vNormal));
 }
 vec3 getIrradianceMap() {
   vec3 center0 = vec3(vShadowCoord0.xy*shadowCamSize, orthographicDepthToViewZ(vShadowCoord0.z)),
        center1 = vec3(vShadowCoord1.xy*shadowCamSize, orthographicDepthToViewZ(vShadowCoord1.z));
   vec3 irradiance = vec3(0);
-  float r = 4./shadowMapSize.x;//rand(vShadowCoord0.xy) * irrRadius + 1./shadowMapSize.x;
+  float r = rand(vShadowCoord0.xy) * irrRadius + 1./shadowMapSize.x;
   float t = rand(vShadowCoord0.xy + .1) * PI2;
   vec2 d = r * vec2(cos(t),sin(t));
   vec2 id = vec2(d.y, -d.x);
@@ -391,8 +415,7 @@ vec3 getIrradianceMap() {
   irradiance += getIrradiance( shadowMap1, albedoMap1, vShadowCoord1.xy - d, center1);
   irradiance += getIrradiance( shadowMap1, albedoMap1, vShadowCoord1.xy + id, center1);
   irradiance += getIrradiance( shadowMap1, albedoMap1, vShadowCoord1.xy - id, center1);
-  //return irradiance;
-  return getIrradiance( shadowMap0, albedoMap0, vShadowCoord0.xy+d, center0 );
+  return irradiance;
 } 
 vec3 getShadow( sampler2D shadowMap, sampler2D albedoMap, vec4 coord, float shadowBias ) {
   if (coord.x < 0.0 || coord.x > 1.0 || coord.y < 0.0 || coord.y > 1.0 || coord.z > 1.0) return vec3(1);

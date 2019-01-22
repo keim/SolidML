@@ -18,10 +18,12 @@ class MainApp {
   }
 
   _setupProperties() {
+    this.GIenable = true;
+    this.GIstrength = 1;
+    this.GIdistance = 0.1;
     this.AOenable = true;
     this.AOsharpness = 1;
     this.AOoffset = 0;
-    this.GIstrength = 1;
     this.autoZPosition = true;
     this.autoCameraPosition = true;
     this.visibleFloor = true;
@@ -112,12 +114,22 @@ class MainApp {
     this.gui = (gui=>{
       document.getElementById("paramgui").appendChild(gui.domElement);
       gui.useLocalStorage = true;
+      (gi=>{
+        gi.closed = false;
+        gi.add(this, 'GIenable');
+        gi.add(this, 'GIstrength', 0, 4, 0.1);
+        const ctrl = gi.add(this, 'GIdistance', 0, 1, 0.01);
+        ctrl.onChange(v=>this.accumlator.stop());
+        ctrl.onFinishChange(v=>{
+          this.accumlator.irradianceDistance = v;
+          this.accumlator.start();
+        });
+      })( gui.addFolder("Global Illumination") );
       (ao=>{
         ao.closed = false;
         ao.add(this, 'AOenable');
         ao.add(this, 'AOsharpness', 0, 4, 0.1).onChange(v=>this.updateAOSharpness(v));
         ao.add(this, 'AOoffset',   -1, 1, 0.1);
-        ao.add(this, 'GIstrength', 0, 4, 0.1);
       })( gui.addFolder("Ambient Occlusion") );
       (bg=>{
         bg.closed = true;
@@ -325,6 +337,7 @@ class MainApp {
       gl.backScreen.floorColor = gl.backScreen.skyColor;
       gl.backScreen.checkColor = gl.backScreen.skyColor;
     }
+    gl.floor.material.color.copy(gl.backScreen.floorColor).lerp(gl.backScreen.checkColor, 0.5);
   }
 
   updateGeometry() {
@@ -340,15 +353,16 @@ class MainApp {
     if (this.updateGeometryByFrame) 
       this.updateGeometry();
 
-    if (this.accumlator.pause || !this.AOenable) {
+    if (this.accumlator.pause || !(this.AOenable || this.GIenable)) {
       this.gl.render(this.renderTarget);
       this.ssaoRenderer.render(this.renderTarget);
       //copyShader.calc({tSrc:this.renderTarget.textures[1]});
     } else {
       this.gl.render(this.renderTarget);
-      this.accumlator.render(this.gl.camera, 1);
-      //this.accumlator.shadowAccumlator.mult(this.renderTarget, this.AOsharpness*2, this.AOoffset-(this.AOsharpness-1)/2, this.accumlator.shadowAccumlator.renderTarget);
-      this.accumlator.lightAccumlator.add(this.renderTarget, this.GIstrength);
+      this.accumlator.render(this.gl.camera, 8);
+      const aoOffset = (this.AOenable) ? this.AOoffset-(this.AOsharpness-1)/2 : 1;
+      this.accumlator.shadowAccumlator.mult(this.renderTarget, this.AOsharpness*2, aoOffset, this.accumlator.shadowAccumlator.renderTarget);
+      this.accumlator.lightAccumlator.add(this.accumlator.shadowAccumlator.renderTarget, (this.GIenable) ? this.GIstrength : 0);
     }
 
     this.stats.end();
