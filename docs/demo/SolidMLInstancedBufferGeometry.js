@@ -7,8 +7,14 @@ SolidML.InstancedBufferGeometry = class extends SolidML.BufferGeometry {
   constructor(script=null, criteria=null, geometryHash=null) {
     super(null, criteria, geometryHash);
     /** 
-     * Hash of SolidML.InstancedArray, can be accessed by rule name.
-     * @type {Hash.<SolidML.InstancedArray>} 
+     * Array of InstancedArray.
+     * @type {Array.<InstancedArray>} 
+     */
+    this.instances = [];
+
+    /** 
+     * Hash of InstancedArray, can be accessed by rule name.
+     * @type {Hash.<InstancedArray>} 
      */
     this.instancedArrayHash = {};
 
@@ -18,7 +24,17 @@ SolidML.InstancedBufferGeometry = class extends SolidML.BufferGeometry {
   /** 
    * @override
    */
+  build(script, criteria=null, isDynamic=false, indexMargin=0, vertexMargin=0, filter=null) {
+    super.build(script, criteria, isDynamic, indexMargin, vertexMargin, filter);
+    super.update();
+    return this;
+  }
+  /** 
+   * @override
+   */
   estimateBufferCount(instanceMargin=0) {
+    this.instances = [];
+    this.instancedArrayHash = {};
     this._geometryCreator.setup(false);
     this.solidML.build(stat=>{
       if (this.geometryFilter && !this.geometryFilter(stat)) return;
@@ -27,15 +43,20 @@ SolidML.InstancedBufferGeometry = class extends SolidML.BufferGeometry {
         stat.color._incrementRandMT();
         const ruleName = stat.getRuleName();
         if (!(ruleName in this.instancedArrayHash)) {
-          const iarray = new SolidML.InstancedArray(geomCreated, ["position","normal"], {"color":4, "imatx":4, "imaty":4, "imatz":4, "imatw":4});
+          const iarray = new InstancedArray(geomCreated, ["position","normal"], {"color":4, "imatx":4, "imaty":4, "imatz":4, "imatw":4});
+          iarray.name = ruleName;
+          iarray.userData.isTranparent = false;
+          iarray.userData.order = this.instances.length;
           this.instancedArrayHash[ruleName] = iarray;
+          this.instances.push(iarray);
         }
         this.instancedArrayHash[ruleName].instanceCount++;
       }
     });
     this._geometryCreator.composeMeshes(false).forEach(reference=>{
       const ruleName = reference.name;
-      const iarray = new SolidML.InstancedArray(reference, ["position","normal","color"], {"imatx":4, "imaty":4, "imatz":4, "imatw":4});
+      const iarray = new InstancedArray(reference, ["position","normal","color"], {"imatx":4, "imaty":4, "imatz":4, "imatw":4});
+      iarray.name = ruleName;
       iarray.allocate(1);
       iarray.updateInstancedAttribute(0, {"imatx":[1,0,0,0], "imaty":[0,1,0,0], "imatz":[0,0,1,0], "imatw":[0,0,0,1]});
       this.instancedArrayHash[ruleName] = iarray;
@@ -56,6 +77,7 @@ SolidML.InstancedBufferGeometry = class extends SolidML.BufferGeometry {
    * @override
    */
   allocBuffers(isDynamic=true, indexCount=0, vertexCount=0) {
+    super.allocBuffers(isDynamic, indexCount, vertexCount)
     for (let rulaName in this.instancedArrayHash) 
       this.instancedArrayHash[rulaName].allocate();
     return this;
@@ -101,6 +123,8 @@ SolidML.InstancedBufferGeometry = class extends SolidML.BufferGeometry {
   _copyInstance(index, stat, rulaName) {
     const color = stat.color.getRGBA();
     const me = stat.matrix.elements;
+    if (color.a < 1) 
+      this.instancedArrayHash[rulaName].userData.isTranparent = true;
     this.instancedArrayHash[rulaName].updateInstancedAttribute(index, {
       "color": [color.r, color.g, color.b, color.a],
       "imatx": [me[0],  me[1],  me[2],  me[3]],
@@ -112,103 +136,56 @@ SolidML.InstancedBufferGeometry = class extends SolidML.BufferGeometry {
 }
 
 
-/**
- * this class provides WebGL2 Instanced Array 
- */
-SolidML.InstancedArray = class {
-  /**
-   * Instanced Array class 
-   * @param  {THREE.BufferGeometry} baseGeometry base geometry for instancing
-   * @param  {Array.<string>} baseAttributeList name list of attribute picked from baseGeometry 
-   * @param  {Object} instancedAttributeHash hash of instanced attributte, {"attribute_name":attribute_size_bytes}.
-   * @return {SolidML.InstancedArray} 
-   */
-  constructor(baseGeometry, baseAttributeList, instancedAttributeHash=null) {
-    this._instancedArrayHash = {};
-    this.instanceCount = 0;
-    this.instancedGeometry = null;
-    this.baseGeometry = null;
-    this.baseAttributeList = baseAttributeList;
-    // set base geometry
-    this.setBaseGeometry(baseGeometry);
-    // set instanced attributes
-    if (instancedAttributeHash) 
-      for (let key in instancedAttributeHash) 
-        this.addInstancedAttribute(key, instancedAttributeHash[key]);
+SolidML.InstancedBuffer_DepthMaterial = class extends THREE.ShaderMaterial {
+  constructor(paramaters) {
+    super(paramaters);
+    Object.assign(this.defines, {
+      "INSTANCED_MATRIX" : 1, 
+      "DEPTH_PACKING": THREE.RGBADepthPacking
+    });
+    this.uniforms = THREE.UniformsUtils.clone(THREE.ShaderLib.depth.uniforms);
+    this.vertexShader = SolidML.InstancedBuffer_DepthMaterial.vertexShader();
+    this.fragmentShader = THREE.ShaderLib.depth.fragmentShader;
   }
-  /**
-   * equals baseGeometry.indexCount * instanceCount
-   * @return {int} 
-   */
-  get indexCount() {
-    return this.baseGeometry.index.array.length * this.instanceCount;
-  }
-  /**
-   * equals baseGeometry.vertexCount * instanceCount
-   * @return {int} 
-   */
-  get vertexCount() {
-    return this.baseGeometry.attributes.position.count * this.instanceCount;
-  }
-  /**
-   * set base geometry, called in constructor
-   * @param  {THREE.BufferGeometry} baseGeometry base geometry for instancing
-   * @return {SolidML.InstancedArray} this instance
-   */
-  setBaseGeometry(baseGeometry) {
-    if (this.instancedGeometry)
-      this.instancedGeometry.dispose();
-    this.instancedGeometry = null;
-    this._instancedAttributeHash = {};
-    this.baseGeometry = baseGeometry;
-    if (baseGeometry) {
-      this.instancedGeometry = new THREE.InstancedBufferGeometry();
-      this.instancedGeometry.setIndex(baseGeometry.index.clone());
-      this.baseAttributeList.forEach(attr=>{
-        this.instancedGeometry.addAttribute(attr, baseGeometry.attributes[attr].clone());
-      });
-    }
-    return this;
-  }
-  /**
-   * add instanced attribute, called in constructor
-   * @param {string} itemName name of attribute
-   * @param {int} itemSize size of attribute
-   * @return {SolidML.InstancedArray} this instance
-   */
-  addInstancedAttribute(itemName, itemSize) {
-    this._instancedArrayHash[itemName] = {itemSize, "typedArray":null, "bufferAttr":null};
-    return this;
-  }
-  /**
-   * allocate instance arrays
-   * @param  {Number} instanceCount number of instances to allocate
-   * @return {SolidML.InstancedArray} this instance
-   */
-  allocate(instanceCount=0) {
-    if (instanceCount) 
-      this.instanceCount = instanceCount;
-    for (let itemName in this._instancedArrayHash) {
-      const hash = this._instancedArrayHash[itemName];
-      hash.typedArray = new Float32Array(this.instanceCount * hash.itemSize);
-      hash.bufferAttr = new THREE.InstancedBufferAttribute(hash.typedArray, hash.itemSize).setDynamic(true);
-      this.instancedGeometry.addAttribute(itemName, hash.bufferAttr);
-    }
-    return this;
-  }
-  /**
-   * set instanced attribute
-   * @param {Object} attributes hash of attribute to set, {"attribute_name" : [array of values]}
-   * @return {SolidML.InstancedArray} this instance
-   */
-  updateInstancedAttribute(instanceIndex, attributes) {
-    for (let key in attributes) {
-      const hash = this._instancedArrayHash[key];
-      if (hash) {
-        hash.typedArray.set(attributes[key], instanceIndex * hash.itemSize);
-        hash.bufferAttr.needsUpdate = true;
-      }
-    }
-    return this;
+
+  static vertexShader() {
+    return `
+#include <common>
+#include <uv_pars_vertex>
+#include <displacementmap_pars_vertex>
+#include <morphtarget_pars_vertex>
+#include <skinning_pars_vertex>
+#include <logdepthbuf_pars_vertex>
+#include <clipping_planes_pars_vertex>
+#ifdef INSTANCED_MATRIX
+  attribute vec4 imatx;
+  attribute vec4 imaty;
+  attribute vec4 imatz;
+  attribute vec4 imatw;
+#endif
+void main() {
+  #include <uv_vertex>
+  #include <skinbase_vertex>
+  #ifdef USE_DISPLACEMENTMAP
+    #include <beginnormal_vertex>
+    #include <morphnormal_vertex>
+    #include <skinnormal_vertex>
+  #endif
+  #include <begin_vertex>
+  #include <morphtarget_vertex>
+  #include <skinning_vertex>
+  #include <displacementmap_vertex>
+  //#include <project_vertex>
+#ifdef INSTANCED_MATRIX
+  mat4 imat = mat4(imatx, imaty, imatz, imatw);
+  vec4 mvPosition = modelViewMatrix * imat * vec4( transformed, 1.0 );
+#else
+  vec4 mvPosition = modelViewMatrix * vec4( transformed, 1.0 );
+#endif
+  gl_Position = projectionMatrix * mvPosition;
+  #include <logdepthbuf_vertex>
+  #include <clipping_planes_vertex>
+}` 
   }
 }
+

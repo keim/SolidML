@@ -48,8 +48,8 @@ class Ptolemy {
     return (this._containerid) ? document.getElementById(this._containerid) : null;
   }
 
-  render() {
-    this.renderer.render(this.scene, this.camera);
+  render(renderTarget = null) {
+    this.renderer.render(this.scene, this.camera, renderTarget);
   }
 
   capture(downloadName=null, mimeType="image/jpeg") {
@@ -118,6 +118,7 @@ class Ptolemy {
     this._adjustScreen();
 
     this.renderer.antialias = true;
+    this.renderer.gammaFactor = 2.2;
     this.renderer.gammaOutput = true;
     this.renderer.physicallyCorrectLights = true;
     this.renderer.shadowMap.enabled = true;
@@ -160,8 +161,8 @@ class Ptolemy {
   }
 
   _draw() {
-    if (this.draw) this.draw(this);
-    this.render();
+    if (this.draw)
+      this.draw(this);
   }
 }
 

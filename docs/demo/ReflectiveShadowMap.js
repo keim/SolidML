@@ -4,6 +4,24 @@ class ReflectiveShadowMap {
   }
 }
 /*
+const rsm_packing = `
+const float PackUpscale = 256. / 255.;
+const float ShiftRight8 = 1. / 256.;
+float unpackRGBAToRSMDepth(const in vec4 v) {
+  return v.z * 255. / 65536. + v.w;
+}
+vec4 unpackRGBAToRSMAlbedo(const in vec4 v) {
+  vec2 w = v.xy * 255. / 16.;
+  return vec4(floor(w.x), fract(w.x)*16., floor(w.y), fract(w.y)*16.) / 15.;
+}
+vec4 packRSMtoRGBA(const in float depth, const in vec4 albedo){
+  vec4 r = vec4(
+    (floor(albedo.x * 15.) * 16. + floor(albedo.y * 15.)) / 256.,
+    (floor(albedo.z * 15.) * 16. + floor(albedo.w * 15.)) / 256.,
+    fract(depth*256.), depth);
+  r.w -= r.z * ShiftRight8; // tidy overflow
+  return r * PackUpscale;
+}`;
 
     const rsm_packing = [ // packing functions for reflective shadow map
       "float unpackRGBAToRSMDepth(const in vec4 v) {",

@@ -74,6 +74,17 @@ RenderTargetOperator.multShader = {
   },
   "frag": "void main() { gl_FragColor = texture2D(tSrc1, vUv) * clamp(texture2D(tSrc2, vUv) * scale + add, vec4(0), vec4(1)); }"
 };
+RenderTargetOperator.addShader = {
+  "uniforms" : [
+    "sampler2D tSrc1",
+    "sampler2D tSrc2",
+    "float scale",
+  ],
+  "default" : {
+    "scale" : 1,
+  },
+  "frag": "void main() { gl_FragColor = texture2D(tSrc1, vUv) + texture2D(tSrc2, vUv) * scale; }"
+};
 RenderTargetOperator.gaussBlurShader = {
   "uniforms" : [
     "sampler2D tSrc",

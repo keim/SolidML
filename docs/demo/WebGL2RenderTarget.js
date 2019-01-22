@@ -117,11 +117,11 @@ class WebGL2RenderTarget extends THREE.WebGLRenderTarget {
   _setTextureParameters( gl, textureType, texture ) {
     const utils = WebGL2RenderTarget._utils;
     if (this.isPowerOfTwo()) {
-      _gl.texParameteri( textureType, _gl.TEXTURE_WRAP_S, _gl.CLAMP_TO_EDGE );
-      _gl.texParameteri( textureType, _gl.TEXTURE_WRAP_T, _gl.CLAMP_TO_EDGE );
-      if ( texture.wrapS !== ClampToEdgeWrapping || texture.wrapT !== ClampToEdgeWrapping ) 
+      gl.texParameteri( textureType, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE );
+      gl.texParameteri( textureType, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE );
+      if ( texture.wrapS !== THREE.ClampToEdgeWrapping || texture.wrapT !== THREE.ClampToEdgeWrapping ) 
         console.warn( 'THREE.WebGL2Renderer: Texture is not power of two. Texture.wrapS and Texture.wrapT should be set to THREE.ClampToEdgeWrapping.' );
-      if (texture.minFilter !== NearestFilter && texture.minFilter !== LinearFilter ) 
+      if (texture.minFilter !== THREE.NearestFilter && texture.minFilter !== THREE.LinearFilter ) 
         console.warn( 'THREE.WebGL2Renderer: Texture is not power of two. Texture.minFilter should be set to THREE.NearestFilter or THREE.LinearFilter.' );
     } else {
       gl.texParameteri( textureType, gl.TEXTURE_WRAP_S, utils.convert( texture.wrapS ) );

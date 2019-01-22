@@ -1,37 +1,31 @@
-class SSAOMaterial extends THREE.ShaderMaterial {
-  constructor(parameters) {
-    super();
-    SolidML.Material._initializeParameters(this);
-    // set uniforms
-    this.uniforms = THREE.UniformsUtils.merge([
-      THREE.ShaderLib.standard.uniforms,
-      {
-        clearCoat: { value: 0.3 },
-        clearCoatRoughness: { value: 0.2 },
-        cameraNear: { value: 1 },
-        cameraFar: { value: 1000 }
-      }
-    ]);
+class SSAORenderer {
+  constructor(webGLRenderer, parameters) {
+    if (!parameters) parameters = {};
 
-    if (parameters && parameters["useInstancedMatrix"])
-      Object.assign(this.defines, {"INSTANCED_MATRIX" : 1});
+    const shaders = SSAORenderer._shaders();
+    const useInstancedMatrix = (parameters && parameters["useInstancedMatrix"]);
+    delete parameters["useInstancedMatrix"];
 
-    // set original shader
-    const shaders = SSAOMaterial._shaders();
-    this.vertexShader = shaders.vert;
-    this.fragmentShader = shaders.frag;
-    // transparent
-    this.lights = true;
-    this.opacity = 1;
-    this.transparent = true;
+    this.physicalMaterial = new THREE.ShaderMaterial(Object.assign(parameters, {
+      uniforms: THREE.UniformsUtils.merge([
+        THREE.ShaderLib.standard.uniforms, {
+          clearCoat: { value: 0.3 },
+          clearCoatRoughness: { value: 0.2 },
+          cameraNear: { value: 1 },
+          cameraFar: { value: 1000 }
+        },
+      ]),
+      vertexShader : shaders.vert,
+      fragmentShader : shaders.frag,
+      lights: true,
+      opacity: 1,
+      transparent: true
+    }));
+    SolidML.Material._initializeParameters(this.physicalMaterial);
 
-    this.ssaoUniforms = {};
+    if (useInstancedMatrix)
+      Object.assign(this.physicalMaterial.defines, {"INSTANCED_MATRIX" : 1});
 
-    // set values by hash
-    this.setValues( parameters );
-  }
-
-  initialize(webGLRenderer) {
     this.operator = new RenderTargetOperator(webGLRenderer, {
       "uniforms": [
         "sampler2D tFragColor",
@@ -49,7 +43,7 @@ class SSAOMaterial extends THREE.ShaderMaterial {
         "cameraNear": 1,
         "cameraFar": 1000
       },
-      "frag": SSAOMaterial._shaders().ssao
+      "frag": SSAORenderer._shaders().ssao
     });
     this.ssaoUniforms = this.operator.defaultUniforms;
   }
@@ -57,8 +51,8 @@ class SSAOMaterial extends THREE.ShaderMaterial {
   updateCamera(camera) {
     //https://www.khronos.org/opengl/wiki/Compute_eye_space_from_window_space
     const tanhfov = Math.tan(camera.fov*Math.PI/180/2);
-    this.uniforms.cameraNear.value = camera.near;
-    this.uniforms.cameraFar.value = camera.far;
+    this.physicalMaterial.uniforms.cameraNear.value = camera.near;
+    this.physicalMaterial.uniforms.cameraFar.value = camera.far;
     this.ssaoUniforms.tFragColor = null;
     this.ssaoUniforms.tDepthNormal = null;
     this.ssaoUniforms.cameraNear = camera.near;
@@ -146,10 +140,16 @@ out vec3 vViewPosition;
 out vec3 vNormal;
 out vec4 vColor;
 void main() {
+#ifdef INSTANCED_MATRIX
+  mat4 imat = mat4(imatx, imaty, imatz, imatw);
+#endif
   #include <uv_vertex>
   #include <uv2_vertex>
   vColor = color;
   #include <beginnormal_vertex>
+#ifdef INSTANCED_MATRIX
+  objectNormal = (imat * vec4(objectNormal,0)).xyz;
+#endif
   #include <morphnormal_vertex>
   #include <skinbase_vertex>
   #include <skinnormal_vertex>
@@ -162,7 +162,6 @@ void main() {
 
   //#include <project_vertex>
 #ifdef INSTANCED_MATRIX
-  mat4 imat = mat4(imatx, imaty, imatz, imatw);
   vec4 mvPosition = modelViewMatrix * imat * vec4( transformed, 1.0 );
 #else
   vec4 mvPosition = modelViewMatrix * vec4( transformed, 1.0 );
@@ -172,7 +171,15 @@ void main() {
   #include <logdepthbuf_vertex>
   #include <clipping_planes_vertex>
   vViewPosition = -mvPosition.xyz;
-  #include <worldpos_vertex> 
+  //#include <worldpos_vertex> 
+#if defined( USE_ENVMAP ) || defined( DISTANCE ) || defined ( USE_SHADOWMAP )
+  #ifdef INSTANCED_MATRIX
+    vec4 worldPosition = modelMatrix * imat * vec4( transformed, 1.0 );
+  #else
+    vec4 worldPosition = modelMatrix * vec4( transformed, 1.0 );
+  #endif
+#endif
+
   #include <shadowmap_vertex> 
   #include <fog_vertex>
 }`,
