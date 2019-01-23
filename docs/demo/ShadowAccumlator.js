@@ -92,7 +92,7 @@ class GIAccumlator {
         newMesh.material = new GIAccumlator.Material((mesh.geometry.isInstancedBufferGeometry) ? { "useInstancedMatrix": true } : {});
         this.group.add(newMesh);
         shadowMesh.material = new GIAccumlator.DepthMaterial((mesh.geometry.isInstancedBufferGeometry) ? { "useInstancedMatrix": true } : {});
-        shadowMesh.material.uniforms.diffuse.value.copy(mesh.material.color);
+        shadowMesh.material.uniforms.diffuse.value.copy(mesh.material.diffuse || mesh.material.color);
         this.shadowGroup.add(shadowMesh);
       });
       this.boundingSphere = boundingSphere;

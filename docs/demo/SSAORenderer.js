@@ -167,14 +167,7 @@ void main() {
   #include <logdepthbuf_vertex>
   #include <clipping_planes_vertex>
   vViewPosition = -mvPosition.xyz;
-  //#include <worldpos_vertex> 
-#if defined( USE_ENVMAP ) || defined( DISTANCE ) || defined ( USE_SHADOWMAP )
-  #ifdef INSTANCED_MATRIX
-    vec4 worldPosition = modelMatrix * imat * vec4( transformed, 1.0 );
-  #else
-    vec4 worldPosition = modelMatrix * vec4( transformed, 1.0 );
-  #endif
-#endif
+  #include <worldpos_vertex> 
 
   #include <shadowmap_vertex> 
   #include <fog_vertex>

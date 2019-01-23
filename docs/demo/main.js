@@ -58,7 +58,7 @@ class MainApp {
       return mesh;
     })(new THREE.Mesh(
       new THREE.PlaneBufferGeometry(1,1),
-      new THREE.ShadowMaterial({color:0x000000, opacity:0.4, depthWrite:true})
+      new THREE.ShadowMaterial({color:0x000000, opacity:0.3, depthWrite:true})
     ));
 
     gl.room = (mesh=>{
@@ -242,7 +242,7 @@ class MainApp {
         //gl.camera.far = sphere.radius * 5;
         this.ssaoRenderer.updateCamera(gl.camera);
 
-        gl.topLight.position.set(sphere.center.x, sphere.center.y, sphere.center.z-sphere.radius-1);
+        gl.topLight.position.set(sphere.center.x, sphere.center.y, sphere.center.z+sphere.radius+1);
         gl.topLight.target.position.copy(sphere.center);
         gl.calcShadowingRange(gl.topLight, sphere);
 
@@ -332,7 +332,7 @@ class MainApp {
       gl.backScreen.floorColor = gl.backScreen.skyColor;
       gl.backScreen.checkColor = gl.backScreen.skyColor;
     }
-    gl.floor.material.color.copy(gl.backScreen.floorColor).lerp(gl.backScreen.checkColor, 0.5);
+    gl.floor.material.diffuse = new THREE.Color().copy(gl.backScreen.floorColor).lerp(gl.backScreen.checkColor, 0.5);
   }
 
   updateGeometry() {
