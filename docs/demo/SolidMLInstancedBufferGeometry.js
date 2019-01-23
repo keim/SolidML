@@ -189,3 +189,170 @@ void main() {
   }
 }
 
+
+SolidML.InstancedBuffer_PhysicalMaterial = class extends THREE.ShaderMaterial {
+  constructor(paramaters) {
+    super(paramaters);
+    Object.assign(this.defines, {
+      "INSTANCED_MATRIX" : 1, 
+      "DEPTH_PACKING": THREE.RGBADepthPacking
+    });
+    this.uniforms = THREE.UniformsUtils.clone(THREE.ShaderLib.physical.uniforms);
+    this._initShaders();
+  }
+
+  _initShaders() {
+    const rsm_packing = `
+const float PackUpscale = 256. / 255.;
+const float ShiftRight8 = 1. / 256.;
+float unpackRGBAToRSMDepth(const in vec4 v) {
+  return v.z * 255. / 65536. + v.w;
+}
+vec3 unpackRGBAToRSMNormal(const in vec4 v) {
+  vec2 u = v.xy * 2.0 - 1.0;
+  return normalize(vec3(u, sqrt(1.0 - u.x * u.x - u.y * u.y)));
+}
+vec4 packRSMDepthNormaltoRGBA(const in float depth, const in vec3 normal){
+  vec4 r = vec4(normal.xy * 0.5 + 0.5, fract(depth*256.), depth);
+  r.w -= r.z * ShiftRight8; // tidy overflow
+  return r * PackUpscale;
+}`;
+
+    this.vertexShader = `#version 300 es
+#include <common>
+#include <uv_pars_vertex>
+#include <uv2_pars_vertex>
+#include <displacementmap_pars_vertex>
+#include <fog_pars_vertex>
+#include <morphtarget_pars_vertex>
+#include <skinning_pars_vertex>
+#include <shadowmap_pars_vertex>
+#include <logdepthbuf_pars_vertex>
+#include <clipping_planes_pars_vertex>
+in vec4 color;
+#ifdef INSTANCED_MATRIX
+  in vec4 imatx;
+  in vec4 imaty;
+  in vec4 imatz;
+  in vec4 imatw;
+#endif
+out vec3 vViewPosition;
+out vec3 vNormal;
+out vec4 vColor;
+void main() {
+  #include <uv_vertex>
+  #include <uv2_vertex>
+  vColor = color;
+#ifdef INSTANCED_MATRIX
+  mat4 imat = mat4(imatx, imaty, imatz, imatw);
+  vec3 transformed  = (imat * vec4(position.xyz, 1)).xyz;
+  vec3 objectNormal = (imat * vec4(normal.xyz,   0)).xyz;
+#else
+  vec3 transformed = vec3( position );
+  vec3 objectNormal = vec3( normal );
+#endif
+  #include <morphnormal_vertex>
+  #include <skinbase_vertex>
+  #include <skinnormal_vertex>
+  #include <defaultnormal_vertex>
+  vNormal = normalize(transformedNormal);
+  #include <morphtarget_vertex>
+  #include <skinning_vertex>
+  #include <displacementmap_vertex>
+
+  //#include <project_vertex>
+  vec4 mvPosition = modelViewMatrix * vec4( transformed, 1.0 );
+  gl_Position = projectionMatrix * mvPosition;
+
+  #include <logdepthbuf_vertex>
+  #include <clipping_planes_vertex>
+  vViewPosition = -mvPosition.xyz;
+  //#include <worldpos_vertex> 
+#if defined( USE_ENVMAP ) || defined( DISTANCE ) || defined ( USE_SHADOWMAP )
+  #ifdef INSTANCED_MATRIX
+    vec4 worldPosition = modelMatrix * imat * vec4( transformed, 1.0 );
+  #else
+    vec4 worldPosition = modelMatrix * vec4( transformed, 1.0 );
+  #endif
+#endif
+
+  #include <shadowmap_vertex> 
+  #include <fog_vertex>
+}`;
+
+    this.fragmentShader = `#version 300 es
+#define gl_FragColor vFragColor
+uniform vec3 diffuse;
+uniform vec3 emissive;
+uniform float roughness;
+uniform float metalness;
+uniform float opacity;
+uniform float clearCoat;
+uniform float clearCoatRoughness;
+uniform float cameraNear;
+uniform float cameraFar;
+in vec3 vViewPosition; 
+in vec3 vNormal;
+in vec4 vColor;
+layout (location = 0) out vec4 vFragColor;
+layout (location = 1) out vec4 vDepthNormal;
+#include <common>
+#include <packing>
+#include <dithering_pars_fragment>
+#include <uv_pars_fragment>
+#include <uv2_pars_fragment>
+#include <map_pars_fragment>
+#include <alphamap_pars_fragment>
+#include <aomap_pars_fragment>
+#include <lightmap_pars_fragment>
+#include <emissivemap_pars_fragment>
+#include <bsdfs>
+#include <cube_uv_reflection_fragment>
+#include <envmap_pars_fragment>
+#include <envmap_physical_pars_fragment>
+#include <fog_pars_fragment>
+#include <lights_pars_begin>
+#include <lights_physical_pars_fragment>
+#include <shadowmap_pars_fragment>
+#include <bumpmap_pars_fragment>
+#include <normalmap_pars_fragment>
+#include <roughnessmap_pars_fragment>
+#include <metalnessmap_pars_fragment>
+#include <logdepthbuf_pars_fragment>
+#include <clipping_planes_pars_fragment>
+${rsm_packing}
+void main() {
+  #include <clipping_planes_fragment>
+  vec4 diffuseColor = vec4(diffuse, opacity);
+  ReflectedLight reflectedLight = ReflectedLight(vec3(0), vec3(0), vec3(0), vec3(0));
+  vec3 totalEmissiveRadiance = emissive;
+  #include <logdepthbuf_fragment>
+  #include <map_fragment>
+  diffuseColor.rgba *= vColor;
+  float metalnessFactor = metalness;
+  float roughnessFactor = roughness;
+  #include <alphamap_fragment>
+  #include <alphatest_fragment>
+  #include <normal_fragment_begin>
+  #include <normal_fragment_maps>
+  #include <emissivemap_fragment>
+  #include <lights_physical_fragment>
+  #include <lights_fragment_begin>
+  #include <lights_fragment_maps>
+  #include <lights_fragment_end>
+  vec3 outgoingLight = reflectedLight.directDiffuse
+                     + reflectedLight.indirectDiffuse
+                     + reflectedLight.directSpecular
+                     + reflectedLight.indirectSpecular
+                     + totalEmissiveRadiance;
+  vFragColor = vec4(outgoingLight, diffuseColor.a);
+  float depth = viewZToOrthographicDepth(-vViewPosition.z, cameraNear, cameraFar);
+  vDepthNormal = packDepth16Normal16(depth, vNormal);
+  #include <tonemapping_fragment> 
+  #include <encodings_fragment> 
+  #include <fog_fragment> 
+  #include <premultiplied_alpha_fragment> 
+  #include <dithering_fragment>
+}`;
+  }
+}

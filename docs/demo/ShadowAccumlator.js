@@ -19,7 +19,7 @@ class BufferAccumlator {
   }
   accumlate(accumRenderTarget, alpha=1) {
     this.accumlateCount++;
-    const blend = (this.accumlateCount < 1024) ? this.accumlateCount : 1024;
+    const blend = (this.accumlateCount < 256) ? this.accumlateCount : 256;
     this.blendOperator.calc({"tSrc1":this.accumlationBuffer, "tSrc2":accumRenderTarget, "blend":alpha/blend}, this.renderTarget);
     this.copyOperator.calc({"tSrc":this.renderTarget}, this.accumlationBuffer);
   }
@@ -53,7 +53,6 @@ class GIAccumlator {
     this.shadowScene = new THREE.Scene();
     this.shadowCamera = new THREE.OrthographicCamera();
     this.shadowScene.add(this.shadowCamera);
-    //this.shadowScene.add(new GIAccumlator.MRTBufferClearer(new THREE.Vector4(0,0,0,0), new THREE.Vector4(0,0,0,0)));
     this.shadowMap0 = new WebGL2RenderTarget(mapsize, mapsize, mrtOptions);
     this.shadowMap1 = new WebGL2RenderTarget(mapsize, mapsize, mrtOptions);
     this.shadowMatrix0 = new THREE.Matrix4();
@@ -62,7 +61,6 @@ class GIAccumlator {
     this.lightColor0 = new THREE.Color(0xffffff);
     this.lightColor1 = new THREE.Color(0xffffff);
     this.lightDirection = new THREE.Vector3(0, 0, 1);
-
     this.clearColor = new THREE.Color(0);
 
     this.boundingSphere = null;
@@ -98,7 +96,7 @@ class GIAccumlator {
         this.shadowGroup.add(shadowMesh);
       });
       this.boundingSphere = boundingSphere;
-      const r = this.boundingSphere.radius * 1.5;
+      const r = this.boundingSphere.radius * 1.6;
       this.shadowCamera.bottom = - r;
       this.shadowCamera.top    = + r;
       this.shadowCamera.left   = - r;
@@ -114,47 +112,49 @@ class GIAccumlator {
   }
   render(camera, times) {
     if (!this.group || this.group.children.length == 0 || this.pause) return;
-    const tempCamera = camera.clone(),
-          mat = new THREE.Matrix4(),
-          center = this.boundingSphere.center,
-          radius = this.boundingSphere.radius;
-    this.renderer.setClearColor(this.clearColor);
 
-    this.scene.add(tempCamera);
+    if (this.shadowAccumlator.accumlateCount < 256) {
+      const tempCamera = camera.clone(),
+            mat = new THREE.Matrix4(),
+            center = this.boundingSphere.center,
+            radius = this.boundingSphere.radius;
+      this.renderer.setClearColor(this.clearColor);
 
-    if (this.shadowAccumlator.accumlateCount > 512) times = 1;
-    for (let i=0; i<times; i++) {
-      const me = randomRotationMatrix(mat, Math.random(), Math.random(), Math.random()).elements;
+      this.scene.add(tempCamera);
 
-      // shadowmap
-      this.shadowCamera.position.set(center.x + me[0]*radius, center.y + me[1]*radius, center.z + me[2]*radius);
-      this.shadowCamera.up.set(me[4], me[5], me[6]);
-      this.shadowCamera.lookAt( center );
-      this.shadowCamera.updateMatrixWorld();
-      this.shadowMatrix0.set( 0.5, 0, 0, 0.5,  0, 0.5, 0, 0.5,  0, 0, 0.5, 0.5,  0, 0, 0, 1 );
-      this.shadowMatrix0.multiply( this.shadowCamera.projectionMatrix );
-      this.shadowMatrix0.multiply( this.shadowCamera.matrixWorldInverse );
-      this.renderer.render(this.shadowScene, this.shadowCamera, this.shadowMap0);
+      for (let i=0; i<times; i++) {
+        const me = randomRotationMatrix(mat, Math.random(), Math.random(), Math.random()).elements;
 
-      // back shadowmap
-      this.shadowCamera.position.set(center.x - me[0]*radius, center.y - me[1]*radius, center.z - me[2]*radius);
-      this.shadowCamera.up.set(-me[4], -me[5], -me[6]);
-      this.shadowCamera.lookAt( center );
-      this.shadowCamera.updateMatrixWorld();
-      this.shadowMatrix1.set( 0.5, 0, 0, 0.5,  0, 0.5, 0, 0.5,  0, 0, 0.5, 0.5,  0, 0, 0, 1 );
-      this.shadowMatrix1.multiply( this.shadowCamera.projectionMatrix );
-      this.shadowMatrix1.multiply( this.shadowCamera.matrixWorldInverse );
-      this.renderer.render(this.shadowScene, this.shadowCamera, this.shadowMap1);
+        // shadowmap
+        this.shadowCamera.position.set(center.x + me[0]*radius, center.y + me[1]*radius, center.z + me[2]*radius);
+        this.shadowCamera.up.set(me[4], me[5], me[6]);
+        this.shadowCamera.lookAt( center );
+        this.shadowCamera.updateMatrixWorld();
+        this.shadowMatrix0.set( 0.5, 0, 0, 0.5,  0, 0.5, 0, 0.5,  0, 0, 0.5, 0.5,  0, 0, 0, 1 );
+        this.shadowMatrix0.multiply( this.shadowCamera.projectionMatrix );
+        this.shadowMatrix0.multiply( this.shadowCamera.matrixWorldInverse );
+        this.renderer.render(this.shadowScene, this.shadowCamera, this.shadowMap0);
 
-      // lighting
-      this.lightDirection.set(-me[0], -me[1], -me[2]);
-      this.group.children.forEach(mesh=>mesh.material.setShadowMapParameters(this));
-      this.renderer.render(this.scene, tempCamera, this.renderTarget);
+        // back shadowmap
+        this.shadowCamera.position.set(center.x - me[0]*radius, center.y - me[1]*radius, center.z - me[2]*radius);
+        this.shadowCamera.up.set(-me[4], -me[5], -me[6]);
+        this.shadowCamera.lookAt( center );
+        this.shadowCamera.updateMatrixWorld();
+        this.shadowMatrix1.set( 0.5, 0, 0, 0.5,  0, 0.5, 0, 0.5,  0, 0, 0.5, 0.5,  0, 0, 0, 1 );
+        this.shadowMatrix1.multiply( this.shadowCamera.projectionMatrix );
+        this.shadowMatrix1.multiply( this.shadowCamera.matrixWorldInverse );
+        this.renderer.render(this.shadowScene, this.shadowCamera, this.shadowMap1);
 
-      this.shadowAccumlator.accumlate(this.renderTarget.textures[0]);
-      this.lightAccumlator.accumlate(this.renderTarget.textures[1]);
+        // lighting
+        this.lightDirection.set(-me[0], -me[1], -me[2]);
+        this.group.children.forEach(mesh=>mesh.material.setShadowMapParameters(this));
+        this.renderer.render(this.scene, tempCamera, this.renderTarget);
+
+        this.shadowAccumlator.accumlate(this.renderTarget.textures[0]);
+        this.lightAccumlator.accumlate(this.renderTarget.textures[1]);
+      }
+      this.scene.remove(tempCamera);
     }
-    this.scene.remove(tempCamera);
   }
 }
 
@@ -301,7 +301,7 @@ GIAccumlator.Material = class extends THREE.ShaderMaterial {
     this.uniforms.shadowMapSize.value.set(hash.shadowMap0.width, hash.shadowMap0.height);
     this.uniforms.shadowMap1.value = hash.shadowMap1.textures[0];
     this.uniforms.albedoMap1.value = hash.shadowMap1.textures[1];
-    this.uniforms.irrRadius.value = hash.irradianceDistance;
+    this.uniforms.irrRadius.value = hash.irradianceDistance / 1.6;
   }
 
   _initShaders() {

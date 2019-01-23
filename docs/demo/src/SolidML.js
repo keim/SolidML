@@ -175,6 +175,20 @@ SolidML.Criteria = class {
     }
     return null;
   }
+  /** get criterla hash "name:key" by hash name and type
+   *  @param {string} key criteria name 
+   *  @param {string} type criteria value type "number", "int", "color", "array" or "string" is available. the "string" type returns the raw string data in script.
+   *  @return {Object} hash for specified criteria name
+   */
+  getHash(hashName, type) {
+    const result = {};
+    for (let key in this) {
+      const m = key.match(/([a-z]+):([a-z]+)/);
+      if (m && m[1] == hashName) 
+        result[m[2]] = this.getValue(key, "array");
+    }
+    return result;
+  }
   _getNumber(value, numFailure) {
     const n = Number(value);
     return isNaN(n) ? numFailure : n;

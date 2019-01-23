@@ -140,32 +140,28 @@ out vec3 vViewPosition;
 out vec3 vNormal;
 out vec4 vColor;
 void main() {
-#ifdef INSTANCED_MATRIX
-  mat4 imat = mat4(imatx, imaty, imatz, imatw);
-#endif
   #include <uv_vertex>
   #include <uv2_vertex>
   vColor = color;
-  #include <beginnormal_vertex>
 #ifdef INSTANCED_MATRIX
-  objectNormal = (imat * vec4(objectNormal,0)).xyz;
+  mat4 imat = mat4(imatx, imaty, imatz, imatw);
+  vec3 transformed  = (imat * vec4(position.xyz, 1)).xyz;
+  vec3 objectNormal = (imat * vec4(normal.xyz,   0)).xyz;
+#else
+  vec3 transformed = vec3( position );
+  vec3 objectNormal = vec3( normal );
 #endif
   #include <morphnormal_vertex>
   #include <skinbase_vertex>
   #include <skinnormal_vertex>
   #include <defaultnormal_vertex>
   vNormal = normalize(transformedNormal);
-  #include <begin_vertex>
   #include <morphtarget_vertex>
   #include <skinning_vertex>
   #include <displacementmap_vertex>
 
   //#include <project_vertex>
-#ifdef INSTANCED_MATRIX
-  vec4 mvPosition = modelViewMatrix * imat * vec4( transformed, 1.0 );
-#else
   vec4 mvPosition = modelViewMatrix * vec4( transformed, 1.0 );
-#endif
   gl_Position = projectionMatrix * mvPosition;
 
   #include <logdepthbuf_vertex>

@@ -39,7 +39,7 @@ class MainApp {
     this.renderTarget = new WebGL2RenderTarget( size.width, size.height, { multipleRenderTargets:true, renderTargetCount:2 } );
     this.ssaoRenderer = new SSAORenderer(this.gl.renderer, { useInstancedMatrix : true } );
     this.customDepthMaterial = new SolidML.InstancedBuffer_DepthMaterial();
-    this.accumlator = new GIAccumlator(this.gl, 128);
+    this.accumlator = new GIAccumlator(this.gl, 256);
   }
 
   _setupWorld() {
@@ -53,7 +53,7 @@ class MainApp {
 
     gl.floor = (mesh=>{
       mesh.geometry.attributes.position.dynamic = true;
-      mesh.renderOrder = -1;
+      //mesh.renderOrder = -1;
       mesh.receiveShadow = true;
       return mesh;
     })(new THREE.Mesh(
@@ -198,9 +198,12 @@ class MainApp {
         if (mat.length > 1) gl.mainMaterial.roughness = parseFloat(mat[1]) / 100;
         if (mat.length > 2) gl.mainMaterial.clearCoat = parseFloat(mat[2]) / 100;
         if (mat.length > 3) gl.mainMaterial.clearCoatRoughness = parseFloat(mat[3]) / 100;
+        const matHash = gl.solidML.criteria.getHash("mat", "array");
+        /**/
         const ao = gl.solidML.criteria.getValue("ao", "array");
         if (ao.length > 0) this.updateAOSharpness(parseFloat(ao[0]));
         if (ao.length > 1) this.AOoffset = parseFloat(ao[1]);
+        
         const bg = gl.solidML.criteria.getValue("bg", "array");
         if (bg || gl.solidML.criteria.background) {
           this.skyColor   = gl.solidML.criteria.background || bg[0];
@@ -258,14 +261,6 @@ class MainApp {
         gl.mainMaterial.envMap = gl.cubeCamera.renderTarget.texture;
         gl.mainMaterial.envMapIntensity = 1;
         gl.mainMaterial.needsUpdate = true;
-
-        /*
-          const mesh = new THREE.Mesh(gl.mainGeometry, gl.mainMaterial);
-          mesh.castShadow = true;
-          mesh.receiveShadow = true;
-          gl.mainGroup.add(mesh);
-          this.accumlator.setMeshes([mesh, gl.floor, gl.room], sphere);
-        */
         
         const aoMesh = [gl.floor, gl.room];
         gl.mainGeometry.instances.forEach(instance=>{
@@ -359,7 +354,7 @@ class MainApp {
       //copyShader.calc({tSrc:this.renderTarget.textures[1]});
     } else {
       this.gl.render(this.renderTarget);
-      this.accumlator.render(this.gl.camera, 8);
+      this.accumlator.render(this.gl.camera, 16);
       const aoOffset = (this.AOenable) ? this.AOoffset-(this.AOsharpness-1)/2 : 1;
       this.accumlator.shadowAccumlator.mult(this.renderTarget, this.AOsharpness*2, aoOffset, this.accumlator.shadowAccumlator.renderTarget);
       this.accumlator.lightAccumlator.add(this.accumlator.shadowAccumlator.renderTarget, (this.GIenable) ? this.GIstrength : 0);
