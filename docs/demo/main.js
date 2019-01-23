@@ -242,7 +242,7 @@ class MainApp {
         //gl.camera.far = sphere.radius * 5;
         this.ssaoRenderer.updateCamera(gl.camera);
 
-        gl.topLight.position.set(sphere.center.x, sphere.center.y, sphere.center.z+sphere.radius+1);
+        gl.topLight.position.set(sphere.center.x, sphere.center.y, sphere.center.z-sphere.radius-1);
         gl.topLight.target.position.copy(sphere.center);
         gl.calcShadowingRange(gl.topLight, sphere);
 

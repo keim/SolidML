@@ -19,7 +19,7 @@ class BufferAccumlator {
   }
   accumlate(accumRenderTarget, alpha=1) {
     this.accumlateCount++;
-    const blend = (this.accumlateCount < 256) ? this.accumlateCount : 256;
+    const blend = (this.accumlateCount < 512) ? this.accumlateCount : 512;
     this.blendOperator.calc({"tSrc1":this.accumlationBuffer, "tSrc2":accumRenderTarget, "blend":alpha/blend}, this.renderTarget);
     this.copyOperator.calc({"tSrc":this.renderTarget}, this.accumlationBuffer);
   }
@@ -403,8 +403,8 @@ vec3 getIrradianceMap() {
   vec3 center0 = vec3(vShadowCoord0.xy*shadowCamSize, orthographicDepthToViewZ(vShadowCoord0.z)),
        center1 = vec3(vShadowCoord1.xy*shadowCamSize, orthographicDepthToViewZ(vShadowCoord1.z));
   vec3 irradiance = vec3(0);
-  float r = rand(vShadowCoord0.xy) * irrRadius + 1./shadowMapSize.x;
-  float t = rand(vShadowCoord0.xy + .1) * PI2;
+  float r = abs( rand(vShadowCoord0.xy) + rand(vShadowCoord0.xy + 0.1) - 1.0 ) * irrRadius + 1./shadowMapSize.x;
+  float t = rand(vShadowCoord0.xy + .2) * PI2;
   vec2 d = r * vec2(cos(t),sin(t));
   vec2 id = vec2(d.y, -d.x);
   irradiance += getIrradiance( shadowMap0, albedoMap0, vShadowCoord0.xy + d, center0);
