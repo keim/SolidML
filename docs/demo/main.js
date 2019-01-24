@@ -37,7 +37,7 @@ class MainApp {
   _setupRenderer() {
     const size = this.gl.renderer.getSize();
     this.renderTarget = new WebGL2RenderTarget( size.width, size.height, { multipleRenderTargets:true, renderTargetCount:2 } );
-    this.ssaoRenderer = new SSAORenderer(this.gl.renderer, { useInstancedMatrix : true } );
+    //this.ssaoRenderer = new SSAORenderer(this.gl.renderer, { useInstancedMatrix : true } );
     this.customDepthMaterial = new SolidML.InstancedBuffer_DepthMaterial();
     this.accumlator = new GIAccumlator(this.gl, 256);
   }
@@ -45,7 +45,9 @@ class MainApp {
   _setupWorld() {
     const gl = this.gl;
 
-    gl.mainMaterial = this.ssaoRenderer.physicalMaterial;
+    gl.mainMaterial = new SolidML.InstancedBuffer_PhysicalMaterial();
+    gl.alphaMaterial = new SolidML.InstancedBuffer_PhysicalMaterial({transparent:true});
+    //gl.mainMaterial = this.ssaoRenderer.physicalMaterial;
     gl.mainGeometry = null;
 
     gl.backScreen = new BackScreen();
@@ -240,7 +242,7 @@ class MainApp {
         if (this.autoCameraPosition)
           gl.camera.position.sub(sphere.center).normalize().multiplyScalar(sphere.radius*4).add(sphere.center);
         //gl.camera.far = sphere.radius * 5;
-        this.ssaoRenderer.updateCamera(gl.camera);
+        //this.ssaoRenderer.updateCamera(gl.camera);
 
         gl.topLight.position.set(sphere.center.x, sphere.center.y, sphere.center.z+sphere.radius+1);
         gl.topLight.target.position.copy(sphere.center);
@@ -349,9 +351,7 @@ class MainApp {
       this.updateGeometry();
 
     if (this.accumlator.pause || !(this.AOenable || this.GIenable)) {
-      this.gl.render(this.renderTarget);
-      this.ssaoRenderer.render(this.renderTarget);
-      //copyShader.calc({tSrc:this.renderTarget.textures[1]});
+      this.gl.render();
     } else {
       this.gl.render(this.renderTarget);
       this.accumlator.render(this.gl.camera, 16);

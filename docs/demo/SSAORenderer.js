@@ -119,16 +119,6 @@ vec4 depthToPosition(in float depth, in float cameraNear, in float cameraFar) {
 
     return {
       vert: `#version 300 es
-#include <common>
-#include <uv_pars_vertex>
-#include <uv2_pars_vertex>
-#include <displacementmap_pars_vertex>
-#include <fog_pars_vertex>
-#include <morphtarget_pars_vertex>
-#include <skinning_pars_vertex>
-#include <shadowmap_pars_vertex>
-#include <logdepthbuf_pars_vertex>
-#include <clipping_planes_pars_vertex>
 in vec4 color;
 #ifdef INSTANCED_MATRIX
   in vec4 imatx;
@@ -139,18 +129,31 @@ in vec4 color;
 out vec3 vViewPosition;
 out vec3 vNormal;
 out vec4 vColor;
+#include <common>
+#include <uv_pars_vertex>
+#include <uv2_pars_vertex>
+#include <displacementmap_pars_vertex>
+#include <fog_pars_vertex>
+#include <morphtarget_pars_vertex>
+#include <skinning_pars_vertex>
+#include <shadowmap_pars_vertex>
+#include <logdepthbuf_pars_vertex>
+#include <clipping_planes_pars_vertex>
 void main() {
   #include <uv_vertex>
   #include <uv2_vertex>
+//-- modify <color_vertex>
   vColor = color;
+//-- modify <beginnormal_vertex>
 #ifdef INSTANCED_MATRIX
   mat4 imat = mat4(imatx, imaty, imatz, imatw);
-  vec3 transformed  = (imat * vec4(position.xyz, 1)).xyz;
-  vec3 objectNormal = (imat * vec4(normal.xyz,   0)).xyz;
+  vec3 transformed  = ( imat * vec4(position.xyz, 1) ).xyz;
+  vec3 objectNormal = ( imat * vec4(normal.xyz,   0) ).xyz;
 #else
   vec3 transformed = vec3( position );
   vec3 objectNormal = vec3( normal );
 #endif
+//-- 
   #include <morphnormal_vertex>
   #include <skinbase_vertex>
   #include <skinnormal_vertex>
@@ -159,16 +162,14 @@ void main() {
   #include <morphtarget_vertex>
   #include <skinning_vertex>
   #include <displacementmap_vertex>
-
-  //#include <project_vertex>
+//-- modify <project_vertex>
   vec4 mvPosition = modelViewMatrix * vec4( transformed, 1.0 );
   gl_Position = projectionMatrix * mvPosition;
-
+//--
   #include <logdepthbuf_vertex>
   #include <clipping_planes_vertex>
   vViewPosition = -mvPosition.xyz;
   #include <worldpos_vertex> 
-
   #include <shadowmap_vertex> 
   #include <fog_vertex>
 }`,

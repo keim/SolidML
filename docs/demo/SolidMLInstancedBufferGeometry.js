@@ -192,43 +192,26 @@ void main() {
 
 SolidML.InstancedBuffer_PhysicalMaterial = class extends THREE.ShaderMaterial {
   constructor(paramaters) {
-    super(paramaters);
+    super();
+    this.uniforms = THREE.UniformsUtils.merge([
+      THREE.ShaderLib.physical.uniforms, {
+        cameraNear: { value: 1 },
+        cameraFar: { value: 1000 }
+    }]);
+    this._initShader();
+    this.lights = true;
+    this.opacity = 1;
+    this.transparent = true;
+    this.setValues(paramaters);
+    SolidML.Material._initializeParameters(this);
     Object.assign(this.defines, {
       "INSTANCED_MATRIX" : 1, 
       "DEPTH_PACKING": THREE.RGBADepthPacking
     });
-    this.uniforms = THREE.UniformsUtils.clone(THREE.ShaderLib.physical.uniforms);
-    this._initShaders();
   }
 
-  _initShaders() {
-    const rsm_packing = `
-const float PackUpscale = 256. / 255.;
-const float ShiftRight8 = 1. / 256.;
-float unpackRGBAToRSMDepth(const in vec4 v) {
-  return v.z * 255. / 65536. + v.w;
-}
-vec3 unpackRGBAToRSMNormal(const in vec4 v) {
-  vec2 u = v.xy * 2.0 - 1.0;
-  return normalize(vec3(u, sqrt(1.0 - u.x * u.x - u.y * u.y)));
-}
-vec4 packRSMDepthNormaltoRGBA(const in float depth, const in vec3 normal){
-  vec4 r = vec4(normal.xy * 0.5 + 0.5, fract(depth*256.), depth);
-  r.w -= r.z * ShiftRight8; // tidy overflow
-  return r * PackUpscale;
-}`;
-
+  _initShader() {
     this.vertexShader = `#version 300 es
-#include <common>
-#include <uv_pars_vertex>
-#include <uv2_pars_vertex>
-#include <displacementmap_pars_vertex>
-#include <fog_pars_vertex>
-#include <morphtarget_pars_vertex>
-#include <skinning_pars_vertex>
-#include <shadowmap_pars_vertex>
-#include <logdepthbuf_pars_vertex>
-#include <clipping_planes_pars_vertex>
 in vec4 color;
 #ifdef INSTANCED_MATRIX
   in vec4 imatx;
@@ -239,18 +222,31 @@ in vec4 color;
 out vec3 vViewPosition;
 out vec3 vNormal;
 out vec4 vColor;
+#include <common>
+#include <uv_pars_vertex>
+#include <uv2_pars_vertex>
+#include <displacementmap_pars_vertex>
+#include <fog_pars_vertex>
+#include <morphtarget_pars_vertex>
+#include <skinning_pars_vertex>
+#include <shadowmap_pars_vertex>
+#include <logdepthbuf_pars_vertex>
+#include <clipping_planes_pars_vertex>
 void main() {
   #include <uv_vertex>
   #include <uv2_vertex>
+//-- modify <color_vertex>
   vColor = color;
+//-- modify <beginnormal_vertex>
 #ifdef INSTANCED_MATRIX
   mat4 imat = mat4(imatx, imaty, imatz, imatw);
-  vec3 transformed  = (imat * vec4(position.xyz, 1)).xyz;
-  vec3 objectNormal = (imat * vec4(normal.xyz,   0)).xyz;
+  vec3 transformed  = ( imat * vec4(position.xyz, 1) ).xyz;
+  vec3 objectNormal = ( imat * vec4(normal.xyz,   0) ).xyz;
 #else
   vec3 transformed = vec3( position );
   vec3 objectNormal = vec3( normal );
 #endif
+//-- 
   #include <morphnormal_vertex>
   #include <skinbase_vertex>
   #include <skinnormal_vertex>
@@ -259,23 +255,14 @@ void main() {
   #include <morphtarget_vertex>
   #include <skinning_vertex>
   #include <displacementmap_vertex>
-
-  //#include <project_vertex>
+//-- modify <project_vertex>
   vec4 mvPosition = modelViewMatrix * vec4( transformed, 1.0 );
   gl_Position = projectionMatrix * mvPosition;
-
+//--
   #include <logdepthbuf_vertex>
   #include <clipping_planes_vertex>
   vViewPosition = -mvPosition.xyz;
-  //#include <worldpos_vertex> 
-#if defined( USE_ENVMAP ) || defined( DISTANCE ) || defined ( USE_SHADOWMAP )
-  #ifdef INSTANCED_MATRIX
-    vec4 worldPosition = modelMatrix * imat * vec4( transformed, 1.0 );
-  #else
-    vec4 worldPosition = modelMatrix * vec4( transformed, 1.0 );
-  #endif
-#endif
-
+  #include <worldpos_vertex> 
   #include <shadowmap_vertex> 
   #include <fog_vertex>
 }`;
@@ -295,7 +282,7 @@ in vec3 vViewPosition;
 in vec3 vNormal;
 in vec4 vColor;
 layout (location = 0) out vec4 vFragColor;
-layout (location = 1) out vec4 vDepthNormal;
+//layout (location = 1) out vec4 vDepthNormal;
 #include <common>
 #include <packing>
 #include <dithering_pars_fragment>
@@ -320,7 +307,6 @@ layout (location = 1) out vec4 vDepthNormal;
 #include <metalnessmap_pars_fragment>
 #include <logdepthbuf_pars_fragment>
 #include <clipping_planes_pars_fragment>
-${rsm_packing}
 void main() {
   #include <clipping_planes_fragment>
   vec4 diffuseColor = vec4(diffuse, opacity);
@@ -346,8 +332,8 @@ void main() {
                      + reflectedLight.indirectSpecular
                      + totalEmissiveRadiance;
   vFragColor = vec4(outgoingLight, diffuseColor.a);
-  float depth = viewZToOrthographicDepth(-vViewPosition.z, cameraNear, cameraFar);
-  vDepthNormal = packDepth16Normal16(depth, vNormal);
+  //float depth = viewZToOrthographicDepth(-vViewPosition.z, cameraNear, cameraFar);
+  //vDepthNormal = packDepth16Normal16(depth, vNormal);
   #include <tonemapping_fragment> 
   #include <encodings_fragment> 
   #include <fog_fragment> 
