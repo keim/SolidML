@@ -45,7 +45,7 @@ SolidML.InstancedBufferGeometry = class extends SolidML.BufferGeometry {
         if (!(ruleName in this.instancedArrayHash)) {
           const iarray = new InstancedArray(geomCreated, ["position","normal"], {"color":4, "imatx":4, "imaty":4, "imatz":4, "imatw":4});
           iarray.name = ruleName;
-          iarray.userData.isTranparent = false;
+          iarray.userData.isTransparent = false;
           iarray.userData.order = this.instances.length;
           this.instancedArrayHash[ruleName] = iarray;
           this.instances.push(iarray);
@@ -124,7 +124,7 @@ SolidML.InstancedBufferGeometry = class extends SolidML.BufferGeometry {
     const color = stat.color.getRGBA();
     const me = stat.matrix.elements;
     if (color.a < 1) 
-      this.instancedArrayHash[rulaName].userData.isTranparent = true;
+      this.instancedArrayHash[rulaName].userData.isTransparent = true;
     this.instancedArrayHash[rulaName].updateInstancedAttribute(index, {
       "color": [color.r, color.g, color.b, color.a],
       "imatx": [me[0],  me[1],  me[2],  me[3]],

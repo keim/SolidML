@@ -46,7 +46,7 @@ class MainApp {
     const gl = this.gl;
 
     gl.mainMaterial = new SolidML.InstancedBuffer_PhysicalMaterial();
-    gl.alphaMaterial = new SolidML.InstancedBuffer_PhysicalMaterial({transparent:true});
+    gl.alphaMaterial = new SolidML.InstancedBuffer_PhysicalMaterial({transparent:true, premultipliedAlpha:true});
     //gl.mainMaterial = this.ssaoRenderer.physicalMaterial;
     gl.mainGeometry = null;
 
@@ -176,7 +176,11 @@ class MainApp {
       if (/^\s*$/.test(code)) return;
       window.localStorage.setItem('backup', code);
 
-      gl.mainGeometry = new SolidML.InstancedBufferGeometry().build(code, {mat:"10,90,30,20", ao:"1,0"}, true, 0, 0);
+      gl.mainGeometry = new SolidML.InstancedBufferGeometry().build(code, {
+        "mat":"10,90,30,20", 
+        "mat:alpha":"10,90,90,10", 
+        "ao":"1,0"
+      }, true, 0, 0);
       gl.solidML = gl.mainGeometry.solidML;
       this.message("vertex:"+gl.mainGeometry.vertexCount+"/face:"+gl.mainGeometry.indexCount/3+"/object:"+gl.mainGeometry.objectCount);
 
@@ -201,6 +205,14 @@ class MainApp {
         if (mat.length > 2) gl.mainMaterial.clearCoat = parseFloat(mat[2]) / 100;
         if (mat.length > 3) gl.mainMaterial.clearCoatRoughness = parseFloat(mat[3]) / 100;
         const matHash = gl.solidML.criteria.getHash("mat", "array");
+        if (matHash["alpha"]) {
+          const mat = matHash["alpha"];
+          if (mat.length > 0) gl.alphaMaterial.metalness = parseFloat(mat[0]) / 100;
+          if (mat.length > 1) gl.alphaMaterial.roughness = parseFloat(mat[1]) / 100;
+          if (mat.length > 2) gl.alphaMaterial.clearCoat = parseFloat(mat[2]) / 100;
+          if (mat.length > 3) gl.alphaMaterial.clearCoatRoughness = parseFloat(mat[3]) / 100;
+          if (mat.length > 4) gl.alphaMaterial.refractiveRate = parseFloat(mat[3]) / 100;
+        }
         /**/
         const ao = gl.solidML.criteria.getValue("ao", "array");
         if (ao.length > 0) this.updateAOSharpness(parseFloat(ao[0]));
@@ -263,10 +275,14 @@ class MainApp {
         gl.mainMaterial.envMap = gl.cubeCamera.renderTarget.texture;
         gl.mainMaterial.envMapIntensity = 1;
         gl.mainMaterial.needsUpdate = true;
+        gl.alphaMaterial.envMap = gl.cubeCamera.renderTarget.texture;
+        gl.alphaMaterial.envMapIntensity = 1;
+        gl.alphaMaterial.needsUpdate = true;
         
         const aoMesh = [gl.floor, gl.room];
         gl.mainGeometry.instances.forEach(instance=>{
-          const mesh = new THREE.Mesh(instance, gl.mainMaterial);
+          const material = (instance.userData.isTransparent ? gl.alphaMaterial : gl.mainMaterial);
+          const mesh = new THREE.Mesh(instance, material);
           mesh.customDepthMaterial = this.customDepthMaterial;
           mesh.castShadow = true;
           mesh.receiveShadow = true;

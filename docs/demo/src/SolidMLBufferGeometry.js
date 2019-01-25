@@ -248,7 +248,7 @@ SolidML.GeometryCreator = class {
     this._isEstimationOnly = isEstimationOnly;
   }
   create(stat) {
-    return (stat.label in this._creatorFunctions && (!(stat.label in this._geometryHash) || stat.param || stat.option)) ?
+    return (stat.label in this._creatorFunctions && (!(stat.label in this._geometryHash) || stat.param || stat.options)) ?
            this._creatorFunctions[stat.label](stat) : this._geometryHash[stat.label];
   }
   composeMeshes(isEstimationOnly) {
@@ -261,35 +261,35 @@ SolidML.GeometryCreator = class {
     });
   }
   _sphereCreator(stat) {
-    let segment = Number(stat.option)>>0;
+    let segment = Number(stat.options[0])>>0;
     if (!segment || segment<3) segment = 8;
     if (!this._cache.sphere[segment]) 
       this._cache.sphere[segment] = new THREE.SphereBufferGeometry(0.5, segment, segment);
     return this._cache.sphere[segment];
   }
   _cylinderCreator(stat) {
-    let segment = Number(stat.option)>>0;
+    let segment = Number(stat.options[0])>>0;
     if (!segment || segment<3) segment = 8;
     if (!this._cache.cylinder[segment]) 
       this._cache.cylinder[segment] = new THREE.CylinderBufferGeometry(0.5, 0.5, 1, segment).applyMatrix(this.rotz);
     return this._cache.cylinder[segment];
   }
   _coneCreator(stat) {
-    let segment = Number(stat.option)>>0;
+    let segment = Number(stat.options[0])>>0;
     if (!segment || segment<3) segment = 8;
     if (!this._cache.cone[segment]) 
       this._cache.cone[segment] = new ConeBufferGeometry(0.5, 1, segment).applyMatrix(this.rotz);
     return this._cache.cone[segment];
   }
   _gridCreator(stat) {
-    let edgeWidth = Number(stat.option)>>0;
+    let edgeWidth = Number(stat.options[0])>>0;
     if (!edgeWidth) edgeWidth = 10;
     if (!this._cache.grid[edgeWidth]) 
       this._cache.grid[edgeWidth] = new SolidML.GridBufferGeometry(1, edgeWidth/100);
     return this._cache.grid[edgeWidth];
   }
   _lineCreator(stat) {
-    let lineWidth = Number(stat.option)>>0;
+    let lineWidth = Number(stat.options[0])>>0;
     if (!lineWidth) lineWidth = 10;
     if (!this._cache.line[lineWidth]) 
       this._cache.line[lineWidth] = new THREE.BoxBufferGeometry(1, lineWidth/100, lineWidth/100);
@@ -326,7 +326,7 @@ SolidML.GeometryCreator = class {
   _pathCreator(stat) {
     if (stat.param in this._cache.path) 
       return this._cache.path[stat.param];
-    const opt = (stat.option && stat.option.split(/[\s:]/).map(s=>Number(s)||0)) || [];
+    const opt = stat.options || [];
     const p = stat.param.split(/[\s,;:]/).map(s=>Number(s)||0);
     return this._cache.path[stat.param] = this.__pathGeom(p, ((opt[0]||5)/100), ((opt[1]||0)/100), ((opt[2]||1)/100));
   }
@@ -411,7 +411,7 @@ SolidML.MeshComposer = class {
     this._vy = new THREE.Vector3();
     this._vz = new THREE.Vector3();
     // cross section points Array.<THREE.Vector2>
-    let segment = Number(stat.option) || 0;
+    let segment = Number(stat.options[0]) || 0;
     if (segment < 3) segment = (this._isFlat) ? 4 : 6;
     this._crossSection = [];
     for (let i=0; i<segment; i++) {

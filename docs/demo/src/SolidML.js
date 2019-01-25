@@ -454,7 +454,7 @@ SolidML.BuildStatus = class {
     /** Array of options of the object written as "name:option"
      *  @type {string}
      */
-    this.option = null;
+    this.options = null;
     /** parameters of the object written as "name[param]"
      *  @type {string}
      */
@@ -494,7 +494,7 @@ SolidML.BuildStatus = class {
    *  @retuan {String} string as "label:option[param]"
    */
   getRuleName() {
-    return this.label + ((this.option) ? (":" + this.option) : "") + ((this.param) ? ("[" + this.param + "]") : "");
+    return this.label + ((this.options) ? (":" + this.options.join(":")) : "") + ((this.param) ? ("[" + this.param + "]") : "");
   }
   /** create new Object including clones of current status
    *  @return {Object} typeof {matrix, color, label, option, param, referenceID, objectCount}. rule, lastContinuousMesh and result are not cloned. 
@@ -503,7 +503,7 @@ SolidML.BuildStatus = class {
     return {"matrix": this.matrix.clone(),
             "color":  this.color.clone(),
             "label":  this.label,
-            "option": this.option,
+            "options": this.options,
             "param":  this.param,
             "referenceID" : this.referenceID,
             "objectCount" : this.objectCount};
@@ -553,7 +553,7 @@ SolidML.BuildStatus = class {
       return false;
     this.label = reference.label;
     this.param = reference.param;
-    this.option = reference.option;
+    this.options = reference.options;
     if (this.label in SolidML.ScriptParser._continuousMeshLabel) 
       this._continuousMesh = this.reference();
     this.objectCount++;
@@ -673,10 +673,10 @@ SolidML.Reference = class {
     if (label) {
       const s = label.split(/\s*:\s*/);
       this.label = s.shift();
-      this.option = (s.length>0) ? s.join(":") : null;
+      this.options = s;
     } else {
       this.label = null;
-      this.option = null;
+      this.options = null;
     }
     this.param = param;
     this.next = null;
