@@ -46,7 +46,14 @@ class MainApp {
     const gl = this.gl;
 
     gl.mainMaterial = new SolidML.InstancedBuffer_PhysicalMaterial();
-    gl.alphaMaterial = new SolidML.InstancedBuffer_PhysicalMaterial({transparent:true, premultipliedAlpha:true});
+    gl.alphaMaterial = new SolidML.InstancedBuffer_PhysicalMaterial({
+      transparent: true,
+      blending: THREE.CustomBlending,
+      blendSrc: THREE.SrcAlphaFactor,
+      blendSrcAlpha: THREE.ZeroFactor,
+      blendDst: THREE.SrcColorFactor,
+      blendDstAlpha: THREE.OneFactor
+   });
     //gl.mainMaterial = this.ssaoRenderer.physicalMaterial;
     gl.mainGeometry = null;
 

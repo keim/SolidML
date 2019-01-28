@@ -201,7 +201,6 @@ SolidML.InstancedBuffer_PhysicalMaterial = class extends THREE.ShaderMaterial {
     this._initShader();
     this.lights = true;
     this.opacity = 1;
-    this.transparent = true;
     this.setValues(paramaters);
     SolidML.Material._initializeParameters(this);
     Object.assign(this.defines, {
