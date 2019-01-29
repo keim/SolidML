@@ -254,10 +254,7 @@ void main() {
   #include <morphtarget_vertex>
   #include <skinning_vertex>
   #include <displacementmap_vertex>
-//-- modify <project_vertex>
-  vec4 mvPosition = modelViewMatrix * vec4( transformed, 1.0 );
-  gl_Position = projectionMatrix * mvPosition;
-//--
+  #include <project_vertex>
   #include <logdepthbuf_vertex>
   #include <clipping_planes_vertex>
   vViewPosition = -mvPosition.xyz;

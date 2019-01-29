@@ -2,29 +2,7 @@ class SSAORenderer {
   constructor(webGLRenderer, parameters) {
     if (!parameters) parameters = {};
 
-    const shaders = SSAORenderer._shaders();
-    const useInstancedMatrix = (parameters && parameters["useInstancedMatrix"]);
-    delete parameters["useInstancedMatrix"];
-
-    this.physicalMaterial = new THREE.ShaderMaterial(Object.assign(parameters, {
-      uniforms: THREE.UniformsUtils.merge([
-        THREE.ShaderLib.standard.uniforms, {
-          clearCoat: { value: 0.3 },
-          clearCoatRoughness: { value: 0.2 },
-          cameraNear: { value: 1 },
-          cameraFar: { value: 1000 }
-        },
-      ]),
-      vertexShader : shaders.vert,
-      fragmentShader : shaders.frag,
-      lights: true,
-      opacity: 1,
-      transparent: true
-    }));
-    SolidML.Material._initializeParameters(this.physicalMaterial);
-
-    if (useInstancedMatrix)
-      Object.assign(this.physicalMaterial.defines, {"INSTANCED_MATRIX" : 1});
+    this.physicalMaterial = new SSAORenderer.PhysicalMaterial();
 
     this.operator = new RenderTargetOperator(webGLRenderer, {
       "uniforms": [
@@ -42,8 +20,7 @@ class SSAORenderer {
         "halfSizeNearPlane": new THREE.Vector2(),
         "cameraNear": 1,
         "cameraFar": 1000
-      },
-      "frag": SSAORenderer._shaders().ssao
+      }
     });
     this.ssaoUniforms = this.operator.defaultUniforms;
   }
@@ -66,8 +43,30 @@ class SSAORenderer {
     this.ssaoUniforms.tDepthNormal = srcTarget.textures[1];
     this.operator.calc(this.ssaoUniforms, dstTarget);
   }
+}
 
-  static _shaders() {
+
+SSAORenderer.PhysicalMaterial = class extends THREE.ShaderMaterial {
+  constructor(paramaters) {
+    super();
+    this.uniforms = THREE.UniformsUtils.merge([
+      THREE.ShaderLib.physical.uniforms, {
+        cameraNear: { value: 1 },
+        cameraFar: { value: 1000 }
+    }]);
+    this._initShader();
+    this.lights = true;
+    this.opacity = 1;
+    this.setValues(paramaters);
+    SolidML.Material._initializeParameters(this);
+    Object.assign(this.defines, {
+      "DEPTH_PACKING": THREE.RGBADepthPacking}, 
+      (parameters["useInstancedMatrix"]) ? {"INSTANCED_MATRIX" : 1} : {}
+    );
+    delete parameters["useInstancedMatrix"];
+  }
+
+  _initShader() {
 const depthnormal_packing = `
 float unpackDepth16(const in vec4 v) {
   return v.z * 255. / 65536. + v.w;
@@ -82,43 +81,25 @@ vec4 packDepth16Normal16(const in float depth, const in vec3 normal) {
   return r * PackUpscale;
 }`;
 
-const lights_physical_pars_fragment_DirectOnly = ""; /*`
-struct PhysicalMaterial {
-  vec3  diffuseColor;
-  float specularRoughness;
-  vec3  specularColor;
-  float clearCoat;
-  float clearCoatRoughness;
-};
-#define MAXIMUM_SPECULAR_COEFFICIENT 0.16
-#define DEFAULT_SPECULAR_COEFFICIENT 0.04
-float clearCoatDHRApprox( const in float roughness, const in float dotNL ) {
-  return DEFAULT_SPECULAR_COEFFICIENT + ( 1.0 - DEFAULT_SPECULAR_COEFFICIENT ) * ( pow( 1.0 - dotNL, 5.0 ) * pow( 1.0 - roughness, 2.0 ) );
-}
-void RE_Direct_Physical( const in IncidentLight directLight, const in GeometricContext geometry, const in PhysicalMaterial material, inout ReflectedLight reflectedLight ) {
-  float dotNL = saturate( dot( geometry.normal, directLight.direction ) );
-  vec3 irradiance = dotNL * directLight.color;
-  irradiance *= PI; // punctual light
-  float clearCoatDHR = material.clearCoat * clearCoatDHRApprox( material.clearCoatRoughness, dotNL );
-  reflectedLight.directSpecular += ( 1.0 - clearCoatDHR ) * irradiance * BRDF_Specular_GGX( directLight, geometry, material.specularColor, material.specularRoughness );
-  reflectedLight.directDiffuse += ( 1.0 - clearCoatDHR ) * irradiance * BRDF_Diffuse_Lambert( material.diffuseColor );
-  reflectedLight.directSpecular += irradiance * material.clearCoat * BRDF_Specular_GGX( directLight, geometry, vec3( DEFAULT_SPECULAR_COEFFICIENT ), material.clearCoatRoughness );
-}
-#define RE_Direct RE_Direct_Physical
-#define Material_BlinnShininessExponent( material )   GGXRoughnessToBlinnExponent( material.specularRoughness )
-#define Material_ClearCoat_BlinnShininessExponent( material )   GGXRoughnessToBlinnExponent( material.clearCoatRoughness )
-float computeSpecularOcclusion( const in float dotNV, const in float ambientOcclusion, const in float roughness ) {
-  return saturate( pow( dotNV + ambientOcclusion, exp2( - 16.0 * roughness - 1.0 ) ) - 1.0 + ambientOcclusion );
-}`;*/
-
 const frag_view_conversion = `
-vec4 depthToPosition(in float depth, in float cameraNear, in float cameraFar) {
-  float viewZ = orthographicDepthToViewZ(depth, cameraNear, cameraFar);
+vec4 depthToPosition(in float depth, in float near, in float far) {
+  float viewZ = orthographicDepthToViewZ(depth, near, far);
   return vec4(vec3((vUv * 2.0 - 1.0) * -halfSizeNearPlane, -1) * viewZ, 1);
 }`;
+    this.ssaoFrag1 = `
+${depthnormal_packing}
+${frag_view_conversion}
+void main() {
+  orthographicDepthToViewZ(unpackDepth16(texture2d(tDepthNormal, vUv)), cameraNear, cameraFar);
+}
+    `;
+    this.ssaoFrag2 = `
+void main() {
+  
+}
+    `;
 
-    return {
-      vert: `#version 300 es
+    this.vertexShader = `#version 300 es
 in vec4 color;
 #ifdef INSTANCED_MATRIX
   in vec4 imatx;
@@ -162,18 +143,16 @@ void main() {
   #include <morphtarget_vertex>
   #include <skinning_vertex>
   #include <displacementmap_vertex>
-//-- modify <project_vertex>
-  vec4 mvPosition = modelViewMatrix * vec4( transformed, 1.0 );
-  gl_Position = projectionMatrix * mvPosition;
-//--
+  #include <project_vertex>
   #include <logdepthbuf_vertex>
   #include <clipping_planes_vertex>
   vViewPosition = -mvPosition.xyz;
   #include <worldpos_vertex> 
   #include <shadowmap_vertex> 
   #include <fog_vertex>
-}`,
-      frag: `#version 300 es
+}`;
+
+    this.fragmentShader = `#version 300 es
 #define gl_FragColor vFragColor
 uniform vec3 diffuse;
 uniform vec3 emissive;
@@ -206,7 +185,6 @@ layout (location = 1) out vec4 vDepthNormal;
 #include <fog_pars_fragment>
 #include <lights_pars_begin>
 #include <lights_physical_pars_fragment>
-${lights_physical_pars_fragment_DirectOnly}
 #include <shadowmap_pars_fragment>
 #include <bumpmap_pars_fragment>
 #include <normalmap_pars_fragment>
@@ -247,17 +225,6 @@ void main() {
   #include <fog_fragment> 
   #include <premultiplied_alpha_fragment> 
   #include <dithering_fragment>
-}`,
-      ssao: `
-#include <packing>
-${depthnormal_packing}
-${frag_view_conversion}
-void main() {
-  vec4 dat = texture2D(tDepthNormal, vUv);
-  vec3 normal = unpackNormal16(dat);
-  vec4 position = depthToPosition(unpackDepth16(dat), cameraNear, cameraFar);
-  gl_FragColor = texture2D(tFragColor, vUv);
-}`
-    }
+}`;
   }
 }

@@ -95,17 +95,14 @@ RenderTargetOperator.gaussBlurShader = {
     "ustep" : 1,
     "vstep" : 0
   },
-  "frag": [
-    "void main() { ",
-      "gl_FragColor = texture2D(tSrc, vUv) * 0.204",
-      "+ texture2D(tSrc, vUv - uvStep * 4.0) * 0.028",
-      "+ texture2D(tSrc, vUv - uvStep * 3.0) * 0.066",
-      "+ texture2D(tSrc, vUv - uvStep * 2.0) * 0.124",
-      "+ texture2D(tSrc, vUv - uvStep * 1.0) * 0.180",
-      "+ texture2D(tSrc, vUv + uvStep * 1.0) * 0.180",
-      "+ texture2D(tSrc, vUv + uvStep * 2.0) * 0.124",
-      "+ texture2D(tSrc, vUv + uvStep * 3.0) * 0.066",
-      "+ texture2D(tSrc, vUv + uvStep * 4.0) * 0.028",
-    "}"
-  ].join("\n")
+  "frag": `void main() { 
+  gl_FragColor = texture2D(tSrc, vUv) * 0.204
+               + texture2D(tSrc, vUv - uvStep * 4.0) * 0.028
+               + texture2D(tSrc, vUv - uvStep * 3.0) * 0.066
+               + texture2D(tSrc, vUv - uvStep * 2.0) * 0.124
+               + texture2D(tSrc, vUv - uvStep * 1.0) * 0.180
+               + texture2D(tSrc, vUv + uvStep * 1.0) * 0.180
+               + texture2D(tSrc, vUv + uvStep * 2.0) * 0.124
+               + texture2D(tSrc, vUv + uvStep * 3.0) * 0.066
+               + texture2D(tSrc, vUv + uvStep * 4.0) * 0.028;}`
 };
