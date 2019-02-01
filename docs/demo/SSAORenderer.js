@@ -1,8 +1,6 @@
 class SSAORenderer {
-  constructor(webGLRenderer, parameters) {
-    if (!parameters) parameters = {};
-
-    this.physicalMaterial = new SSAORenderer.PhysicalMaterial();
+  constructor(webGLRenderer, materialParameters) {
+    this.physicalMaterial = new SSAORenderer.PhysicalMaterial(materialParameters);
 
     this.operator = new RenderTargetOperator(webGLRenderer, {
       "uniforms": [
@@ -47,7 +45,7 @@ class SSAORenderer {
 
 
 SSAORenderer.PhysicalMaterial = class extends THREE.ShaderMaterial {
-  constructor(paramaters) {
+  constructor(parameters) {
     super();
     this.uniforms = THREE.UniformsUtils.merge([
       THREE.ShaderLib.physical.uniforms, {
@@ -57,13 +55,12 @@ SSAORenderer.PhysicalMaterial = class extends THREE.ShaderMaterial {
     this._initShader();
     this.lights = true;
     this.opacity = 1;
-    this.setValues(paramaters);
+    this.setValues(parameters);
     SolidML.Material._initializeParameters(this);
     Object.assign(this.defines, {
       "DEPTH_PACKING": THREE.RGBADepthPacking}, 
       (parameters["useInstancedMatrix"]) ? {"INSTANCED_MATRIX" : 1} : {}
     );
-    delete parameters["useInstancedMatrix"];
   }
 
   _initShader() {

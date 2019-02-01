@@ -37,7 +37,7 @@ class MainApp {
   _setupRenderer() {
     const size = this.gl.renderer.getSize();
     this.renderTarget = new WebGL2RenderTarget( size.width, size.height, { multipleRenderTargets:true, renderTargetCount:2 } );
-    //this.ssaoRenderer = new SSAORenderer(this.gl.renderer, { useInstancedMatrix : true } );
+    this.ssaoRenderer = new SSAORenderer(this.gl.renderer, { useInstancedMatrix : true } );
     this.customDepthMaterial = new SolidML.InstancedBuffer_DepthMaterial();
     this.accumlator = new GIAccumlator(this.gl, 256);
   }
@@ -45,7 +45,7 @@ class MainApp {
   _setupWorld() {
     const gl = this.gl;
 
-    gl.mainMaterial = new SolidML.InstancedBuffer_PhysicalMaterial();
+    gl.mainMaterial = this.ssaoRenderer.physicalMaterial;
     gl.alphaMaterial = new SolidML.InstancedBuffer_PhysicalMaterial({
       transparent: true,
       blending: THREE.CustomBlending,
