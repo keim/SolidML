@@ -1,26 +1,37 @@
 class SSAORenderer {
-  constructor(webGLRenderer, materialParameters) {
+  constructor(webGLRenderer, materialParameters, size) {
     this.physicalMaterial = new SSAORenderer.PhysicalMaterial(materialParameters);
 
-    this.operator = new RenderTargetOperator(webGLRenderer, {
+    let shadowSize = 3;
+    this.operator1 = new RenderTargetOperator(webGLRenderer, {
+      "uniforms": [
+        "sampler2D tDepthNormal",
+        "float ustep",
+      ],
+      "default": {
+        "tDepthNormal": null,
+        "ustep": shadowSize/size.width,
+      },
+      "frag": this.physicalMaterial.ssaoFrag1
+    });
+    this.operator2 = new RenderTargetOperator(webGLRenderer, {
       "uniforms": [
         "sampler2D tFragColor",
         "sampler2D tDepthNormal",
-        "mat4 projectionMatrix",
-        "vec2 halfSizeNearPlane",
-        "float cameraNear",
-        "float cameraFar",
+        "sampler2D tDepthNormalSmooth",
+        "float vstep"
       ],
       "default": {
         "tFragColor": null,
         "tDepthNormal": null,
-        "projectionMatrix": new THREE.Matrix4(),
-        "halfSizeNearPlane": new THREE.Vector2(),
-        "cameraNear": 1,
-        "cameraFar": 1000
-      }
+        "tDepthNormalSmooth": null,
+        "vstep": shadowSize/size.height
+      },
+      "frag": this.physicalMaterial.ssaoFrag2
     });
-    this.ssaoUniforms = this.operator.defaultUniforms;
+    this.tempRenderTarget = new WebGL2RenderTarget( size.width, size.height ); //, { multipleRenderTargets:true, renderTargetCount:2 }
+    this.ssaoUniforms1 = {"tDepthNormal": null};
+    this.ssaoUniforms2 = {"tDepthNormal": null, "tDepthNormalSmooth":null, "tFragColor":null};
   }
 
   updateCamera(camera) {
@@ -28,18 +39,15 @@ class SSAORenderer {
     const tanhfov = Math.tan(camera.fov*Math.PI/180/2);
     this.physicalMaterial.uniforms.cameraNear.value = camera.near;
     this.physicalMaterial.uniforms.cameraFar.value = camera.far;
-    this.ssaoUniforms.tFragColor = null;
-    this.ssaoUniforms.tDepthNormal = null;
-    this.ssaoUniforms.cameraNear = camera.near;
-    this.ssaoUniforms.cameraFar = camera.far;
-    this.ssaoUniforms.projectionMatrix = camera.projectionMatrix;
-    this.ssaoUniforms.halfSizeNearPlane = new THREE.Vector2(tanhfov * camera.aspect, tanhfov);
   }
 
   render(srcTarget, dstTarget=null) {
-    this.ssaoUniforms.tFragColor = srcTarget.textures[0];
-    this.ssaoUniforms.tDepthNormal = srcTarget.textures[1];
-    this.operator.calc(this.ssaoUniforms, dstTarget);
+    this.ssaoUniforms1.tDepthNormal = srcTarget.textures[1];
+    this.ssaoUniforms2.tFragColor = srcTarget.textures[0];
+    this.ssaoUniforms2.tDepthNormal = srcTarget.textures[1];
+    this.ssaoUniforms2.tDepthNormalSmooth = this.tempRenderTarget.texture;
+    this.operator1.calc(this.ssaoUniforms1, this.tempRenderTarget);
+    this.operator2.calc(this.ssaoUniforms2, dstTarget);
   }
 }
 
@@ -69,32 +77,61 @@ float unpackDepth16(const in vec4 v) {
   return v.z * 255. / 65536. + v.w;
 }
 vec3 unpackNormal16(const in vec4 v) {
-  vec2 xy = v.xy * UnpackDownscale * 2.0 - 1.0;
+  vec2 xy = v.xy * (255. / 256.) * 2.0 - 1.0;
   return vec3( xy, sqrt(1. - (xy.x * xy.x + xy.y * xy.y)) );
 }
 vec4 packDepth16Normal16(const in float depth, const in vec3 normal) {
   vec4 r = vec4(normal.xy * 0.5 + 0.5, fract(depth*256.), depth);
-  r.w -= r.z * ShiftRight8; // tidy overflow
-  return r * PackUpscale;
+  r.w -= r.z * (1. / 256.); // tidy overflow
+  return r * (256. / 255.);
 }`;
-
-const frag_view_conversion = `
-vec4 depthToPosition(in float depth, in float near, in float far) {
-  float viewZ = orthographicDepthToViewZ(depth, near, far);
-  return vec4(vec3((vUv * 2.0 - 1.0) * -halfSizeNearPlane, -1) * viewZ, 1);
+const position_unpacking = `
+float orthographicDepthToViewZ( const in float linearClipZ, const in float near, const in float far ) {
+  return linearClipZ * ( near - far ) - near;
+}
+vec4 depthToviewZ(in vec2 uv, in float near, in float far) {
+  return orthographicDepthToViewZ(unpackDepth16(texture2D(tDepthNormal, uv)), near, far);
+}
+vec4 depthToPosition(in vec2 uv, in float near, in float far) {
+  return vec4(vec3((uv * 2.0 - 1.0) * -halfSizeNearPlane, -1) * depthToviewZ(uv, near, far), 1);
 }`;
     this.ssaoFrag1 = `
 ${depthnormal_packing}
-${frag_view_conversion}
 void main() {
-  orthographicDepthToViewZ(unpackDepth16(texture2d(tDepthNormal, vUv)), cameraNear, cameraFar);
-}
-    `;
+  vec2 uvStep = vec2(ustep,0);
+  vec4 p = texture2D(tDepthNormal, vUv);
+  vec3 n = unpackNormal16(p);
+  float d = unpackDepth16(p) * 0.204
+          + unpackDepth16(texture2D(tDepthNormal, vUv - uvStep * 4.0)) * 0.028
+          + unpackDepth16(texture2D(tDepthNormal, vUv - uvStep * 3.0)) * 0.066
+          + unpackDepth16(texture2D(tDepthNormal, vUv - uvStep * 2.0)) * 0.124
+          + unpackDepth16(texture2D(tDepthNormal, vUv - uvStep * 1.0)) * 0.180
+          + unpackDepth16(texture2D(tDepthNormal, vUv + uvStep * 1.0)) * 0.180
+          + unpackDepth16(texture2D(tDepthNormal, vUv + uvStep * 2.0)) * 0.124
+          + unpackDepth16(texture2D(tDepthNormal, vUv + uvStep * 3.0)) * 0.066
+          + unpackDepth16(texture2D(tDepthNormal, vUv + uvStep * 4.0)) * 0.028;
+  gl_FragColor = packDepth16Normal16(d, n);
+}`;
     this.ssaoFrag2 = `
+${depthnormal_packing}
 void main() {
-  
-}
-    `;
+  vec2 uvStep = vec2(0,vstep);
+  float depth = unpackDepth16(texture2D(tDepthNormal, vUv));
+  vec4 p = texture2D(tDepthNormalSmooth, vUv);
+  vec3 n = unpackNormal16(p);
+  float d = unpackDepth16(p) * 0.204
+          + unpackDepth16(texture2D(tDepthNormalSmooth, vUv - uvStep * 4.0)) * 0.028
+          + unpackDepth16(texture2D(tDepthNormalSmooth, vUv - uvStep * 3.0)) * 0.066
+          + unpackDepth16(texture2D(tDepthNormalSmooth, vUv - uvStep * 2.0)) * 0.124
+          + unpackDepth16(texture2D(tDepthNormalSmooth, vUv - uvStep * 1.0)) * 0.180
+          + unpackDepth16(texture2D(tDepthNormalSmooth, vUv + uvStep * 1.0)) * 0.180
+          + unpackDepth16(texture2D(tDepthNormalSmooth, vUv + uvStep * 2.0)) * 0.124
+          + unpackDepth16(texture2D(tDepthNormalSmooth, vUv + uvStep * 3.0)) * 0.066
+          + unpackDepth16(texture2D(tDepthNormalSmooth, vUv + uvStep * 4.0)) * 0.028;
+  float shadow = clamp(((depth-d) - 0.5)*2.0, 0., 1.);
+  vec4 color = texture2D(tFragColor, vUv);
+  gl_FragColor = vec4(color.xyz - vec3(shadow), color.w);
+}`;
 
     this.vertexShader = `#version 300 es
 in vec4 color;
