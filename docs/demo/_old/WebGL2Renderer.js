@@ -1,15 +1,18 @@
 /** to use WebGL2 MRT from three.js */
- class WebGL2Renderer {
+class WebGL2Renderer {
   /** same as WebGLRenderer, cutomize to use WebGL2RenderTarget inside */
   constructor( parameters ) {
     const canvas  = document.createElement( 'canvas' ),
           context = canvas.getContext( 'webgl2' );
     THREE.WebGLRenderer.call( this, Object.assign({ canvas, context }, parameters) );
+    const extensions = { get: () => false};
+    const capabilities = { isWebGL2: Boolean(context) };
+    WebGL2Renderer._utils = new THREE.WebGLUtils(context, extensions, capabilities);
+    this._context = context;
     // override render()
     this._render_original = this.render;
     this.render = this._render_override.bind(this);
   }
-
 
   // override function of render()
   _render_override( scene, camera, renderTarget, forceClear ) {

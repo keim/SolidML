@@ -16,9 +16,12 @@ class RenderTargetOperator {
   }
   calc(uniforms, target=null) {
     RenderTargetOperator._mesh.material = this.material;
-    for (let key in this.material.uniforms) 
-      this.material.uniforms[key].value = (key in uniforms) ? 
-        (uniforms[key].texture || uniforms[key]) : this.defaultUniforms[key];
+    for (let key in this.material.uniforms) {
+      this.material.uniforms[key].value = 
+        !(key in uniforms) ? this.defaultUniforms[key] :
+        !(uniforms[key].texture) ? uniforms[key] :
+        (Array.isArray(uniforms[key].texture) ? uniforms[key].texture[0] : uniforms[key].texture)
+    }
     RenderTargetOperator._render(target);
   }
   static _initialize(webGLRenderer) {
@@ -30,11 +33,11 @@ class RenderTargetOperator {
       RenderTargetOperator._scene  = new THREE.Scene();
       RenderTargetOperator._scene.add(RenderTargetOperator._camera);
       RenderTargetOperator._scene.add(RenderTargetOperator._mesh);
-      RenderTargetOperator._render = dstRenderTarget => RenderTargetOperator._renderer.render(
-        RenderTargetOperator._scene, 
-        RenderTargetOperator._camera, 
-        dstRenderTarget
-      );
+      RenderTargetOperator._render = dstRenderTarget => {
+        RenderTargetOperator._renderer.setRenderTarget(dstRenderTarget)
+        RenderTargetOperator._renderer.render(RenderTargetOperator._scene, RenderTargetOperator._camera)
+        RenderTargetOperator._renderer.setRenderTarget(null)
+      };
     }
   }
 }

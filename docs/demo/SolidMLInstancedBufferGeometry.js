@@ -146,6 +146,7 @@ SolidML.InstancedBuffer_DepthMaterial = class extends THREE.ShaderMaterial {
     this.uniforms = THREE.UniformsUtils.clone(THREE.ShaderLib.depth.uniforms);
     this.vertexShader = SolidML.InstancedBuffer_DepthMaterial.vertexShader();
     this.fragmentShader = THREE.ShaderLib.depth.fragmentShader;
+    //this.glslVersion = THREE.GLSL3;
   }
 
   static vertexShader() {
@@ -157,6 +158,7 @@ SolidML.InstancedBuffer_DepthMaterial = class extends THREE.ShaderMaterial {
 #include <skinning_pars_vertex>
 #include <logdepthbuf_pars_vertex>
 #include <clipping_planes_pars_vertex>
+varying vec2 vHighPrecisionZW;
 #ifdef INSTANCED_MATRIX
   attribute vec4 imatx;
   attribute vec4 imaty;
@@ -185,6 +187,7 @@ void main() {
   gl_Position = projectionMatrix * mvPosition;
   #include <logdepthbuf_vertex>
   #include <clipping_planes_vertex>
+	vHighPrecisionZW = gl_Position.zw;
 }` 
   }
 }
@@ -201,6 +204,7 @@ SolidML.InstancedBuffer_PhysicalMaterial = class extends THREE.ShaderMaterial {
     this._initShader();
     this.lights = true;
     this.opacity = 1;
+    this.glslVersion = THREE.GLSL3;
     this.setValues(paramaters);
     SolidML.Material._initializeParameters(this);
     Object.assign(this.defines, {
@@ -210,7 +214,7 @@ SolidML.InstancedBuffer_PhysicalMaterial = class extends THREE.ShaderMaterial {
   }
 
   _initShader() {
-    this.vertexShader = `#version 300 es
+    this.vertexShader = `
 in vec4 color;
 #ifdef INSTANCED_MATRIX
   in vec4 imatx;
@@ -263,8 +267,7 @@ void main() {
   #include <fog_vertex>
 }`;
 
-    this.fragmentShader = `#version 300 es
-#define gl_FragColor vFragColor
+    this.fragmentShader = `
 uniform vec3 diffuse;
 uniform vec3 emissive;
 uniform float roughness;
@@ -279,6 +282,7 @@ in vec3 vNormal;
 in vec4 vColor;
 layout (location = 0) out vec4 vFragColor;
 //layout (location = 1) out vec4 vDepthNormal;
+#define gl_FragColor vFragColor
 #include <common>
 #include <packing>
 #include <dithering_pars_fragment>

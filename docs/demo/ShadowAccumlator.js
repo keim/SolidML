@@ -24,6 +24,7 @@ class BufferAccumlator {
     this.copyOperator.calc({"tSrc":this.renderTarget}, this.accumlationBuffer);
   }
   mult(renderTarget, scale, add, resultTarget) {
+    /**/
     this.multOperator.calc({"tSrc1":renderTarget, "tSrc2":this.accumlationBuffer, scale, add}, resultTarget);
     //this.copyOperator.calc({"tSrc":this.accumlationBuffer, "scale":1});
   }
@@ -35,17 +36,13 @@ class BufferAccumlator {
 
 class GIAccumlator {
   constructor(gl, mapsize) {
-    const mrtOptions = {
-      generateMipmaps: false, 
-      multipleRenderTargets: true, 
-      renderTargetCount: 2
-    };
-
     this.shadowAccumlator = new BufferAccumlator(gl);
     this.lightAccumlator = new BufferAccumlator(gl);
     this.renderer = gl.renderer;
-    const size = gl.renderer.getSize();
-    this.renderTarget = new WebGL2RenderTarget(size.width, size.height, mrtOptions);
+    this.renderTarget = gl.newRenderTarget({
+      generateMipmaps: false, 
+      renderTargetCount: 2
+    });
 
     this.scene = new THREE.Scene();
     this.scene.add(new GIAccumlator.MRTBufferClearer(new THREE.Vector4(1,1,1,1), new THREE.Vector4(0,0,0,1)));
@@ -53,8 +50,8 @@ class GIAccumlator {
     this.shadowScene = new THREE.Scene();
     this.shadowCamera = new THREE.OrthographicCamera();
     this.shadowScene.add(this.shadowCamera);
-    this.shadowMap0 = new WebGL2RenderTarget(mapsize, mapsize, mrtOptions);
-    this.shadowMap1 = new WebGL2RenderTarget(mapsize, mapsize, mrtOptions);
+    this.shadowMap0 = new THREE.WebGLMultipleRenderTargets(mapsize, mapsize, 2);
+    this.shadowMap1 = new THREE.WebGLMultipleRenderTargets(mapsize, mapsize, 2);
     this.shadowMatrix0 = new THREE.Matrix4();
     this.shadowMatrix1 = new THREE.Matrix4();
     this.irradianceDistance = 0.1;
@@ -133,7 +130,9 @@ class GIAccumlator {
         this.shadowMatrix0.set( 0.5, 0, 0, 0.5,  0, 0.5, 0, 0.5,  0, 0, 0.5, 0.5,  0, 0, 0, 1 );
         this.shadowMatrix0.multiply( this.shadowCamera.projectionMatrix );
         this.shadowMatrix0.multiply( this.shadowCamera.matrixWorldInverse );
-        this.renderer.render(this.shadowScene, this.shadowCamera, this.shadowMap0);
+        this.renderer.setRenderTarget(this.shadowMap0);
+        this.renderer.render(this.shadowScene, this.shadowCamera);
+        this.renderer.setRenderTarget(null);
 
         // back shadowmap
         this.shadowCamera.position.set(center.x - me[0]*radius, center.y - me[1]*radius, center.z - me[2]*radius);
@@ -143,15 +142,19 @@ class GIAccumlator {
         this.shadowMatrix1.set( 0.5, 0, 0, 0.5,  0, 0.5, 0, 0.5,  0, 0, 0.5, 0.5,  0, 0, 0, 1 );
         this.shadowMatrix1.multiply( this.shadowCamera.projectionMatrix );
         this.shadowMatrix1.multiply( this.shadowCamera.matrixWorldInverse );
-        this.renderer.render(this.shadowScene, this.shadowCamera, this.shadowMap1);
+        this.renderer.setRenderTarget(this.shadowMap1);
+        this.renderer.render(this.shadowScene, this.shadowCamera);
+        this.renderer.setRenderTarget(null);
 
         // lighting
         this.lightDirection.set(-me[0], -me[1], -me[2]);
         this.group.children.forEach(mesh=>mesh.material.setShadowMapParameters(this));
-        this.renderer.render(this.scene, tempCamera, this.renderTarget);
+        this.renderer.setRenderTarget(this.renderTarget);
+        this.renderer.render(this.scene, tempCamera);
+        this.renderer.setRenderTarget(null);
 
-        this.shadowAccumlator.accumlate(this.renderTarget.textures[0]);
-        this.lightAccumlator.accumlate(this.renderTarget.textures[1]);
+        this.shadowAccumlator.accumlate(this.renderTarget.texture[0]);
+        this.lightAccumlator.accumlate(this.renderTarget.texture[1]);
       }
       this.scene.remove(tempCamera);
     }
@@ -167,9 +170,9 @@ GIAccumlator.MRTBufferClearer = class extends THREE.Mesh {
         color0: { value: new THREE.Vector4().copy(clearVector0) },
         color1: { value: new THREE.Vector4().copy(clearVector1) }
       },
-      vertexShader: `#version 300 es 
-void main() { gl_Position = vec4(position.xy, 1, 1); }`,
-      fragmentShader: `#version 300 es 
+      glslVersion: THREE.GLSL3,
+      vertexShader: `void main() { gl_Position = vec4(position.xy, 1, 1); }`,
+      fragmentShader: `
 layout (location = 0) out vec4 out0;
 layout (location = 1) out vec4 out1;
 uniform vec4 color0;
@@ -214,7 +217,8 @@ GIAccumlator.DepthMaterial = class extends THREE.ShaderMaterial {
       }
     ]);
     this.setValues(paramaters);
-    this.vertexShader = `#version 300 es
+    this.glslVersion = THREE.GLSL3;
+    this.vertexShader = `
 out vec3 vNormal;
 #ifdef INSTANCED_MATRIX
   in vec4 color;
@@ -236,7 +240,7 @@ out vec3 vNormal;
   }
 #endif
     `;
-    this.fragmentShader = `#version 300 es
+    this.fragmentShader = `
 ${rsm_packing}
 #ifdef INSTANCED_MATRIX
   in vec4 vColor;
@@ -284,6 +288,7 @@ GIAccumlator.Material = class extends THREE.ShaderMaterial {
         shadowMapSize : {value: new THREE.Vector2(256,256)}
       }
     ]);
+    this.glslVersion = THREE.GLSL3;
     this._initShaders();
     this.setValues(paramaters);
   }
@@ -296,16 +301,16 @@ GIAccumlator.Material = class extends THREE.ShaderMaterial {
     this.uniforms.lightColor1.value = hash.lightColor1;
     this.uniforms.shadowMatrix0.value = hash.shadowMatrix0;
     this.uniforms.shadowMatrix1.value = hash.shadowMatrix1;
-    this.uniforms.shadowMap0.value = hash.shadowMap0.textures[0];
-    this.uniforms.albedoMap0.value = hash.shadowMap0.textures[1];
+    this.uniforms.shadowMap0.value = hash.shadowMap0.texture[0];
+    this.uniforms.albedoMap0.value = hash.shadowMap0.texture[1];
     this.uniforms.shadowMapSize.value.set(hash.shadowMap0.width, hash.shadowMap0.height);
-    this.uniforms.shadowMap1.value = hash.shadowMap1.textures[0];
-    this.uniforms.albedoMap1.value = hash.shadowMap1.textures[1];
+    this.uniforms.shadowMap1.value = hash.shadowMap1.texture[0];
+    this.uniforms.albedoMap1.value = hash.shadowMap1.texture[1];
     this.uniforms.irrRadius.value = hash.irradianceDistance / 1.6;
   }
 
   _initShaders() {
-this.vertexShader = `#version 300 es
+this.vertexShader = `
 #include <common>
 in vec4 color;
 #ifdef INSTANCED_MATRIX
@@ -356,7 +361,7 @@ void main() {
   gl_Position = projectionMatrix * mvPosition;
 }`;
 
-this.fragmentShader = `#version 300 es
+this.fragmentShader = `
 struct ReflectiveShadowMap {
   float depth;
   vec3 normal;

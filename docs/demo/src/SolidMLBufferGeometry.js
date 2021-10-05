@@ -123,10 +123,11 @@ SolidML.BufferGeometry = class extends THREE.BufferGeometry {
     this._positions = new Float32Array(this.vertexCount * 3);
     this._normals = new Float32Array(this.vertexCount * 3);
     this._colors = new Float32Array(this.vertexCount * 4);
-    this.setIndex(new THREE.BufferAttribute(this._indices, 1).setDynamic(isDynamic));
-    this.addAttribute('position', new THREE.BufferAttribute(this._positions, 3).setDynamic(isDynamic));
-    this.addAttribute('normal', new THREE.BufferAttribute(this._normals, 3).setDynamic(isDynamic));
-    this.addAttribute('color', new THREE.BufferAttribute(this._colors, 4).setDynamic(isDynamic));
+    const usage = isDynamic ? THREE.DynamicDrawUsage : THREE.StaticDrawUsage;
+    this.setIndex(new THREE.BufferAttribute(this._indices, 1).setUsage(usage));
+    this.setAttribute('position', new THREE.BufferAttribute(this._positions, 3).setUsage(usage));
+    this.setAttribute('normal', new THREE.BufferAttribute(this._normals, 3).setUsage(usage));
+    this.setAttribute('color', new THREE.BufferAttribute(this._colors, 4).setUsage(usage));
     return this;
   }
   /** update vertex buffer and send data to gpu.
@@ -204,9 +205,9 @@ SolidML.GeometryCreator = class {
     this._geometryHash = Object.assign({
       "box":      new THREE.BoxBufferGeometry(1, 1, 1), 
       "sphere":   new THREE.SphereBufferGeometry(0.5, 8, 6), 
-      "cylinder": new THREE.CylinderBufferGeometry(0.5, 0.5, 1, 8).applyMatrix(this.rotz), 
-      "cone":     new THREE.ConeBufferGeometry(0.5, 1, 8).applyMatrix(this.rotz), 
-      "torus":    new THREE.TorusBufferGeometry(0.5, 0.1, 4, 8).applyMatrix(this.roty), 
+      "cylinder": new THREE.CylinderBufferGeometry(0.5, 0.5, 1, 8).applyMatrix4(this.rotz), 
+      "cone":     new THREE.ConeBufferGeometry(0.5, 1, 8).applyMatrix4(this.rotz), 
+      "torus":    new THREE.TorusBufferGeometry(0.5, 0.1, 4, 8).applyMatrix4(this.roty), 
       "tetra":    this._indexing(new THREE.TetrahedronBufferGeometry(0.5)), 
       "octa":     this._indexing(new THREE.OctahedronBufferGeometry(0.5)), 
       "dodeca":   this._indexing(new THREE.DodecahedronBufferGeometry(0.5)), 
@@ -271,14 +272,14 @@ SolidML.GeometryCreator = class {
     let segment = Number(stat.options[0])>>0;
     if (!segment || segment<3) segment = 8;
     if (!this._cache.cylinder[segment]) 
-      this._cache.cylinder[segment] = new THREE.CylinderBufferGeometry(0.5, 0.5, 1, segment).applyMatrix(this.rotz);
+      this._cache.cylinder[segment] = new THREE.CylinderBufferGeometry(0.5, 0.5, 1, segment).applyMatrix4(this.rotz);
     return this._cache.cylinder[segment];
   }
   _coneCreator(stat) {
     let segment = Number(stat.options[0])>>0;
     if (!segment || segment<3) segment = 8;
     if (!this._cache.cone[segment]) 
-      this._cache.cone[segment] = new ConeBufferGeometry(0.5, 1, segment).applyMatrix(this.rotz);
+      this._cache.cone[segment] = new ConeBufferGeometry(0.5, 1, segment).applyMatrix4(this.rotz);
     return this._cache.cone[segment];
   }
   _gridCreator(stat) {
@@ -302,7 +303,7 @@ SolidML.GeometryCreator = class {
     const tube = p[0]/100 || 0.1;
     const radseg = (!p[1] || p[1]<3) ? 4 : p[1];
     const tubseg = (!p[2] || p[2]<3) ? 8 : p[2];
-    const geom = new THREE.TorusBufferGeometry(0.5, tube, radseg, tubseg).applyMatrix(this.roty);
+    const geom = new THREE.TorusBufferGeometry(0.5, tube, radseg, tubseg).applyMatrix4(this.roty);
     this._cache.torus[stat.param] = geom;
     return geom;
   }
@@ -373,7 +374,7 @@ SolidML.GeometryCreator = class {
     vertex.set(p);
     const geom = new THREE.BufferGeometry();
     geom.setIndex(new THREE.Uint16BufferAttribute([0,1,2], 1));
-    geom.addAttribute('position', new THREE.BufferAttribute(vertex, 3));
+    geom.setAttribute('position', new THREE.BufferAttribute(vertex, 3));
     return geom;
   }
   __pathGeom(p, depth, bevelThickness, bevelSize) {
@@ -524,8 +525,8 @@ SolidML.MeshComposer = class {
     const geom = new THREE.BufferGeometry(),
           positions = new Float32Array(this._vertexStac.length*3);
     geom.setIndex(new THREE.BufferAttribute(indexBuffer, 1));
-    geom.addAttribute('position', new THREE.BufferAttribute(positions, 3).copyVector3sArray(this._vertexStac));
-    geom.addAttribute('color',    new THREE.BufferAttribute(colorBuffer, 4));
+    geom.setAttribute('position', new THREE.BufferAttribute(positions, 3).copyVector3sArray(this._vertexStac));
+    geom.setAttribute('color',    new THREE.BufferAttribute(colorBuffer, 4));
     return geom;
   }
   _extendMesh(stat) {
@@ -581,7 +582,7 @@ SolidML.GridBufferGeometry = class extends THREE.BufferGeometry {
     face(4,  0, 1, 0,  0, 0,-1, -1, 0, 0);
     face(5,  0, 0, 1, -1, 0, 0,  0,-1, 0);
     this.setIndex(new THREE.BufferAttribute(indices, 1));
-    this.addAttribute('position', new THREE.BufferAttribute(positions, 3));
+    this.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     this.computeVertexNormals();
   }
 }

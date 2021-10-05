@@ -24,7 +24,7 @@ class Ptolemy {
     this.deltaTime = 0;
     
     // create basic instance
-    this.renderer = new WebGL2Renderer();
+    this.renderer = new THREE.WebGLRenderer();
     this.camera   = new THREE.PerspectiveCamera(30, 1, 1, 1000);
     this.scene    = new THREE.Scene();
     
@@ -49,7 +49,9 @@ class Ptolemy {
   }
 
   render(renderTarget = null) {
-    this.renderer.render(this.scene, this.camera, renderTarget);
+    this.renderer.setRenderTarget(renderTarget);
+    this.renderer.render(this.scene, this.camera);
+    this.renderer.setRenderTarget(null);
   }
 
   capture(downloadName=null, mimeType="image/jpeg") {
@@ -68,13 +70,15 @@ class Ptolemy {
     }
   }
 
-  newRenderTarget(option) {
-    const size = this.renderer.getSize();
-    return new THREE.WebGLRenderTarget(size.width, size.height, option);
+  newRenderTarget(options = {}) {
+    const ratio = this.renderer.getPixelRatio(); 
+    const size = this.renderer.getSize(new THREE.Vector2()).multiplyScalar(ratio);
+    return new Ptolemy.WebGLSwitchableRenderTarget(size.width, size.height, options);
   }
 
   setCameraDistance(verticalSize, targetPosition, cameraDirection) {
-    const dist = (verticalSize || this.renderer.getSize().height) * 0.5 / Math.tan(this.camera.fov * 0.008726646259971648);
+    const size = this.renderer.getSize(new THREE.Vector2());
+    const dist = (verticalSize || size.height) * 0.5 / Math.tan(this.camera.fov * 0.008726646259971648);
     const target = targetPosition || this.screenCenter;
     this.camera.lookAt(target);
     this.camera.position.copy(target);
@@ -102,6 +106,7 @@ class Ptolemy {
           height = this.screenSize.height || dom.clientHeight;
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
+    this.renderer.setPixelRatio(window.devicePixelRatio);
     this.renderer.setSize(width, height);
   }
 
@@ -167,3 +172,121 @@ class Ptolemy {
 }
 
 
+// This is obviuosly dull implementation ...
+// Official WebGLMultipleRenderTargets is quite stupid for me.
+Ptolemy.WebGLSwitchableRenderTarget = class extends THREE.WebGLRenderTarget {
+
+	constructor( width, height, options ) {
+
+		super( width, height, options );
+
+    const count = options.renderTargetCount || 1
+
+		this.multipleTextures = [ this.texture ]
+
+    for ( let i = 1; i < count; i ++ ) {
+
+			this.multipleTextures[ i ] = this.texture.clone()
+
+		}
+
+    this.isWebGLMultipleRenderTargets = (count > 1)
+
+  }
+
+  // switcher
+  set isWebGLMultipleRenderTargets(multiple) {
+
+    this._isWebGLMultipleRenderTargets = multiple
+    this.texture = multiple ? this.multipleTextures : this.multipleTextures[0]
+
+  }
+
+  get isWebGLMultipleRenderTargets() {
+
+    return this._isWebGLMultipleRenderTargets
+
+  }
+
+  get isWebGLRenderTarget() {
+
+    return !this._isWebGLMultipleRenderTargets
+
+  }
+
+	setSize( width, height, depth = 1 ) {
+
+		if ( this.width !== width || this.height !== height || this.depth !== depth ) {
+
+			this.width = width;
+			this.height = height;
+			this.depth = depth;
+
+			for ( let i = 0; i < this.multipleTextures.length; i ++ ) {
+
+				this.multipleTextures[ i ].image.width = width;
+				this.multipleTextures[ i ].image.height = height;
+				this.multipleTextures[ i ].image.depth = depth;
+
+			}
+
+			this.dispose();
+
+		}
+
+		this.viewport.set( 0, 0, width, height );
+		this.scissor.set( 0, 0, width, height );
+
+		return this;
+
+	}
+
+	copy( source ) {
+
+		this.dispose();
+
+		this.width = source.width;
+		this.height = source.height;
+		this.depth = source.depth;
+
+		this.viewport.set( 0, 0, this.width, this.height );
+		this.scissor.set( 0, 0, this.width, this.height );
+
+		this.depthBuffer = source.depthBuffer;
+		this.stencilBuffer = source.stencilBuffer;
+		this.depthTexture = source.depthTexture;
+
+    if (source.isWebGLSwitchableRenderTarget) {
+
+      for ( let i = 0; i < source.multipleTextures.length; i ++ ) {
+
+        this.multipleTextures[ i ] = source.multipleTextures[ i ].clone();
+  
+      }
+
+      this.isWebGLMultipleRenderTargets = source.isWebGLMultipleRenderTargets;
+
+    } else if (source.isWebGLMultipleRenderTargets) {
+
+      for ( let i = 0; i < source.texture.length; i ++ ) {
+
+        this.multipleTextures[ i ] = source.texture[ i ].clone();
+  
+      }
+
+      this.isWebGLMultipleRenderTargets = true;
+
+    } else {
+
+      this.multipleTextures[ 0 ] = source.texture.clone();
+      this.isWebGLMultipleRenderTargets = false;
+
+    }
+
+		return this;
+
+	}
+
+}
+
+Ptolemy.WebGLSwitchableRenderTarget.prototype.isWebGLSwitchableRenderTarget = true

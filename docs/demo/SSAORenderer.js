@@ -1,5 +1,6 @@
 class SSAORenderer {
-  constructor(webGLRenderer, materialParameters, size) {
+  constructor(webGLRenderer, materialParameters) {
+    const size = webGLRenderer.getSize(new THREE.Vector2());
     this.physicalMaterial = new SSAORenderer.PhysicalMaterial(materialParameters);
 
     let shadowSize = 3;
@@ -29,7 +30,7 @@ class SSAORenderer {
       },
       "frag": this.physicalMaterial.ssaoFrag2
     });
-    this.tempRenderTarget = new WebGL2RenderTarget( size.width, size.height ); //, { multipleRenderTargets:true, renderTargetCount:2 }
+    this.tempRenderTarget = new THREE.WebGLRenderTarget( size.width, size.height ); //, { multipleRenderTargets:true, renderTargetCount:2 }
     this.ssaoUniforms1 = {"tDepthNormal": null};
     this.ssaoUniforms2 = {"tDepthNormal": null, "tDepthNormalSmooth":null, "tFragColor":null};
   }
@@ -62,12 +63,23 @@ SSAORenderer.PhysicalMaterial = class extends THREE.ShaderMaterial {
     }]);
     this._initShader();
     this.lights = true;
+
+    this.glslVersion = THREE.GLSL3;
     this.opacity = 1;
+		this.clearcoat = 0;
+		this.ior = 1.5;
+		this.sheen = 0;
+		this.transmission = 0;
+		this.specularIntensity = 0;
+		this.specularTint = new THREE.Color();
+    this.useInstancedMatrix = parameters["useInstancedMatrix"];
+    delete parameters["useInstancedMatrix"];
+
     this.setValues(parameters);
     SolidML.Material._initializeParameters(this);
     Object.assign(this.defines, {
       "DEPTH_PACKING": THREE.RGBADepthPacking}, 
-      (parameters["useInstancedMatrix"]) ? {"INSTANCED_MATRIX" : 1} : {}
+      this.useInstancedMatrix ? {"INSTANCED_MATRIX" : 1} : {}
     );
   }
 
@@ -133,7 +145,7 @@ void main() {
   gl_FragColor = vec4(color.xyz - vec3(shadow), color.w);
 }`;
 
-    this.vertexShader = `#version 300 es
+    this.vertexShader = `
 in vec4 color;
 #ifdef INSTANCED_MATRIX
   in vec4 imatx;
@@ -186,8 +198,7 @@ void main() {
   #include <fog_vertex>
 }`;
 
-    this.fragmentShader = `#version 300 es
-#define gl_FragColor vFragColor
+    this.fragmentShader = `
 uniform vec3 diffuse;
 uniform vec3 emissive;
 uniform float roughness;
@@ -202,6 +213,7 @@ in vec3 vNormal;
 in vec4 vColor;
 layout (location = 0) out vec4 vFragColor;
 layout (location = 1) out vec4 vDepthNormal;
+#define gl_FragColor vFragColor
 #include <common>
 #include <packing>
 #include <dithering_pars_fragment>

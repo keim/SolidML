@@ -57,7 +57,7 @@ class WebGL2RenderTarget extends THREE.WebGLRenderTarget {
 
 
   _setupIfNeeded( renderer ) {
-    const gl = renderer.context;
+    const gl = renderer._context;
     const renderTargetProperties = renderer.properties.get( this );
     
     // 
@@ -67,10 +67,6 @@ class WebGL2RenderTarget extends THREE.WebGLRenderTarget {
     // check render target capacity 
     if ( this.renderTargetCount > gl.getParameter(gl.MAX_DRAW_BUFFERS) )  
       throw new Error("WebGL2RenderTarget: renderTargetCount is over system capacity. " + gl.getParameter(gl.MAX_DRAW_BUFFERS) + " buffers @ max.");
-
-    // use threejs utility inside
-    if ( !WebGL2RenderTarget._utils ) 
-      WebGL2RenderTarget._utils = new THREE.WebGLUtils();
 
     // create new framebuffer
     renderTargetProperties.__webglFramebuffer = gl.createFramebuffer();
@@ -97,7 +93,7 @@ class WebGL2RenderTarget extends THREE.WebGLRenderTarget {
 
 
   _setupColorBuffer( renderer, texture, attachIndex, framebuffer ) {
-    const gl = renderer.context,
+    const gl = renderer._context,
           webGLTexture = gl.createTexture(),
           textureProperties = renderer.properties.get( texture );
     // create webgl texture
@@ -115,7 +111,21 @@ class WebGL2RenderTarget extends THREE.WebGLRenderTarget {
 
 
   _setTextureParameters( gl, textureType, texture ) {
-    const utils = WebGL2RenderTarget._utils;
+    // from WebGLTextures.js
+    const wrappingToGL = {
+      [ THREE.RepeatWrapping ]: gl.REPEAT,
+      [ THREE.ClampToEdgeWrapping ]: gl.CLAMP_TO_EDGE,
+      [ THREE.MirroredRepeatWrapping ]: gl.MIRRORED_REPEAT
+    };
+    const filterToGL = {
+      [ THREE.NearestFilter ]: gl.NEAREST,
+      [ THREE.NearestMipmapNearestFilter ]: gl.NEAREST_MIPMAP_NEAREST,
+      [ THREE.NearestMipmapLinearFilter ]: gl.NEAREST_MIPMAP_LINEAR,
+      [ THREE.LinearFilter ]: gl.LINEAR,
+      [ THREE.LinearMipmapNearestFilter ]: gl.LINEAR_MIPMAP_NEAREST,
+      [ THREE.LinearMipmapLinearFilter ]: gl.LINEAR_MIPMAP_LINEAR
+    };
+
     if (this.isPowerOfTwo()) {
       gl.texParameteri( textureType, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE );
       gl.texParameteri( textureType, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE );
@@ -124,17 +134,17 @@ class WebGL2RenderTarget extends THREE.WebGLRenderTarget {
       if (texture.minFilter !== THREE.NearestFilter && texture.minFilter !== THREE.LinearFilter ) 
         console.warn( 'THREE.WebGL2Renderer: Texture is not power of two. Texture.minFilter should be set to THREE.NearestFilter or THREE.LinearFilter.' );
     } else {
-      gl.texParameteri( textureType, gl.TEXTURE_WRAP_S, utils.convert( texture.wrapS ) );
-      gl.texParameteri( textureType, gl.TEXTURE_WRAP_T, utils.convert( texture.wrapT ) );
+      gl.texParameteri( textureType, gl.TEXTURE_WRAP_S, wrappingToGL[texture.wrapS]);
+      gl.texParameteri( textureType, gl.TEXTURE_WRAP_T, wrappingToGL[texture.wrapT]);
     }
-    gl.texParameteri( textureType, gl.TEXTURE_MAG_FILTER, utils.convert( texture.magFilter ) );
-    gl.texParameteri( textureType, gl.TEXTURE_MIN_FILTER, utils.convert( texture.minFilter ) );
+    gl.texParameteri( textureType, gl.TEXTURE_MAG_FILTER, filterToGL[texture.magFilter]);
+    gl.texParameteri( textureType, gl.TEXTURE_MIN_FILTER, filterToGL[texture.minFilter]);
   }
 
 
   _setupFrameBufferTexture( renderer, framebuffer, attachment, textureTarget, texture ) {
-    const gl = renderer.context,
-          utils = WebGL2RenderTarget._utils,
+    const utils = WebGL2Renderer._utils,
+          gl = renderer._context,
           glFormat = utils.convert( this.texture.format ),
           glType = utils.convert( this.texture.type ),
           glInternalFormat = this._getInternalFormat( renderer, glFormat, glType );
@@ -146,14 +156,14 @@ class WebGL2RenderTarget extends THREE.WebGLRenderTarget {
 
 
   _generateMipmap( renderer, target, texture, width, height ) {
-    renderer.context.generateMipmap( target );
+    renderer._context.generateMipmap( target );
     const textureProperties = renderer.properties.get( texture );
     textureProperties.__maxMipLevel = Math.log( Math.max( width, height ) ) * Math.LOG2E;
   }
 
 
   _setupDepthRenderbuffer( renderer ) {
-    const gl = renderer.context,
+    const gl = renderer._context,
           renderTargetProperties = renderer.properties.get( this );
 
     gl.bindFramebuffer( gl.FRAMEBUFFER, renderTargetProperties.__webglFramebuffer );
@@ -170,7 +180,7 @@ class WebGL2RenderTarget extends THREE.WebGLRenderTarget {
 
 
   _getInternalFormat( renderer, glFormat, glType ) {
-    const gl = renderer.context;
+    const gl = renderer._context;
     let prop = "";
          if ( glFormat === gl.RED ) prop = "R";
     else if ( glFormat === gl.RGB ) prop = "RGB";
@@ -180,12 +190,12 @@ class WebGL2RenderTarget extends THREE.WebGLRenderTarget {
     else if ( glType === gl.HALF_FLOAT ) prop += "16F";
     else if ( glType === gl.UNSIGNED_BYTE ) prop += "8";
     else return glFormat;
-    return renderer.context[prop];
+    return renderer._context[prop];
   }
 
 
   _setupDepthTexture( renderer, framebuffer ) {
-    const gl = renderer.context;
+    const gl = renderer._context;
 
     if ( ! ( this.depthTexture && this.depthTexture.isDepthTexture ) ) 
       throw new Error( 'this.depthTexture must be an instance of THREE.DepthTexture' );
@@ -212,7 +222,7 @@ class WebGL2RenderTarget extends THREE.WebGLRenderTarget {
 
 
   _setupRenderBufferStorage( renderer, renderbuffer ) {
-    const gl = renderer.context;
+    const gl = renderer._context;
 
     gl.bindRenderbuffer( gl.RENDERBUFFER, renderbuffer );
 

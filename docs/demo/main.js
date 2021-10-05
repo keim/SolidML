@@ -30,14 +30,13 @@ class MainApp {
     this.visibleRoom = false;
     this.skyColor = "#679";
     this.floorColor = "#eee";
-    this.checkColor = "#eee";
+    this.checkColor = "#fff";
     this.updateGeometryByFrame = false;
   }
 
   _setupRenderer() {
-    const size = this.gl.renderer.getSize();
-    this.renderTarget = new WebGL2RenderTarget( size.width, size.height, { multipleRenderTargets:true, renderTargetCount:2 } );
-    this.ssaoRenderer = new SSAORenderer(this.gl.renderer, { useInstancedMatrix : true }, size );
+    this.renderTarget = this.gl.newRenderTarget({ renderTargetCount:2 });
+    this.ssaoRenderer = new SSAORenderer(this.gl.renderer, {useInstancedMatrix : true}); //   
     this.customDepthMaterial = new SolidML.InstancedBuffer_DepthMaterial();
     this.accumlator = new GIAccumlator(this.gl, 256);
   }
@@ -45,6 +44,7 @@ class MainApp {
   _setupWorld() {
     const gl = this.gl;
 
+    //----- Setup Materials
     gl.mainMaterial = this.ssaoRenderer.physicalMaterial;
     gl.alphaMaterial = new SolidML.InstancedBuffer_PhysicalMaterial({
       transparent: true,
@@ -53,24 +53,27 @@ class MainApp {
       blendSrcAlpha: THREE.ZeroFactor,
       blendDst: THREE.SrcColorFactor,
       blendDstAlpha: THREE.OneFactor
-   });
+    });
+
+    //----- SolidML Geometry setup in build()
     gl.mainGeometry = null;
 
+    //----- Meshes
     gl.backScreen = new BackScreen();
     gl.mainGroup = new THREE.Group();
 
     gl.floor = (mesh=>{
-      mesh.geometry.attributes.position.dynamic = true;
-      //mesh.renderOrder = -1;
+      mesh.geometry.attributes.position.usage = THREE.DynamicDrawUsage;
       mesh.receiveShadow = true;
       return mesh;
     })(new THREE.Mesh(
       new THREE.PlaneBufferGeometry(1,1),
-      new THREE.ShadowMaterial({color:0x000000, opacity:0.3, depthWrite:true})
+//      new THREE.MeshLambertMaterial({color:0xffffff, opacity:0.3})
+      new THREE.ShadowMaterial({color:0x000000, opacity:0.3})
     ));
 
     gl.room = (mesh=>{
-      mesh.geometry.attributes.position.dynamic = true;
+      mesh.geometry.attributes.position.usage = THREE.DynamicDrawUsage;
       mesh.receiveShadow = true;
       return mesh;
     })(new THREE.Mesh(
@@ -82,8 +85,9 @@ class MainApp {
       camera.renderTarget.texture.generateMipmaps = true;
       camera.renderTarget.texture.minFilter = THREE.LinearMipMapLinearFilter;
       return camera;
-    })( new THREE.CubeCamera( 0.001, 10000, 256 ));
+    })( new THREE.CubeCamera( 0.001, 10000, new THREE.WebGLCubeRenderTarget(256) ));
 
+    //----- add to scene
     gl.scene.add(gl.floor);
     gl.scene.add(gl.room);
     gl.scene.add(gl.backScreen);
@@ -259,7 +263,6 @@ class MainApp {
         this.controls.target = sphere.center;
         if (this.autoCameraPosition)
           gl.camera.position.sub(sphere.center).normalize().multiplyScalar(sphere.radius*4).add(sphere.center);
-        //gl.camera.far = sphere.radius * 5;
         this.ssaoRenderer.updateCamera(gl.camera);
 
         gl.topLight.position.set(sphere.center.x, sphere.center.y, sphere.center.z+sphere.radius+1);
@@ -373,11 +376,12 @@ class MainApp {
       this.updateGeometry();
 
     if (this.accumlator.pause || !(this.AOenable || this.GIenable)) {
-      this.gl.render(this.renderTarget);
-      this.ssaoRenderer.render(this.renderTarget)
+      this.gl.render();
+      //this.ssaoRenderer.render(this.renderTarget);
     } else {
+      this.renderTarget.isWebGLMultipleRenderTargets = false;
       this.gl.render(this.renderTarget);
-      this.accumlator.render(this.gl.camera, 16);
+      this.accumlator.render(this.gl.camera, 8);
       const aoOffset = (this.AOenable) ? this.AOoffset-(this.AOsharpness-1)/2 : 1;
       this.accumlator.shadowAccumlator.mult(this.renderTarget, this.AOsharpness*2, aoOffset, this.accumlator.shadowAccumlator.renderTarget);
       this.accumlator.lightAccumlator.add(this.accumlator.shadowAccumlator.renderTarget, (this.GIenable) ? this.GIstrength : 0);
@@ -412,40 +416,37 @@ class BackScreen extends THREE.Mesh {
         floorColor: {value:new THREE.Color()},
         checkColor: {value:new THREE.Color()}
       },
-      vertexShader: [
-        BackScreen.inverseMatrix,
-        "out vec3 vScreenPos;",
-        "void main() {",
-          "vec4 screenPos = vec4(position.xy, 1, 1);",
-          "mat4 unproject = inverse(projectionMatrix * viewMatrix);",
-          "vec4 worldPos = unproject * screenPos;",
-          "vScreenPos = worldPos.xyz / worldPos.w;",
-          "gl_Position = screenPos.xyww;",
-        "}"
-      ].join("\n"),
-      fragmentShader: [
-        "#version 300 es",
-        "in vec3 vScreenPos;",
-        "out vec4 vFlagColor;",
-        "uniform vec3 skyColor;",
-        "uniform vec3 floorColor;",
-        "uniform vec3 checkColor;",
-        "vec3 fcol(vec2 uv) {",
-          "return mix(floorColor, checkColor, mod(floor(uv.x)+floor(uv.y), 2.));",
-        "}",
-        "void main() {",
-          "vec3 dir = normalize(vScreenPos - cameraPosition);",
-          "if (dir.z<-0.001) {",
-            "vec3 fuv = cameraPosition - dir / dir.z * cameraPosition.z;",
-            "float len = length(fuv - cameraPosition);",
-            "vec2 ipx = vec2(0.001*len, -0.001*len);",
-            "vec3 chk = fcol(fuv.xy+ipx.xx) + fcol(fuv.xy+ipx.xy) + fcol(fuv.xy+ipx.yx) + fcol(fuv.xy+ipx.yy);",
-            "vFlagColor = mix(vec4(chk/4.,1), vec4(skyColor,1), smoothstep(0.98,1.0,dir.z+1.));",
-          "} else {",
-            "vFlagColor = vec4(skyColor,1);",
-          "}",
-        "}"
-      ].join("\n")
+      glslVersion: THREE.GLSL3,
+      vertexShader: `
+out vec3 vScreenPos;
+void main() {
+  vec4 screenPos = vec4(position.xy, 1, 1);
+  mat4 unproject = inverse(projectionMatrix * viewMatrix);
+  vec4 worldPos = unproject * screenPos;
+  vScreenPos = worldPos.xyz / worldPos.w;
+  gl_Position = screenPos.xyww;
+}`,
+      fragmentShader: `
+in vec3 vScreenPos;
+out vec4 vFlagColor;
+uniform vec3 skyColor;
+uniform vec3 floorColor;
+uniform vec3 checkColor;
+vec3 fcol(vec2 uv) {
+  return mix(floorColor, checkColor, mod(floor(uv.x)+floor(uv.y), 2.));
+}
+void main() {
+  vec3 dir = normalize(vScreenPos - cameraPosition);
+  if (dir.z<-0.001) {
+    vec3 fuv = cameraPosition - dir / dir.z * cameraPosition.z;
+    float len = length(fuv - cameraPosition);
+    vec2 ipx = vec2(0.001*len, -0.001*len);
+    vec3 chk = fcol(fuv.xy+ipx.xx) + fcol(fuv.xy+ipx.xy) + fcol(fuv.xy+ipx.yx) + fcol(fuv.xy+ipx.yy);
+    vFlagColor = mix(vec4(chk/4.,1), vec4(skyColor,1), smoothstep(0.98,1.0,dir.z+1.));
+  } else {
+    vFlagColor = vec4(skyColor,1);
+  }
+}`
     });
     this.frustumCulled = false;
   }
@@ -460,7 +461,6 @@ class BackScreen extends THREE.Mesh {
   }
 }
 
-BackScreen.inverseMatrix = "#version 300 es"; 
 /* code for WebGL1 (inverse is not supported)
 [
 "mat4 inverse(mat4 m) {",

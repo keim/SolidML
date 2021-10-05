@@ -61,7 +61,7 @@ class InstancedArray extends THREE.InstancedBufferGeometry {
     if (baseGeometry) {
       this.setIndex(baseGeometry.index.clone());
       this.baseAttributeList.forEach(attr=>{
-        this.addAttribute(attr, baseGeometry.attributes[attr].clone());
+        this.setAttribute(attr, baseGeometry.attributes[attr].clone());
       });
     }
     return this;
@@ -87,8 +87,8 @@ class InstancedArray extends THREE.InstancedBufferGeometry {
     for (let itemName in this._instancedArrayHash) {
       const hash = this._instancedArrayHash[itemName];
       hash.typedArray = new Float32Array(this.instanceCount * hash.itemSize);
-      hash.bufferAttr = new THREE.InstancedBufferAttribute(hash.typedArray, hash.itemSize).setDynamic(true);
-      this.addAttribute(itemName, hash.bufferAttr);
+      hash.bufferAttr = new THREE.InstancedBufferAttribute(hash.typedArray, hash.itemSize).setUsage(THREE.DynamicDrawUsage);
+      this.setAttribute(itemName, hash.bufferAttr);
     }
     return this;
   }
