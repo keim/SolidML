@@ -494,6 +494,7 @@ SolidML.BuildStatus = class {
    *  @retuan {String} string as "label:option[param]"
    */
   getRuleName() {
+    if (this.label in SolidML.ScriptParser._continuousMeshLabel) return `mesh[${this.referenceID}]`;
     return this.label + ((this.options) ? (":" + this.options.join(":")) : "") + ((this.param) ? ("[" + this.param + "]") : "");
   }
   /** create new Object including clones of current status
@@ -595,7 +596,7 @@ SolidML.Rule = class {
     this._colorpoolInstance = null;
     this.rootInstance = rootInstance;
     this.childRules = {};
-    this.sequence = new SolidML.Reference(null, null);
+    this.sequence = new SolidML.Reference(null, null, null);
     this._parser = new SolidML.ScriptParser(this);
     if (option) this._parser.ruleOption(option);
   }

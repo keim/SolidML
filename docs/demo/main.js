@@ -303,13 +303,13 @@ class MainApp {
         this.accumlator.setMeshes(aoMesh, sphere);
       }
     } catch(e) {
+      console.error(e);
       this.message(e.message, true);
     }
   }
 
   message(msg, isError) {
     document.getElementById("message").innerText = msg;
-    if (isError) console.error(msg);
   }
 
   restore() {
@@ -321,6 +321,7 @@ class MainApp {
     try {
       this.gl.capture("solidml.jpg", "image/jpeg");
     } catch (e) {
+      console.error(e);
       this.message(e.message, true);
     }
   }

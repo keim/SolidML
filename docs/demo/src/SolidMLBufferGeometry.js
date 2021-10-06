@@ -9,7 +9,7 @@ SolidML.BufferGeometry = class extends THREE.BufferGeometry {
   /** THREE.BufferGeometry constructed by {@link SolidML} script.
    *  @param {string} [script] script to construct object. call {@link SolidML.BufferGeometry#build} inside.
    *  @param {object} [criteria] default criteria of this structure, specified by "set *" commands in script.
-   *  @param {Object.<BufferGeometry>} [geometryHash] hash map of source geometries and keys like {"box":new THREE.BoxBufferGeometry(1, 1, 1)}. The source geometry should be indexed.
+   *  @param {Object.<BufferGeometry>} [geometryHash] hash map of source geometries and keys like {"box":new THREE.BoxGeometry(1, 1, 1)}. The source geometry should be indexed.
    */
   constructor(script=null, criteria=null, geometryHash=null) {
     super();
@@ -203,17 +203,17 @@ SolidML.GeometryCreator = class {
     this.roty = new THREE.Matrix4().makeRotationY(Math.PI/2);
     // geometry hash
     this._geometryHash = Object.assign({
-      "box":      new THREE.BoxBufferGeometry(1, 1, 1), 
-      "sphere":   new THREE.SphereBufferGeometry(0.5, 8, 6), 
-      "cylinder": new THREE.CylinderBufferGeometry(0.5, 0.5, 1, 8).applyMatrix4(this.rotz), 
-      "cone":     new THREE.ConeBufferGeometry(0.5, 1, 8).applyMatrix4(this.rotz), 
-      "torus":    new THREE.TorusBufferGeometry(0.5, 0.1, 4, 8).applyMatrix4(this.roty), 
-      "tetra":    this._indexing(new THREE.TetrahedronBufferGeometry(0.5)), 
-      "octa":     this._indexing(new THREE.OctahedronBufferGeometry(0.5)), 
-      "dodeca":   this._indexing(new THREE.DodecahedronBufferGeometry(0.5)), 
-      "icosa":    this._indexing(new THREE.IcosahedronBufferGeometry(0.5)), 
-      "grid":     new SolidML.GridBufferGeometry(1, 0.1), 
-      "line":     new THREE.BoxBufferGeometry(1, 0.1, 0.1),
+      "box":      new THREE.BoxGeometry(1, 1, 1), 
+      "sphere":   new THREE.SphereGeometry(0.5, 8, 6), 
+      "cylinder": new THREE.CylinderGeometry(0.5, 0.5, 1, 8).applyMatrix4(this.rotz), 
+      "cone":     new THREE.ConeGeometry(0.5, 1, 8).applyMatrix4(this.rotz), 
+      "torus":    new THREE.TorusGeometry(0.5, 0.1, 4, 8).applyMatrix4(this.roty), 
+      "tetra":    this._indexing(new THREE.TetrahedronGeometry(0.5)), 
+      "octa":     this._indexing(new THREE.OctahedronGeometry(0.5)), 
+      "dodeca":   this._indexing(new THREE.DodecahedronGeometry(0.5)), 
+      "icosa":    this._indexing(new THREE.IcosahedronGeometry(0.5)), 
+      "grid":     new SolidML.GridGeometry(1, 0.1), 
+      "line":     new THREE.BoxGeometry(1, 0.1, 0.1),
       "triangle": this.__triangleGeom([1,0,0,0,1,0,0,0,1]),
     }, geometryHash);
     // cahce area
@@ -265,49 +265,51 @@ SolidML.GeometryCreator = class {
     let segment = Number(stat.options[0])>>0;
     if (!segment || segment<3) segment = 8;
     if (!this._cache.sphere[segment]) 
-      this._cache.sphere[segment] = new THREE.SphereBufferGeometry(0.5, segment, segment);
+      this._cache.sphere[segment] = new THREE.SphereGeometry(0.5, segment, segment);
     return this._cache.sphere[segment];
   }
   _cylinderCreator(stat) {
     let segment = Number(stat.options[0])>>0;
     if (!segment || segment<3) segment = 8;
     if (!this._cache.cylinder[segment]) 
-      this._cache.cylinder[segment] = new THREE.CylinderBufferGeometry(0.5, 0.5, 1, segment).applyMatrix4(this.rotz);
+      this._cache.cylinder[segment] = new THREE.CylinderGeometry(0.5, 0.5, 1, segment).applyMatrix4(this.rotz);
     return this._cache.cylinder[segment];
   }
   _coneCreator(stat) {
     let segment = Number(stat.options[0])>>0;
     if (!segment || segment<3) segment = 8;
     if (!this._cache.cone[segment]) 
-      this._cache.cone[segment] = new ConeBufferGeometry(0.5, 1, segment).applyMatrix4(this.rotz);
+      this._cache.cone[segment] = new THREE.ConeGeometry(0.5, 1, segment).applyMatrix4(this.rotz);
     return this._cache.cone[segment];
   }
   _gridCreator(stat) {
     let edgeWidth = Number(stat.options[0])>>0;
     if (!edgeWidth) edgeWidth = 10;
     if (!this._cache.grid[edgeWidth]) 
-      this._cache.grid[edgeWidth] = new SolidML.GridBufferGeometry(1, edgeWidth/100);
+      this._cache.grid[edgeWidth] = new SolidML.GridGeometry(1, edgeWidth/100);
     return this._cache.grid[edgeWidth];
   }
   _lineCreator(stat) {
     let lineWidth = Number(stat.options[0])>>0;
     if (!lineWidth) lineWidth = 10;
     if (!this._cache.line[lineWidth]) 
-      this._cache.line[lineWidth] = new THREE.BoxBufferGeometry(1, lineWidth/100, lineWidth/100);
+      this._cache.line[lineWidth] = new THREE.BoxGeometry(1, lineWidth/100, lineWidth/100);
     return this._cache.line[lineWidth];
   }
   _torusCreator(stat) {
-    if (stat.param in this._cache.torus) 
-      return this._cache.torus[stat.param];
-    const p = stat.param.split(/[\s,;:]/).map(s=>Number(s)||0);
+    const param = stat.param || '[10,4,8]';
+    if (param in this._cache.torus) 
+      return this._cache.torus[param];
+    const p = param.split(/[\s,;:]/).map(s=>Number(s)||0);
     const tube = p[0]/100 || 0.1;
     const radseg = (!p[1] || p[1]<3) ? 4 : p[1];
     const tubseg = (!p[2] || p[2]<3) ? 8 : p[2];
-    const geom = new THREE.TorusBufferGeometry(0.5, tube, radseg, tubseg).applyMatrix4(this.roty);
-    this._cache.torus[stat.param] = geom;
+    const geom = new THREE.TorusGeometry(0.5, tube, radseg, tubseg).applyMatrix4(this.roty);
+    this._cache.torus[param] = geom;
     return geom;
   }
   _triangleCreator(stat) {
+    if (!stat.param) throw new Error('triangle geometry requires parameters as "triangle[...]"');
     if (stat.param in this._cache.triangle) 
       return this._cache.triangle[stat.param];
     const p = stat.param.split(/[\s,;:]/).map(s=>Number(s)||0);
@@ -325,6 +327,7 @@ SolidML.GeometryCreator = class {
     return geom;
   }
   _pathCreator(stat) {
+    if (!stat.param) throw new Error('path geometry requires parameters as "path:5:0:1[...]"');
     if (stat.param in this._cache.path) 
       return this._cache.path[stat.param];
     const opt = stat.options || [];
@@ -385,7 +388,7 @@ SolidML.GeometryCreator = class {
     for (let i=2; i<p.length; i+=2) 
       path.lineTo(p[i], p[i+1]);
     path.lineTo(p[0], p[1]);
-    return this._indexing(new THREE.ExtrudeBufferGeometry( path, {
+    return this._indexing(new THREE.ExtrudeGeometry( path, {
       steps: 1,
       bevelSegments: 1,
       bevelEnabled: (bevelThickness>0),
@@ -553,7 +556,7 @@ SolidML.MeshComposer = class {
     }
   }
 }
-SolidML.GridBufferGeometry = class extends THREE.BufferGeometry {
+SolidML.GridGeometry = class extends THREE.BufferGeometry {
   constructor(size, edgeWidth) {
     super();
     const l = size / 2, s = l - edgeWidth;

@@ -55,7 +55,7 @@ SolidML.InstancedBufferGeometry = class extends SolidML.BufferGeometry {
     });
     this._geometryCreator.composeMeshes(false).forEach(reference=>{
       const ruleName = reference.name;
-      const iarray = new InstancedArray(reference, ["position","normal","color"], {"imatx":4, "imaty":4, "imatz":4, "imatw":4});
+      const iarray = new InstancedArray(reference, ["position","color"], {"imatx":4, "imaty":4, "imatz":4, "imatw":4});
       iarray.name = ruleName;
       iarray.allocate(1);
       iarray.updateInstancedAttribute(0, {"imatx":[1,0,0,0], "imaty":[0,1,0,0], "imatz":[0,0,1,0], "imatw":[0,0,0,1]});
@@ -65,8 +65,8 @@ SolidML.InstancedBufferGeometry = class extends SolidML.BufferGeometry {
     this.indexCount = 0;
     this.vertexCount = 0;
     this.objectCount = 0;
-    for (let rulaName in this.instancedArrayHash) {
-      const iarray = this.instancedArrayHash[rulaName];
+    for (let ruleName in this.instancedArrayHash) {
+      const iarray = this.instancedArrayHash[ruleName];
       this.indexCount += iarray.indexCount;
       this.vertexCount += iarray.vertexCount;
       this.objectCount += iarray.instanceCount;
@@ -78,8 +78,8 @@ SolidML.InstancedBufferGeometry = class extends SolidML.BufferGeometry {
    */
   allocBuffers(isDynamic=true, indexCount=0, vertexCount=0) {
     super.allocBuffers(isDynamic, indexCount, vertexCount)
-    for (let rulaName in this.instancedArrayHash) 
-      this.instancedArrayHash[rulaName].allocate();
+    for (let ruleName in this.instancedArrayHash) 
+      this.instancedArrayHash[ruleName].allocate();
     return this;
   }
   /**
@@ -120,12 +120,12 @@ SolidML.InstancedBufferGeometry = class extends SolidML.BufferGeometry {
     return this;
   }
 
-  _copyInstance(index, stat, rulaName) {
+  _copyInstance(index, stat, ruleName) {
     const color = stat.color.getRGBA();
     const me = stat.matrix.elements;
     if (color.a < 1) 
-      this.instancedArrayHash[rulaName].userData.isTransparent = true;
-    this.instancedArrayHash[rulaName].updateInstancedAttribute(index, {
+      this.instancedArrayHash[ruleName].userData.isTransparent = true;
+    this.instancedArrayHash[ruleName].updateInstancedAttribute(index, {
       "color": [color.r, color.g, color.b, color.a],
       "imatx": [me[0],  me[1],  me[2],  me[3]],
       "imaty": [me[4],  me[5],  me[6],  me[7]],
